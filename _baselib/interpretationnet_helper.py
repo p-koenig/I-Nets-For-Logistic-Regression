@@ -1,10 +1,11 @@
-
-# Imports
-
+# ----------- Imports -----------
 
 
+# ------- Static variables ------
+
+
+# ----- Function declaration ----
 
 
 
-# Function declaration
-
+# - deprecated
