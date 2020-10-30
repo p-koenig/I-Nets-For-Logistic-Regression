@@ -7,12 +7,27 @@ import pandas as pd
 import pickle
 from datetime import datetime
 from configparser import ConfigParser
+import operator
+from functools import reduce
 
 # ------- Static variables ------
 
 ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz'
 
 # ----- Function declaration ----
+
+def pairwise(iterable):
+    "s -> (s0, s1), (s2, s3), (s4, s5), ..."
+    a = iter(iterable)
+    return zip(a, a)
+
+def chunks(lst, chunksize):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), chunksize):
+        yield lst[i:i + chunksize]
+
+def prod(iterable):
+    return reduce(operator.mul, iterable, 1)
 
 def parse_config(config_path):
 
@@ -25,7 +40,10 @@ def parse_config(config_path):
     parsed_config = dict()
     for sec in config.sections():
         for k, v in config[sec].items():
-            parsed_config[k] = parse_func[sec](self=config, section=sec, option=k)
+            try:
+                parsed_config[k] = parse_func[sec](self=config, section=sec, option=k)
+            except:
+                parsed_config[k] = v
 
     return parsed_config
 
@@ -72,10 +90,19 @@ def export_pickle(obj, path_):
     
     with open(path_, 'wb') as f:
         pickle.dump(obj, f)#, protocol=2)
+        
+def import_pickle(path_):       
+        
+    with open(path_, 'rb') as f:
+        return pickle.load(f)
     
 def export_csv(df, path_):
     
     df.to_csv(path_, index=False)
+    
+def import_csv(path_):       
+        
+    return pd.read_csv(path_)
     
 def get_obj_info(obj, detailed = False):
 
@@ -88,6 +115,26 @@ def get_obj_info(obj, detailed = False):
             obj_description += attr_str
 
     return obj_description
+
+def get_system_info():
+    
+    import platform,socket,re,uuid,psutil
+    
+    try:
+        info={}
+        info['platform']=platform.system()
+        info['platform-release']=platform.release()
+        info['platform-version']=platform.version()
+        info['architecture']=platform.machine()
+        info['hostname']=socket.gethostname()
+        info['ip-address']=socket.gethostbyname(socket.gethostname())
+        info['mac-address']=':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        info['processor']=platform.processor()
+        info['ram']=str(round(psutil.virtual_memory().total / (1024.0 **3)))+" GB"
+        return info
+    except Exception as e:
+        print(e)
+        
         
 # - deprecated
         
