@@ -12,3 +12,5 @@
 *.eps
 *.h5
 *.*.*
+
+./smarton/polynomials/data/autokeras/
