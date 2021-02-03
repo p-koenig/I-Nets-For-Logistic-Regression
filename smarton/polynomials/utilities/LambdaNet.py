@@ -1,12 +1,4 @@
 #######################################################################################################################################################
-#######################################################################Parameters######################################################################
-#######################################################################################################################################################
-
-RANDOM_SEED =42
-#d = 3  
-#n = 4
-
-#######################################################################################################################################################
 #######################################################################Imports#########################################################################
 #######################################################################################################################################################
 
@@ -26,27 +18,54 @@ from joblib import Parallel, delayed
 from collections.abc import Iterable
 #from scipy.integrate import quad
 
-#from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
+from sklearn.model_selection import train_test_split
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
 from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 
 
 import tensorflow as tf
 import random 
-random.seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
-if int(tf.__version__[0]) >= 2:
-    tf.random.set_seed(RANDOM_SEED)
-else:
-    tf.set_random_seed(RANDOM_SEED)
+
+from keras.models import Sequential
+from keras.layers.core import Dense, Dropout
 
 #udf import
 #from utilities.LambdaNet import *
 from utilities.metrics import *
 from utilities.utility_functions import *
 
-#sparsity = nCr(n+d, d)
+#######################################################################################################################################################
+#############################################################Setting relevant parameters from current config###########################################
+#######################################################################################################################################################
 
+def initialize_LambdaNet_config_from_curent_notebook(config):
+    globals().update(config['data'])
+    globals().update(config['lambda_net'])
+    globals().update(config['i_net'])
+    globals().update(config['evaluation'])
+    globals().update(config['computation'])
+    
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)
+        
+    global list_of_monomial_identifiers
+        
+    list_of_monomial_identifiers_extended = []
+    for i in range((d+1)**n):    
+        monomial_identifier = dec_to_base(i, base = (d+1)).zfill(n) 
+        list_of_monomial_identifiers_extended.append(monomial_identifier)
+
+
+    list_of_monomial_identifiers = []
+    for monomial_identifier in list_of_monomial_identifiers_extended:
+        monomial_identifier_values = list(map(int, list(monomial_identifier)))
+        if sum(monomial_identifier_values) <= d:
+            list_of_monomial_identifiers.append(monomial_identifier)
+    
 #######################################################################################################################################################
 ##################################################################Lambda Net Wrapper###################################################################
 #######################################################################################################################################################
@@ -67,13 +86,7 @@ class LambdaNetDataset():
         
     test_data_list = None
     
-    def __init__(self, lambda_net_list, config):
-        
-        globals().update(config['data'])
-        globals().update(config['lambda_net'])
-        globals().update(config['i_net'])
-        globals().update(config['evaluation'])
-        globals().update(config['computation'])
+    def __init__(self, lambda_net_list):
         
         self.lambda_net_list = lambda_net_list
         
@@ -102,7 +115,8 @@ class LambdaNetDataset():
     def __len__(self):
         return len(self.lambda_net_list)
     
-    
+
+        
     def make_prediction_on_dataset(self, evaluation_dataset):  
         assert evaluation_dataset.shape[1] == n
         lambda_network_preds_list = []
@@ -216,15 +230,7 @@ class LambdaNet():
     
     test_data = None
     
-    
-    def __init__(self, line, config):
-        
-        globals().update(config['data'])
-        globals().update(config['lambda_net'])
-        globals().update(config['i_net'])
-        globals().update(config['evaluation'])
-        globals().update(config['computation'])
-        
+    def __init__(self, line):
         assert isinstance(line, np.ndarray), 'line is no array: ' + str(line) 
         
         self.index = int(line[0])
@@ -244,7 +250,11 @@ class LambdaNet():
         
         assert self.weights.shape[0] == number_of_lambda_weights, 'weights have incorrect shape ' + str(self.weights.shape[0]) + ' but should be ' + str(number_of_lambda_weights)
         
-        directory = './data/weights/weights_' + str(data_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_astep_' + str(a_step)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xstep_' + str(x_step) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
+
+        globals().update(generate_paths())
+
+         ########### LOAD TEST DATA FOR LAMBDA NET #############
+        directory = './data/weights/weights_' + str(dataset_load_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_astep_' + str(a_step)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xstep_' + str(x_step) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
         path = directory + 'lambda_' + str(self.index) + '_test_data.npy'
         
         self.test_data = np.load(path)
@@ -314,7 +324,7 @@ class LambdaNet():
         data = np.hstack([self.train_settings['seed'], self.target_polynomial, self.lstsq_lambda_pred_polynomial, self.lstsq_target_polynomial, self.weights])
         return data
     
-    def return_column_names(self):
+    def return_column_names(self):        
         target_polynomial_identifiers = [monomial_identifiers + str('-target') for monomial_identifiers in list_of_monomial_identifiers]
         lstsq_lambda_pred_polynomial_identifiers = [monomial_identifiers + str('-lstsq_lambda') for monomial_identifiers in list_of_monomial_identifiers]
         lstsq_target_polynomial_identifiers = [monomial_identifiers + str('-lstsq_target') for monomial_identifiers in list_of_monomial_identifiers]
@@ -328,7 +338,11 @@ class LambdaNet():
     
     
     
-def split_LambdaNetDataset(dataset, test_split, random_seed=RANDOM_SEED):
+def split_LambdaNetDataset(dataset, test_split, random_seed='RANDOM_SEED'):
+    
+    if random_seed == 'RANDOM_SEED':
+        random_seed = RANDOM_SEED
+    
     assert isinstance(dataset, LambdaNetDataset) 
     
     lambda_nets_list = dataset.lambda_net_list

@@ -1,12 +1,4 @@
 #######################################################################################################################################################
-#######################################################################Parameters######################################################################
-#######################################################################################################################################################
-
-RANDOM_SEED =42
-d = 3  
-n = 4
-
-#######################################################################################################################################################
 #######################################################################Imports#########################################################################
 #######################################################################################################################################################
 
@@ -29,28 +21,41 @@ from collections.abc import Iterable
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
 from similaritymeasures import frechet_dist, area_between_two_curves, dtw
+from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
 
 
 import tensorflow as tf
+import keras
 import random 
-random.seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
-if int(tf.__version__[0]) >= 2:
-    tf.random.set_seed(RANDOM_SEED)
-else:
-    tf.set_random_seed(RANDOM_SEED)
 
 #udf import
 from utilities.LambdaNet import *
 #from utilities.metrics import *
 from utilities.utility_functions import *
 
-sparsity = nCr(n+d, d)
+#######################################################################################################################################################
+#############################################################Setting relevant parameters from current config###########################################
+#######################################################################################################################################################
+
+def initialize_metrics_config_from_curent_notebook(config):
+    globals().update(config['data'])
+    globals().update(config['lambda_net'])
+    globals().update(config['i_net'])
+    globals().update(config['evaluation'])
+    globals().update(config['computation'])
+        
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)
+
 
 #######################################################################################################################################################
 ######################Manual TF Loss function for comparison with lambda-net prediction based (predictions made in loss function)######################
 #######################################################################################################################################################
-def mean_absolute_error_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers, base_model):
+def mean_absolute_error_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers, base_model, preds_include_params=False):
     
     evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
     list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)    
@@ -65,9 +70,17 @@ def mean_absolute_error_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_o
         if seed_in_inet_training:
             network_parameters = polynomial_true_with_lambda_fv[:,sparsity+1:]
             polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            if preds_include_params:
+                #_ = polynomial_pred_with_lambda_fv[:,sparsity+1:]
+                polynomial_pred = polynomial_pred[:,:sparsity]
         else:
             network_parameters = polynomial_true_with_lambda_fv[:,sparsity:]
             polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            if preds_include_params:
+                #_ = polynomial_pred_with_lambda_fv[:,sparsity:]
+                polynomial_pred = polynomial_pred[:,:sparsity]
+       
+            
             
         network_parameters = return_float_tensor_representation(network_parameters)
         polynomial_true = return_float_tensor_representation(polynomial_true)
@@ -80,115 +93,115 @@ def mean_absolute_error_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_o
         return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
     return mean_absolute_error_tf_fv_lambda_extended
 
-    def calculate_mae_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder):
+def calculate_mae_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder):
 
-        def calculate_mae_fv_lambda(input_list):
+    def calculate_mae_fv_lambda(input_list):
 
-            #single polynomials
-            #polynomial_true = input_list[0]
-            polynomial_pred = input_list[0]
-            network_parameters = input_list[1]
+        #single polynomials
+        #polynomial_true = input_list[0]
+        polynomial_pred = input_list[0]
+        network_parameters = input_list[1]
 
-            polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
+        polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
 
-            #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
-            # build models
-            start = 0
-            layers = []
-            for i in range(len(dims)//2):
+        #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
+        # build models
+        start = 0
+        layers = []
+        for i in range(len(dims)//2):
 
-                # set weights of layer
-                index = i*2
-                size = np.product(dims[index])
-                weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
-                start += size
+            # set weights of layer
+            index = i*2
+            size = np.product(dims[index])
+            weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+            start += size
 
-                # set biases of layer
-                index += 1
-                size = np.product(dims[index])
-                biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-                start += size
-
-
-            lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
-
-            return tf.math.reduce_mean(tf.vectorized_map(calculate_mae_single_input, (lambda_fv, polynomial_pred_fv_list)))
-
-        return calculate_mae_fv_lambda
+            # set biases of layer
+            index += 1
+            size = np.product(dims[index])
+            biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+            start += size
 
 
+        lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
 
-    #Manual TF Loss function for fv comparison of real and predicted polynomial
+        return tf.math.reduce_mean(tf.vectorized_map(calculate_mae_single_input, (lambda_fv, polynomial_pred_fv_list)))
 
-    def mean_absolute_error_tf_fv_poly_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers):
+    return calculate_mae_fv_lambda
 
-        evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
-        list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)        
+    
 
-        def mean_absolute_error_tf_fv_poly_extended(polynomial_true, polynomial_pred):
+#Manual TF Loss function for fv comparison of real and predicted polynomial
 
-            polynomial_true = return_float_tensor_representation(polynomial_true)
-            polynomial_pred = return_float_tensor_representation(polynomial_pred)
+def mean_absolute_error_tf_fv_poly_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers):
 
-            assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
-            assert polynomial_pred.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)       
+    evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
+    list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)        
 
-            return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
-        return mean_absolute_error_tf_fv_poly_extended
+    def mean_absolute_error_tf_fv_poly_extended(polynomial_true, polynomial_pred):
 
-    def calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers):
+        polynomial_true = return_float_tensor_representation(polynomial_true)
+        polynomial_pred = return_float_tensor_representation(polynomial_pred)
 
-        def calculate_mae_fv_poly(input_list):
+        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
+        assert polynomial_pred.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)       
 
-            #single polynomials
-            polynomial_true = input_list[0]
-            polynomial_pred = input_list[1]
+        return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
+    return mean_absolute_error_tf_fv_poly_extended
 
-            polynomial_true_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_true), (evaluation_dataset))
-            polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
+def calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers):
 
-            return tf.math.reduce_mean(tf.vectorized_map(calculate_mae_single_input, (polynomial_true_fv_list, polynomial_pred_fv_list)))
+    def calculate_mae_fv_poly(input_list):
 
-        return calculate_mae_fv_poly
+        #single polynomials
+        polynomial_true = input_list[0]
+        polynomial_pred = input_list[1]
 
+        polynomial_true_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_true), (evaluation_dataset))
+        polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
 
-    #GENERAL LOSS UTILITY FUNCTIONS
-    def calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred):
+        return tf.math.reduce_mean(tf.vectorized_map(calculate_mae_single_input, (polynomial_true_fv_list, polynomial_pred_fv_list)))
 
-
-        def calculate_fv_from_data(evaluation_entry):
-
-
-            value_without_coefficient = tf.vectorized_map(calculate_value_without_coefficient_wrapper(evaluation_entry), (list_of_monomial_identifiers))
-            polynomial_pred_value_per_term = tf.vectorized_map(lambda x: x[0]*x[1], (value_without_coefficient, polynomial_pred))
-
-            polynomial_pred_fv = tf.reduce_sum(polynomial_pred_value_per_term)     
-
-            return polynomial_pred_fv
-        return calculate_fv_from_data
+    return calculate_mae_fv_poly
 
 
-    #calculate intermediate term (without coefficient multiplication)
-    def calculate_value_without_coefficient_wrapper(evaluation_entry):
-        def calculate_value_without_coefficient(coefficient_multiplier_term):      
+#GENERAL LOSS UTILITY FUNCTIONS
+def calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred):
 
-            return tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**x[1], (evaluation_entry, coefficient_multiplier_term)))
-        return calculate_value_without_coefficient
 
-    #calculate MAE at the end ---> general:REPLACE FUNCTION WITH LOSS CALL OR LAMBDA
-    def calculate_mae_single_input(input_list):
-        true_fv = input_list[0]
-        pred_fv = input_list[1]
+    def calculate_fv_from_data(evaluation_entry):
 
-        return tf.math.abs(tf.math.subtract(true_fv, pred_fv))
+
+        value_without_coefficient = tf.vectorized_map(calculate_value_without_coefficient_wrapper(evaluation_entry), (list_of_monomial_identifiers))
+        polynomial_pred_value_per_term = tf.vectorized_map(lambda x: x[0]*x[1], (value_without_coefficient, polynomial_pred))
+
+        polynomial_pred_fv = tf.reduce_sum(polynomial_pred_value_per_term)     
+
+        return polynomial_pred_fv
+    return calculate_fv_from_data
+
+
+#calculate intermediate term (without coefficient multiplication)
+def calculate_value_without_coefficient_wrapper(evaluation_entry):
+    def calculate_value_without_coefficient(coefficient_multiplier_term):      
+
+        return tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**x[1], (evaluation_entry, coefficient_multiplier_term)))
+    return calculate_value_without_coefficient
+
+#calculate MAE at the end ---> general:REPLACE FUNCTION WITH LOSS CALL OR LAMBDA
+def calculate_mae_single_input(input_list):
+    true_fv = input_list[0]
+    pred_fv = input_list[1]
+
+    return tf.math.abs(tf.math.subtract(true_fv, pred_fv))
 
 
 
 
 #BASIC COEFFICIENT-BASED LOSS IF X_DATA IS APPENDED
-def mean_absolute_error_extended(polynomial_true_with_lambda_fv, polynomial_pred): 
+def mean_absolute_error_extended(polynomial_true_with_lambda_fv, polynomial_pred, preds_include_params=False): 
     
     if seed_in_inet_training:
         assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights+1
@@ -196,6 +209,8 @@ def mean_absolute_error_extended(polynomial_true_with_lambda_fv, polynomial_pred
         assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights
     
     polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]    
+    if preds_include_params:
+        polynomial_pred = polynomial_pred[:,:sparsity]    
     
     assert polynomial_true.shape[1] == sparsity
     assert polynomial_pred.shape[1] == sparsity
@@ -203,7 +218,7 @@ def mean_absolute_error_extended(polynomial_true_with_lambda_fv, polynomial_pred
     return tf.keras.losses.MAE(polynomial_true, polynomial_pred)
 
 
-def r2_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers, base_model):
+def r2_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers, base_model, preds_include_params=False):
     
     evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
     list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)    
@@ -218,9 +233,15 @@ def r2_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identi
         if seed_in_inet_training:
             network_parameters = polynomial_true_with_lambda_fv[:,sparsity+1:]
             polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            if preds_include_params:
+                #_ = polynomial_pred_with_lambda_fv[:,sparsity+1:]
+                polynomial_pred = polynomial_pred[:,:sparsity]
         else:
             network_parameters = polynomial_true_with_lambda_fv[:,sparsity:]
             polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            if preds_include_params:
+                #_ = polynomial_pred_with_lambda_fv[:,sparsity:]
+                polynomial_pred = polynomial_pred[:,:sparsity]
             
         network_parameters = return_float_tensor_representation(network_parameters)
         polynomial_true = return_float_tensor_representation(polynomial_true)
@@ -233,106 +254,109 @@ def r2_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identi
         return tf.math.reduce_mean(tf.map_fn(calculate_r2_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
     return r2_tf_fv_lambda_extended
 
-    def calculate_r2_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder):
+def calculate_r2_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder):
 
-        def calculate_r2_fv_lambda(input_list):
+    def calculate_r2_fv_lambda(input_list):
 
-            #single polynomials
-            #polynomial_true = input_list[0]
-            polynomial_pred = input_list[0]
-            network_parameters = input_list[1]
+        #single polynomials
+        #polynomial_true = input_list[0]
+        polynomial_pred = input_list[0]
+        network_parameters = input_list[1]
 
-            polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
+        polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
 
-            #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
-            # build models
-            start = 0
-            layers = []
-            for i in range(len(dims)//2):
+        #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
+        # build models
+        start = 0
+        layers = []
+        for i in range(len(dims)//2):
 
-                # set weights of layer
-                index = i*2
-                size = np.product(dims[index])
-                weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
-                start += size
+            # set weights of layer
+            index = i*2
+            size = np.product(dims[index])
+            weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+            start += size
 
-                # set biases of layer
-                index += 1
-                size = np.product(dims[index])
-                biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-                start += size
-
-
-            lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
-
-            return r2_keras_loss(lambda_fv, polynomial_pred_fv_list)
-
-        return calculate_r2_fv_lambda
+            # set biases of layer
+            index += 1
+            size = np.product(dims[index])
+            biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+            start += size
 
 
+        lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
 
-    #Manual TF Loss function for fv comparison of real and predicted polynomial
+        return r2_keras_loss(lambda_fv, polynomial_pred_fv_list)
 
-    def r2_tf_fv_poly_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers):
-
-        evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
-        list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)        
-
-        @tf.function()
-        def r2_tf_fv_poly_extended(polynomial_true, polynomial_pred):
-
-            polynomial_true = return_float_tensor_representation(polynomial_true)
-            polynomial_pred = return_float_tensor_representation(polynomial_pred)
-
-            assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
-            assert polynomial_pred.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)     
-
-            return tf.math.reduce_mean(tf.map_fn(calculate_r2_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
-        return r2_tf_fv_poly_extended
-
-    def calculate_r2_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers):
-
-        def calculate_r2_fv_poly(input_list):
-
-            #single polynomials
-            polynomial_true = input_list[0]
-            polynomial_pred = input_list[1]
-
-            polynomial_true_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_true), (evaluation_dataset))
-            polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
-
-            return r2_keras_loss(polynomial_true_fv_list, polynomial_pred_fv_list)
-
-        return calculate_r2_fv_poly
+    return calculate_r2_fv_lambda
 
 
 
-    #calculate MAE at the end ---> general:REPLACE FUNCTION WITH LOSS CALL OR LAMBDA
-    def calculate_r2_single_input(input_list):
-        true_fv = input_list[0]
-        pred_fv = input_list[1]
+#Manual TF Loss function for fv comparison of real and predicted polynomial
 
-        return r2_keras(true_fv, pred_fv)
+def r2_tf_fv_poly_extended_wrapper(evaluation_dataset, list_of_monomial_identifiers):
+
+    evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
+    list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)        
+
+    @tf.function()
+    def r2_tf_fv_poly_extended(polynomial_true, polynomial_pred):
+
+        polynomial_true = return_float_tensor_representation(polynomial_true)
+        polynomial_pred = return_float_tensor_representation(polynomial_pred)
+
+        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
+        assert polynomial_pred.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)     
+
+        return tf.math.reduce_mean(tf.map_fn(calculate_r2_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
+    return r2_tf_fv_poly_extended
+
+def calculate_r2_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers):
+
+    def calculate_r2_fv_poly(input_list):
+
+        #single polynomials
+        polynomial_true = input_list[0]
+        polynomial_pred = input_list[1]
+
+        polynomial_true_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_true), (evaluation_dataset))
+        polynomial_pred_fv_list = tf.vectorized_map(calculate_fv_from_data_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
+
+        return r2_keras_loss(polynomial_true_fv_list, polynomial_pred_fv_list)
+
+    return calculate_r2_fv_poly
+
+
+
+#calculate MAE at the end ---> general:REPLACE FUNCTION WITH LOSS CALL OR LAMBDA
+def calculate_r2_single_input(input_list):
+    true_fv = input_list[0]
+    pred_fv = input_list[1]
+
+    return r2_keras(true_fv, pred_fv)
 
 
 
 
-    #BASIC COEFFICIENT-BASED LOSS IF X_DATA IS APPENDED
-    def r2_extended(polynomial_true_with_lambda_fv, polynomial_pred): 
+#BASIC COEFFICIENT-BASED LOSS IF X_DATA IS APPENDED
+def r2_extended(polynomial_true_with_lambda_fv, polynomial_pred, preds_include_params=False): 
 
-        if seed_in_inet_training:
-            assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights+1
-        else:
-            assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights
+    if seed_in_inet_training:
+        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights+1
+    else:
+        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights
 
-        polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]    
+    polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]  
+    if preds_include_params:
+        polynomial_pred = polynomial_pred[:,:sparsity]
 
-        assert polynomial_true.shape[1] == sparsity
-        assert polynomial_pred.shape[1] == sparsity
+    assert polynomial_true.shape[1] == sparsity
+    assert polynomial_pred.shape[1] == sparsity
 
-        return r2_keras(polynomial_true, polynomial_pred)
+    return r2_keras(polynomial_true, polynomial_pred)
+
 
 def r2_keras(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):
 
@@ -340,8 +364,8 @@ def r2_keras(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):
     y_pred_cleared = tf.boolean_mask(y_pred, tf.not_equal(return_float_tensor_representation(0), y_true))
 
     epsilon = 1e-5
-    SS_res =  K.sum(K.square(y_true_cleared - y_pred_cleared)) 
-    SS_tot = K.sum(K.square(y_true_cleared - K.mean(y_true_cleared))) 
+    SS_res =  tf.keras.backend.sum(tf.keras.backend.square(y_true_cleared - y_pred_cleared)) 
+    SS_tot = tf.keras.backend.sum(tf.keras.backend.square(y_true_cleared - tf.keras.backend.mean(y_true_cleared))) 
     return ( 1 - SS_res/(SS_tot + epsilon) )
 
 def r2_keras_loss(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):
@@ -350,8 +374,8 @@ def r2_keras_loss(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):
     #y_pred = tf.boolean_mask(y_pred, tf.not_equal(return_float_tensor_representation(0), y_true))
 
     #epsilon = 1e-5
-    SS_res =  K.sum(K.square(y_true - y_pred)) 
-    SS_tot = K.sum(K.square(y_true - K.mean(y_true))) 
+    SS_res =  tf.keras.backend.sum(tf.keras.backend.square(y_true - y_pred)) 
+    SS_tot = tf.keras.backend.sum(tf.keras.backend.square(y_true - tf.keras.backend.mean(y_true))) 
     return  - ( 1 - SS_res/(SS_tot + epsilon) )
 
 
@@ -367,9 +391,9 @@ def root_mean_squared_error(y_true, y_pred):
     y_true =  return_float_tensor_representation(y_true)
     y_pred =  return_float_tensor_representation(y_pred)           
             
-    return tf.math.sqrt(K.mean(K.square(y_pred - y_true))) 
+    return tf.math.sqrt(tf.keras.backend.mean(tf.keras.backend.square(y_pred - y_true))) 
 
-def accuracy_multilabel(y_true, y_pred):
+def accuracy_multilabel(y_true, y_pred, a_step=0.1):
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -380,9 +404,9 @@ def accuracy_multilabel(y_true, y_pred):
     y_true = tf.math.round(y_true * 10**n_digits) / (10**n_digits) 
     y_pred = tf.math.round(y_pred * 10**n_digits) / (10**n_digits) 
         
-    return K.mean(tf.dtypes.cast(tf.dtypes.cast(tf.reduce_all(K.equal(y_true, y_pred), axis=1), tf.int32), tf.float32))#tf.reduce_all(K.equal(K.equal(y_true, y_pred), True), axis=1)#K.all(K.equal(y_true, y_pred)) #K.equal(y_true, y_pred)                        
+    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.reduce_all(tf.keras.backend.equal(y_true, y_pred), axis=1), tf.int32), tf.float32))#tf.reduce_all(K.equal(K.equal(y_true, y_pred), True), axis=1)#K.all(K.equal(y_true, y_pred)) #K.equal(y_true, y_pred)                        
 
-def accuracy_single(y_true, y_pred):
+def accuracy_single(y_true, y_pred, a_step=0.1):
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -394,7 +418,7 @@ def accuracy_single(y_true, y_pred):
     y_true = tf.math.round(y_true * 10**n_digits) / (10**n_digits) 
     y_pred = tf.math.round(y_pred * 10**n_digits) / (10**n_digits) 
         
-    return K.mean(tf.dtypes.cast(tf.dtypes.cast(K.equal(y_true, y_pred), tf.int32), tf.float32))#tf.reduce_all(K.equal(K.equal(y_true, y_pred), True), axis=1)#K.all(K.equal(y_true, y_pred)) #K.equal(y_true, y_pred)                        
+    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.keras.backend.equal(y_true, y_pred), tf.int32), tf.float32))#tf.reduce_all(K.equal(K.equal(y_true, y_pred), True), axis=1)#K.all(K.equal(y_true, y_pred)) #K.equal(y_true, y_pred)                        
 
 def mean_absolute_percentage_error_keras(y_true, y_pred, epsilon=10e-3): 
     y_true = return_numpy_representation(y_true)
@@ -542,3 +566,99 @@ def mean_frechet_dist_function_values(y_true, y_pred):
         result_list.append(frechet_dist(true_values, pred_values))
     
     return np.mean(np.array(result_list))
+
+
+
+#######################################################################################################################################################
+#########################################################I-NET EVALUATION FUNCTIONs####################################################################
+#######################################################################################################################################################
+
+
+
+def evaluate_interpretation_net(y_data_real, 
+                                y_data_pred, 
+                                polynomial_true_fv, 
+                                polynomial_pred_inet_fv):
+    
+    if type(y_data_real) != type(None) and type(y_data_pred) != type(None):
+        y_data_real = return_numpy_representation(y_data_real)
+        y_data_pred = return_numpy_representation(y_data_pred)     
+        
+        assert y_data_real.shape[1] == sparsity
+        assert y_data_pred.shape[1] == sparsity
+    
+        assert y_data_real.shape == y_data_pred.shape
+        
+        mae_coeff = np.round(mean_absolute_error(y_data_real, y_data_pred), 4)
+        rmse_coeff = np.round(root_mean_squared_error(y_data_real, y_data_pred), 4)
+        mape_coeff = np.round(mean_absolute_percentage_error_keras(y_data_real, y_data_pred), 4)
+        accuracy_coeff = np.round(accuracy_single(y_data_real, y_data_pred), 4)
+        accuracy_multi_coeff = np.round(accuracy_multilabel(y_data_real, y_data_pred), 4)
+    else:
+        mae_coeff = np.nan
+        rmse_coeff = np.nan
+        mape_coeff = np.nan
+        accuracy_coeff = np.nan
+        accuracy_multi_coeff = np.nan
+        
+    polynomial_true_fv = return_numpy_representation(polynomial_true_fv)
+    polynomial_pred_inet_fv = return_numpy_representation(polynomial_pred_inet_fv)
+    
+    assert polynomial_true_fv.shape == polynomial_pred_inet_fv.shape
+        
+    mae_fv = np.round(mean_absolute_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
+    rmse_fv = np.round(root_mean_squared_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
+    mape_fv = np.round(mean_absolute_percentage_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
+    r2_fv = np.round(r2_score_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
+    raae_fv = np.round(relative_absolute_average_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
+    rmae_fv = np.round(relative_maximum_average_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4) 
+    
+    std_fv_diff = np.round(mean_std_function_values_difference(polynomial_true_fv, polynomial_pred_inet_fv), 4)
+    mean_fv_1 = np.mean(polynomial_true_fv)
+    mean_fv_2 = np.mean(polynomial_pred_inet_fv)
+    std_fv_1 = np.std(polynomial_true_fv)
+    std_fv_2 = np.std(polynomial_pred_inet_fv)
+
+    mae_distribution = mean_absolute_error_function_values_return_multi_values(polynomial_true_fv, polynomial_pred_inet_fv)
+    r2_distribution = r2_score_function_values_return_multi_values(polynomial_true_fv, polynomial_pred_inet_fv)
+
+    return pd.Series(data=[mae_coeff,
+                          rmse_coeff,
+                          mape_coeff,
+                          accuracy_coeff,
+                          accuracy_multi_coeff,
+                          
+                          mae_fv,
+                          rmse_fv,
+                          mape_fv,
+                          r2_fv,
+                          raae_fv,
+                          rmae_fv,
+                          
+                          std_fv_diff,
+                           
+                          mean_fv_1,
+                          mean_fv_2,
+                          std_fv_1,
+                          std_fv_2],
+                     index=['MAE',
+                           'RMSE',
+                           'MAPE',
+                           'Accuracy',
+                           'Accuracy Multilabel',
+                           
+                           'MAE FV',
+                           'RMSE FV',
+                           'MAPE FV',
+                           'R2 FV',
+                           'RAAE FV',
+                           'RMAE FV',
+                            
+                           'MEAN STD FV DIFF',
+                           'MEAN FV1',
+                           'MEAN FV2',
+                           'STD FV1',
+                           'STD FV2']), {'MAE': pd.Series(data=mae_distribution, 
+                                                  index=['L-' + str(i) for i in range(polynomial_true_fv.shape[0])]),
+                                        'R2': pd.Series(data=r2_distribution, 
+                                                  index=['L-' + str(i) for i in range(polynomial_true_fv.shape[0])])}

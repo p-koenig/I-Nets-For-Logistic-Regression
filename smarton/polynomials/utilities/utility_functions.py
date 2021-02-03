@@ -1,12 +1,4 @@
 #######################################################################################################################################################
-#######################################################################Parameters######################################################################
-#######################################################################################################################################################
-
-RANDOM_SEED =42
-d = 3  
-n = 4
-
-#######################################################################################################################################################
 #######################################################################Imports#########################################################################
 #######################################################################################################################################################
 
@@ -29,22 +21,57 @@ from collections.abc import Iterable
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
 from similaritymeasures import frechet_dist, area_between_two_curves, dtw
-
+import time
 
 import tensorflow as tf
 import random 
-random.seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
-if int(tf.__version__[0]) >= 2:
-    tf.random.set_seed(RANDOM_SEED)
-else:
-    tf.set_random_seed(RANDOM_SEED)
 
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+
+from IPython.display import display, Math, Latex
+
+import os
+import pickle
+    
 #udf import
 from utilities.LambdaNet import *
 from utilities.metrics import *
 #from utilities.utility_functions import *
 
+import sympy as sym
+
+#######################################################################################################################################################
+#############################################################Setting relevant parameters from current config###########################################
+#######################################################################################################################################################
+
+def initialize_utility_functions_config_from_curent_notebook(config):
+    globals().update(config['data'])
+    globals().update(config['lambda_net'])
+    globals().update(config['i_net'])
+    globals().update(config['evaluation'])
+    globals().update(config['computation'])
+    
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)
+        
+    global list_of_monomial_identifiers
+        
+    list_of_monomial_identifiers_extended = []
+    for i in range((d+1)**n):    
+        monomial_identifier = dec_to_base(i, base = (d+1)).zfill(n) 
+        list_of_monomial_identifiers_extended.append(monomial_identifier)
+
+
+    list_of_monomial_identifiers = []
+    for monomial_identifier in list_of_monomial_identifiers_extended:
+        monomial_identifier_values = list(map(int, list(monomial_identifier)))
+        if sum(monomial_identifier_values) <= d:
+            list_of_monomial_identifiers.append(monomial_identifier)
+            
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
 #######################################################################################################################################################
@@ -53,10 +80,7 @@ def nCr(n,r):
     f = math.factorial
     return f(n) // f(r) // f(n-r)
 
-sparsity = nCr(n+d, d)
-
-ALPHABET = \
-  "0123456789abcdefghijklmnopqrstuvwxyz"
+ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 def encode (n):
     try:
@@ -69,6 +93,11 @@ def dec_to_base (dec = 0, base = 16):
         return encode (dec)
     else:
         return dec_to_base (dec // base, base) + encode (dec % base)
+
+def pairwise(iterable):
+    "s -> (s0, s1), (s2, s3), (s4, s5), ..."
+    a = iter(iterable)
+    return zip(a, a)
 
 def return_float_tensor_representation(some_representation, dtype=tf.float32):
     if tf.is_tensor(some_representation):
@@ -177,6 +206,41 @@ def print_polynomial_from_coefficients(coefficients):
 
 
 
+def get_critical_points_from_polynomial(coefficient_array): 
+    
+    global list_of_monomial_identifiers
+    
+    coefficient_array = return_numpy_representation(coefficient_array)
+    
+    assert coefficient_array.shape[0] == sparsity
+    
+    variable_alphabet =  "abcdefghijklmnopqrstuvwxyz"
+    
+    variable_list = []
+    for i in range(n):
+        variable_list.append(sym.symbols(variable_alphabet[i]))
+    
+    
+    
+    f = 0
+    for monomial_identifier, monomial_coefficient in zip(list_of_monomial_identifiers, coefficient_array):
+        subfunction = monomial_coefficient
+        for i, monomial_exponent in enumerate(monomial_identifier):
+            subfunction *= variable_list[i]**float(monomial_exponent)
+        f += subfunction
+
+    #print(f)
+
+    gradient = sym.derive_by_array(f, tuple(variable_list))
+    
+    #print(gradient)
+
+    stationary_points = sym.solve(gradient, tuple(variable_list))
+    
+    #print(stationary_points)
+    
+    return gradient, stationary_points
+
 
 
 
@@ -225,3 +289,50 @@ def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list):
 
     return np.array(polynomial_true_fv)
 
+def sleep_minutes(minutes):
+    time.sleep(int(60*minutes))
+    
+def sleep_hours(hours):
+    time.sleep(int(60*60*hours))
+    
+    
+def generate_paths():
+    
+    paths_dict = {}
+    
+    if fixed_seed_lambda_training:
+        paths_dict['seed_shuffle_string'] = '_' + str(number_different_lambda_trainings) + '-FixedSeed'
+    else:
+        paths_dict['seed_shuffle_string'] = '_NoFixedSeed'
+
+    if fixed_initialization_lambda_training:
+        paths_dict['seed_shuffle_string'] += '_' + str(number_different_lambda_trainings) + '-FixedEvaluation'
+    else:
+        paths_dict['seed_shuffle_string'] += '_NoFixedEvaluation'
+
+    if same_training_all_lambda_nets:
+        paths_dict['training_string'] = '_same'
+    else:
+        paths_dict['training_string'] = '_diverse'
+
+    paths_dict['layers_str'] = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
+
+    paths_dict['structure'] = '_' + paths_dict['layers_str'] + str(epochs_lambda) + 'e' + str(batch_lambda) + 'b' + '_' + optimizer_lambda
+    paths_dict['filename'] = paths_dict['seed_shuffle_string'] + '_' + str(RANDOM_SEED) + paths_dict['structure']
+
+    paths_dict['interpretation_network_layers'] = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
+    paths_dict['interpretation_network_string'] = 'drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + paths_dict['interpretation_network_layers']
+
+    return paths_dict
+    
+def create_folders():
+    
+    paths_dict = generate_paths()
+
+    try:
+        # Create target Directory
+        os.mkdir('./data/plotting/' + paths_dict['interpretation_network_string'] + paths_dict['filename'] + '/')
+        os.mkdir('./data/results/' + paths_dict['interpretation_network_string'] + paths_dict['filename'] + '/')
+    except FileExistsError:
+        pass
+    
