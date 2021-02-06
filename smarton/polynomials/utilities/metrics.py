@@ -404,7 +404,7 @@ def accuracy_multilabel(y_true, y_pred, a_step=0.1):
     y_true = tf.math.round(y_true * 10**n_digits) / (10**n_digits) 
     y_pred = tf.math.round(y_pred * 10**n_digits) / (10**n_digits) 
         
-    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.reduce_all(tf.keras.backend.equal(y_true, y_pred), axis=1), tf.int32), tf.float32))#tf.reduce_all(K.equal(K.equal(y_true, y_pred), True), axis=1)#K.all(K.equal(y_true, y_pred)) #K.equal(y_true, y_pred)                        
+    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.reduce_all(tf.keras.backend.equal(y_true, y_pred), axis=1), tf.int32), tf.float32))        
 
 def accuracy_single(y_true, y_pred, a_step=0.1):
     y_true = return_numpy_representation(y_true)
@@ -418,7 +418,7 @@ def accuracy_single(y_true, y_pred, a_step=0.1):
     y_true = tf.math.round(y_true * 10**n_digits) / (10**n_digits) 
     y_pred = tf.math.round(y_pred * 10**n_digits) / (10**n_digits) 
         
-    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.keras.backend.equal(y_true, y_pred), tf.int32), tf.float32))#tf.reduce_all(K.equal(K.equal(y_true, y_pred), True), axis=1)#K.all(K.equal(y_true, y_pred)) #K.equal(y_true, y_pred)                        
+    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.keras.backend.equal(y_true, y_pred), tf.int32), tf.float32))
 
 def mean_absolute_percentage_error_keras(y_true, y_pred, epsilon=10e-3): 
     y_true = return_numpy_representation(y_true)
@@ -567,6 +567,257 @@ def mean_frechet_dist_function_values(y_true, y_pred):
     
     return np.mean(np.array(result_list))
 
+
+#######################################################################################################################################################
+#######################################################LAMBDA-NET EVALUATION FUNCTION##################################################################
+#######################################################################################################################################################
+
+def evaluate_lambda_net(identifier, 
+                        X_data_real_lambda, 
+                        y_data_real_lambda, 
+                        y_data_pred_lambda, 
+                        y_data_pred_lambda_poly_lstsq, 
+                        y_data_real_lambda_poly_lstsq):
+    
+    mae_real_VS_predLambda = np.round(mean_absolute_error(y_data_real_lambda, y_data_pred_lambda), 4)
+    mae_real_VS_predPolyLstsq = np.round(mean_absolute_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
+    mae_predLambda_VS_predPolyLstsq = np.round(mean_absolute_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
+    mae_real_VS_realPolyLstsq = np.round(mean_absolute_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)    
+
+    rmse_real_VS_predLambda = np.round(root_mean_squared_error(y_data_real_lambda, y_data_pred_lambda), 4)    
+    rmse_real_VS_predPolyLstsq = np.round(root_mean_squared_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)    
+    rmse_predLambda_VS_predPolyLstsq = np.round(root_mean_squared_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)    
+    rmse_real_VS_realPolyLstsq = np.round(root_mean_squared_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)    
+
+    mape_real_VS_predLambda = np.round(mean_absolute_percentage_error_keras(y_data_real_lambda, y_data_pred_lambda), 4)    
+    mape_real_VS_predPolyLstsq = np.round(mean_absolute_percentage_error_keras(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)    
+    mape_predLambda_VS_predPolyLstsq = np.round(mean_absolute_percentage_error_keras(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)    
+    mape_real_VS_realPolyLstsq = np.round(mean_absolute_percentage_error_keras(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)            
+
+    r2_real_VS_predLambda = np.round(r2_score(y_data_real_lambda, y_data_pred_lambda), 4)
+    r2_real_VS_predPolyLstsq = np.round(r2_score(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
+    r2_predLambda_VS_predPolyLstsq = np.round(r2_score(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
+    r2_real_VS_realPolyLstsq = np.round(r2_score(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)
+
+    raae_real_VS_predLambda = np.round(relative_absolute_average_error(y_data_real_lambda, y_data_pred_lambda), 4)
+    raae_real_VS_predPolyLstsq = np.round(relative_absolute_average_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
+    raae_predLambda_VS_predPolyLstsq = np.round(relative_absolute_average_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
+    raae_real_VS_realPolyLstsq = np.round(relative_absolute_average_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)
+
+    rmae_real_VS_predLambda = np.round(relative_maximum_average_error(y_data_real_lambda, y_data_pred_lambda), 4)
+    rmae_real_VS_predPolyLstsq = np.round(relative_maximum_average_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
+    rmae_predLambda_VS_predPolyLstsq = np.round(relative_maximum_average_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
+    rmae_real_VS_realPolyLstsq = np.round(relative_maximum_average_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)
+        
+    std_data_real_lambda = np.round(np.std(y_data_real_lambda), 4) 
+    std_data_pred_lambda = np.round(np.std(y_data_pred_lambda), 4) 
+    std_data_pred_lambda_poly_lstsq = np.round(np.std(y_data_pred_lambda_poly_lstsq), 4) 
+    std_data_real_lambda_poly_lstsq = np.round(np.std(y_data_real_lambda_poly_lstsq), 4) 
+
+    mean_data_real_lambda = np.round(np.mean(y_data_real_lambda), 4) 
+    mean_data_pred_lambda = np.round(np.mean(y_data_pred_lambda), 4) 
+    mean_data_pred_lambda_poly_lstsq = np.round(np.mean(y_data_pred_lambda_poly_lstsq), 4) 
+    mean_data_real_lambda_poly_lstsq = np.round(np.mean(y_data_real_lambda_poly_lstsq), 4) 
+
+    return [{
+             'MAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': mae_real_VS_predLambda,
+             'MAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': mae_real_VS_predPolyLstsq,
+             'MAE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': mae_predLambda_VS_predPolyLstsq,
+             'MAE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': mae_real_VS_realPolyLstsq,
+             'RMSE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': rmse_real_VS_predLambda,
+             'RMSE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': rmse_real_VS_predPolyLstsq,
+             'RMSE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': rmse_predLambda_VS_predPolyLstsq,
+             'RMSE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': rmse_real_VS_realPolyLstsq,
+             'MAPE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': mape_real_VS_predLambda,
+             'MAPE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': mape_real_VS_predPolyLstsq,
+             'MAPE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': mape_predLambda_VS_predPolyLstsq,
+             'MAPE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': mape_real_VS_realPolyLstsq,
+             'R2 FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': r2_real_VS_predLambda,
+             'R2 FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': r2_real_VS_predPolyLstsq,
+             'R2 FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': r2_predLambda_VS_predPolyLstsq,
+             'R2 FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': r2_real_VS_realPolyLstsq,
+             'RAAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': raae_real_VS_predLambda,
+             'RAAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': raae_real_VS_predPolyLstsq,
+             'RAAE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': raae_predLambda_VS_predPolyLstsq,
+             'RAAE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': raae_real_VS_realPolyLstsq,
+             'RMAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': rmae_real_VS_predLambda,
+             'RMAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': rmae_real_VS_predPolyLstsq,
+             'RMAE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': rmae_predLambda_VS_predPolyLstsq,
+             'RMAE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': rmae_real_VS_realPolyLstsq,
+            },
+            {
+             'STD FV ' + identifier + ' REAL LAMBDA': std_data_real_lambda,
+             'STD FV ' + identifier + ' PRED LAMBDA': std_data_pred_lambda, 
+             'STD FV ' + identifier + ' PRED LAMBDA POLY LSTSQ': std_data_pred_lambda_poly_lstsq, 
+             'STD FV ' + identifier + ' REAL LAMBDA POLY LSTSQ': std_data_real_lambda_poly_lstsq, 
+            },
+            {
+             'MEAN FV ' + identifier + ' REAL LAMBDA': mean_data_real_lambda,
+             'MEAN FV ' + identifier + ' PRED LAMBDA': mean_data_pred_lambda, 
+             'MEAN FV ' + identifier + ' PRED LAMBDA POLY LSTSQ': mean_data_pred_lambda_poly_lstsq, 
+             'MEAN FV ' + identifier + ' REAL LAMBDA POLY LSTSQ': mean_data_real_lambda_poly_lstsq, 
+            }]
+    
+        
+
+
+#######################################################################################################################################################
+#######################################################LAMBDA-NET METRICS##################################################################
+#######################################################################################################################################################
+
+def calcualate_function_value_with_X_data_entry(coefficient_list, X_data_entry):
+    
+    global list_of_monomial_identifiers
+     
+    result = 0    
+    for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
+        partial_results = [X_data_value**int(coefficient_multiplier) for coefficient_multiplier, X_data_value in zip(coefficient_multipliers, X_data_entry)]
+        
+        result += coefficient_value * reduce(lambda x, y: x*y, partial_results)
+        
+    return result, np.append(X_data_entry, result)
+
+
+def calculate_function_values_from_polynomial(X_data, polynomial):
+    function_value_list = []
+    for entry in X_data:
+        function_value, _ = calcualate_function_value_with_X_data_entry(polynomial, entry)
+        function_value_list.append(function_value)
+    function_value_array = np.array(function_value_list).reshape(len(function_value_list), 1)     
+
+    return function_value_array
+
+def generate_term_matric_for_lstsq(X_data, polynomial_indices):
+    term_list_all = []
+    y = 0
+    for term in list(polynomial_indices):
+        term_list = [int(value_mult) for value_mult in term]
+        term_list_all.append(term_list)
+    terms_matrix = []
+    for unknowns in X_data:
+        terms = []
+        for term_multipliers in term_list_all:
+            term_value = prod([unknown**multiplier for unknown, multiplier in zip(unknowns, term_multipliers)])
+            terms.append(term_value)
+        terms_matrix.append(np.array(terms))
+    terms_matrix = np.array(terms_matrix)
+    
+    return terms_matrix
+
+def root_mean_squared_error(y_true, y_pred):
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.values
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.values
+        
+    if tf.is_tensor(y_true):
+        y_true = tf.dtypes.cast(y_true, tf.float32) 
+    else:
+        y_true = tf.convert_to_tensor(y_true)
+        y_true = tf.dtypes.cast(y_true, tf.float32) 
+    if tf.is_tensor(y_pred):
+        y_pred = tf.dtypes.cast(y_pred, tf.float32)
+    else:
+        y_pred = tf.convert_to_tensor(y_pred)
+        y_pred = tf.dtypes.cast(y_pred, tf.float32)
+            
+            
+    return tf.math.sqrt(tf.keras.backend.mean(tf.keras.backend.square(y_pred - y_true))) 
+
+def accuracy_multilabel(y_true, y_pred, a_step=0.1):
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.values
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.values
+    
+    if 'float' in str(y_true[0].dtype):        
+        if tf.is_tensor(y_true):
+            y_true = tf.dtypes.cast(y_true, tf.float32) 
+        else:
+            y_true = y_true.astype('float32')
+        if tf.is_tensor(y_pred):
+            y_pred = tf.dtypes.cast(y_pred, tf.float32)
+        else:
+            y_pred = y_pred.astype('float32')
+            
+        n_digits = int(-np.log10(a_step))
+        
+        y_true = tf.math.round(y_true * 10**n_digits) / (10**n_digits) 
+        y_pred = tf.math.round(y_pred * 10**n_digits) / (10**n_digits) 
+        
+    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.reduce_all(tf.keras.backend.equal(y_true, y_pred), axis=1), tf.int32), tf.float32))
+
+def accuracy_single(y_true, y_pred, a_step=0.1):
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.values
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.values
+    
+    if 'float' in str(y_true[0].dtype):        
+        if tf.is_tensor(y_true):
+            y_true = tf.dtypes.cast(y_true, tf.float32) 
+        else:
+            y_true = y_true.astype('float32')
+        if tf.is_tensor(y_pred):
+            y_pred = tf.dtypes.cast(y_pred, tf.float32)
+        else:
+            y_pred = y_pred.astype('float32')
+            
+        n_digits = int(-np.log10(a_step))
+        
+        y_true = tf.math.round(y_true * 10**n_digits) / (10**n_digits) 
+        y_pred = tf.math.round(y_pred * 10**n_digits) / (10**n_digits) 
+        
+    return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.keras.backend.equal(y_true, y_pred), tf.int32), tf.float32))      
+
+def mean_absolute_percentage_error_keras(y_true, y_pred, epsilon=10e-3): 
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.values
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.values    
+        
+    if tf.is_tensor(y_true):
+        y_true = tf.dtypes.cast(y_true, tf.float32) 
+    else:
+        y_true = tf.convert_to_tensor(y_true)
+        y_true = tf.dtypes.cast(y_true, tf.float32) 
+    if tf.is_tensor(y_pred):
+        y_pred = tf.dtypes.cast(y_pred, tf.float32)
+    else:
+        y_pred = tf.convert_to_tensor(y_pred)
+        y_pred = tf.dtypes.cast(y_pred, tf.float32)
+        
+    epsilon = tf.convert_to_tensor(epsilon)
+    epsilon = tf.dtypes.cast(epsilon, tf.float32)
+        
+    return tf.reduce_mean(tf.abs(tf.divide(tf.subtract(y_pred, y_true),(y_true + epsilon))))
+
+def huber_loss_delta_set(y_true, y_pred):
+    return keras.losses.huber_loss(y_true, y_pred, delta=0.3)
+
+def relative_absolute_average_error(y_true, y_pred):
+    
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.values
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.values
+       
+    #error value calculation    
+    result = np.sum(np.abs(y_true-y_pred))/(y_true.shape[0]*np.std(y_true)) #correct STD?
+    
+    return result
+
+def relative_maximum_average_error(y_true, y_pred):
+    
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.values
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.values
+    
+    #error value calculation    
+    result = np.max(y_true-y_pred)/np.std(y_true) #correct STD?
+    
+    return result
 
 
 #######################################################################################################################################################

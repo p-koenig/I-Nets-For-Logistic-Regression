@@ -10,7 +10,8 @@ import pandas as pd
 import scipy as sp
 
 from functools import reduce
-from more_itertools import random_product 
+from more_itertools import random_product
+import operator
 
 import math
 
@@ -39,17 +40,39 @@ from utilities.metrics import *
 #from utilities.utility_functions import *
 
 import sympy as sym
+from sympy import Symbol, sympify
+
 
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
 #######################################################################################################################################################
 
 def initialize_utility_functions_config_from_curent_notebook(config):
-    globals().update(config['data'])
-    globals().update(config['lambda_net'])
-    globals().update(config['i_net'])
-    globals().update(config['evaluation'])
-    globals().update(config['computation'])
+       
+    try:
+        globals().update(config['data'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['lambda_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['i_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['evaluation'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['computation'])
+    except KeyError:
+        print(KeyError)
     
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -71,7 +94,7 @@ def initialize_utility_functions_config_from_curent_notebook(config):
         monomial_identifier_values = list(map(int, list(monomial_identifier)))
         if sum(monomial_identifier_values) <= d:
             list_of_monomial_identifiers.append(monomial_identifier)
-            
+                        
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
 #######################################################################################################################################################
@@ -98,6 +121,15 @@ def pairwise(iterable):
     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
     a = iter(iterable)
     return zip(a, a)
+
+def chunks(lst, chunksize):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), chunksize):
+        yield lst[i:i + chunksize]
+
+def prod(iterable):
+    return reduce(operator.mul, iterable, 1)
+        
 
 def return_float_tensor_representation(some_representation, dtype=tf.float32):
     if tf.is_tensor(some_representation):
@@ -161,21 +193,6 @@ def return_callbacks_from_string(callback_string_list):
 def arreq_in_list(myarr, list_arrays):
     return next((True for elem in list_arrays if np.array_equal(elem, myarr)), False)
 
-def generate_random_x_values(size, x_max, x_min, x_step, numnber_of_variables, seed=42):
-    
-    if random.seed != None:
-        random.seed(seed)
-    
-    x_values_list = []
-    
-    for j in range(size):
-        values = np.round(np.array(random_product(np.arange(x_min, x_max, x_step), repeat=numnber_of_variables)), int(-np.log10(x_step)))
-        while arreq_in_list(values, x_values_list):
-                values = np.round(np.array(random_product(np.arange(x_min, x_max, x_step), repeat=numnber_of_variables)), int(-np.log10(x_step)))         
-        x_values_list.append(values)
-    
-    return np.array(x_values_list)
-
 def flatten(l):
     for el in l:
         if isinstance(el, Iterable) and not isinstance(el, (str, bytes)):
@@ -205,6 +222,26 @@ def print_polynomial_from_coefficients(coefficients):
     return display(Math(latex_string))
 
 
+def get_polynomial_string_from_coefficients(coefficients):
+
+    global list_of_monomial_identifiers
+        
+    string = ''
+    for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
+        string += str(np.round(coefficient, 2))
+        for index, variable_identifier in enumerate(identifier):  
+            if int(variable_identifier) == 1:
+                string += '*'
+                string += 'abcdefghijklmnopqrstuvwxyz'[index]
+            elif int(variable_identifier) > 1:
+                string += '*'
+                string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
+    
+        string += ' + '
+            
+    return string[:-3]
+
+
 
 def get_critical_points_from_polynomial(coefficient_array): 
     
@@ -220,8 +257,6 @@ def get_critical_points_from_polynomial(coefficient_array):
     for i in range(n):
         variable_list.append(sym.symbols(variable_alphabet[i]))
     
-    
-    
     f = 0
     for monomial_identifier, monomial_coefficient in zip(list_of_monomial_identifiers, coefficient_array):
         subfunction = monomial_coefficient
@@ -229,17 +264,13 @@ def get_critical_points_from_polynomial(coefficient_array):
             subfunction *= variable_list[i]**float(monomial_exponent)
         f += subfunction
 
-    #print(f)
-
-    gradient = sym.derive_by_array(f, tuple(variable_list))
+        
+    gradient = sym.derive_by_array(f, tuple(f.free_symbols))
+        
+    stationary_points = sym.solve(gradient, tuple(f.free_symbols))
     
-    #print(gradient)
-
-    stationary_points = sym.solve(gradient, tuple(variable_list))
     
-    #print(stationary_points)
-    
-    return gradient, stationary_points
+    return f, gradient, stationary_points
 
 
 
@@ -267,7 +298,7 @@ def calculate_function_values_from_polynomial(polynomial, lambda_input_data):
     for lambda_input_entry in lambda_input_data:
         function_value = calcualate_function_value(polynomial, lambda_input_entry)
         function_value_list.append(function_value)
-
+        
     return np.array(function_value_list)
 
 
@@ -296,7 +327,7 @@ def sleep_hours(hours):
     time.sleep(int(60*60*hours))
     
     
-def generate_paths():
+def generate_paths(inet=True):
     
     paths_dict = {}
     
@@ -320,8 +351,9 @@ def generate_paths():
     paths_dict['structure'] = '_' + paths_dict['layers_str'] + str(epochs_lambda) + 'e' + str(batch_lambda) + 'b' + '_' + optimizer_lambda
     paths_dict['filename'] = paths_dict['seed_shuffle_string'] + '_' + str(RANDOM_SEED) + paths_dict['structure']
 
-    paths_dict['interpretation_network_layers'] = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
-    paths_dict['interpretation_network_string'] = 'drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + paths_dict['interpretation_network_layers']
+    if inet:
+        paths_dict['interpretation_network_layers'] = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
+        paths_dict['interpretation_network_string'] = 'drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + paths_dict['interpretation_network_layers']
 
     return paths_dict
     
@@ -336,3 +368,182 @@ def create_folders():
     except FileExistsError:
         pass
     
+
+def generate_directory_structure():
+    
+    directory_names = ['parameters', 'plotting', 'saved_polynomial_lists', 'results', 'saved_models', 'weights', 'weights_training']
+    if not os.path.exists('./data'):
+        os.mkdir('./data')
+    for directory_name in directory_names:
+        path = './data/' + directory_name
+        if not os.path.exists(path):
+            os.mkdir(path)
+            
+            
+def generate_lambda_net_directory():
+    
+    globals().update(generate_paths(inet=False))
+    
+    #clear files
+    if each_epochs_save_lambda != None:
+        try:
+            # Create target Directory
+            os.mkdir('./data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+        except FileExistsError:
+
+            for i in epochs_save_range:
+                index = i*each_epochs_save if i > 1 else each_epochs_save if i==1 else 1
+                path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size)  + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(index).zfill(3)  + filename + '.txt'
+
+                with open(path, 'wt') as text_file:
+                    text_file.truncate()   
+        try:
+            # Create target Directory
+            os.mkdir('./data/results/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+        except FileExistsError:
+            pass
+    else:
+
+        try:
+            # Create target Directory
+            os.mkdir('./data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+        except FileExistsError:
+
+            path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(epochs).zfill(3)  + filename + '.txt'
+
+            with open(path, 'wt') as text_file:
+                text_file.truncate()   
+        try:
+            # Create target Directory
+            os.mkdir('./data/results/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+        except FileExistsError:
+            pass
+
+    
+######################################################################################################################################################################################################################
+########################################################################################  RANDOM FUNCTION GENERATION FROM ############################################################################################ 
+################################# code adjusted, originally from: https://github.com/tirthajyoti/Machine-Learning-with-Python/tree/master/Random%20Function%20Generator ##############################################
+######################################################################################################################################################################################################################
+
+def symbolize(s):
+    """
+    Converts a a string (equation) to a SymPy symbol object
+    """
+        
+    s1=s.replace(',','.')
+    s2=s1.replace('^','**')
+    s3=sympify(s2)
+    
+    return(s3)
+
+def eval_multinomial(s,vals=None,symbolic_eval=False):
+    """
+    Evaluates polynomial at vals.
+    vals can be simple list, dictionary, or tuple of values.
+    vals can also contain symbols instead of real values provided those symbols have been declared before using SymPy
+    """
+    sym_s=symbolize(s)
+    sym_set=sym_s.atoms(Symbol)
+    sym_lst=[]
+
+    
+    for s in sym_set:
+        sym_lst.append(str(s))
+    sym_lst.sort()
+    if symbolic_eval==False and len(sym_set)!=len(vals):
+        print("Length of the input values did not match number of variables and symbolic evaluation is not selected")
+        return None
+    else:
+        if type(vals)==list:
+            sub=list(zip(sym_lst,vals))
+        elif type(vals)==dict:
+            l=list(vals.keys())
+            l.sort()
+            lst=[]
+            for i in l:
+                lst.append(vals[i])
+            sub=list(zip(sym_lst,lst))
+        elif type(vals)==tuple:
+            sub=list(zip(sym_lst,list(vals)))
+        result=sym_s.subs(sub)
+    
+    return result
+
+def flip(y,p):
+    lst=[]
+    for i in range(len(y)):
+        f=np.random.choice([1,0],p=[p,1-p])
+        lst.append(f)
+    lst=np.array(lst)
+    return np.array(np.logical_xor(y,lst),dtype=int)
+
+
+def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0,noise_dist='normal', seed=42, sympy_calculation=True):
+    """
+    Generates regression sample based on a symbolic expression. Calculates the output of the symbolic expression 
+    at randomly generated (drawn from a Gaussian distribution) points
+    m: The symbolic expression. Needs x1, x2, etc as variables and regular python arithmatic symbols to be used.
+    n_samples: Number of samples to be generated
+    n_features: Number of variables. This is automatically inferred from the symbolic expression. So this is ignored 
+                in case a symbolic expression is supplied. However if no symbolic expression is supplied then a 
+                default simple polynomial can be invoked to generate regression samples with n_features.
+    noise: Magnitude of Gaussian noise to be introduced (added to the output).
+    noise_dist: Type of the probability distribution of the noise signal. 
+    Currently supports: Normal, Uniform, t, Beta, Gamma, Poission, Laplace
+
+    Returns a numpy ndarray with dimension (n_samples,n_features+1). Last column is the response vector.
+    """
+        
+    np.random.seed(seed)
+                
+    if polynomial_array is not None:
+        sympy_string = get_polynomial_string_from_coefficients(polynomial_array)
+        
+    if polynomial_array is None:
+        sympy_function=''
+        for i in range(1,n_features+1):
+            c='x'+str(i)
+            c+=np.random.choice(['+','-'],p=[0.5,0.5])
+            sympy_function+=c
+        sympy_function=sympy_function[:-1]
+        
+    if polynomial_array is not None:
+        sympy_function=sympify(sympy_string)
+    
+    n_features=len(sympy_function.atoms(Symbol))
+        
+    eval_results=[]
+    eval_dataset=[]
+    
+    for i in range(n_features):
+        eval_dataset.append(np.random.uniform(low=0.0, high=1.0 ,size=n_samples))
+    eval_dataset=np.array(eval_dataset)
+    eval_dataset=eval_dataset.T
+    eval_dataset=eval_dataset.reshape(n_samples,n_features)
+     
+    if sympy_calculation:
+        for i in range(n_samples):
+            eval_results.append(eval_multinomial(sympy_string, vals=list(eval_dataset[i])))
+    elif not sympy_calculation and polynomial_array is not None:
+        eval_results = calculate_function_values_from_polynomial(polynomial_array, eval_dataset)
+        
+    eval_results=np.array(eval_results)
+    eval_results=eval_results.reshape(n_samples,1)
+    
+    if noise_dist=='normal':
+        noise_sample=noise*np.random.normal(loc=0,scale=1.0,size=n_samples)
+    elif noise_dist=='uniform':
+        noise_sample=noise*np.random.uniform(low=0,high=1.0,size=n_samples)
+    elif noise_dist=='beta':
+        noise_sample=noise*np.random.beta(a=0.5,b=1.0,size=n_samples)
+    elif noise_dist=='Gamma':
+        noise_sample=noise*np.random.gamma(shape=1.0,scale=1.0,size=n_samples)
+    elif noise_dist=='laplace':
+        noise_sample=noise*np.random.laplace(loc=0.0,scale=1.0,size=n_samples)
+        
+    noise_sample=noise_sample.reshape(n_samples,1)
+    
+    eval_results=eval_results+noise_sample
+        
+    
+    return polynomial_array, eval_dataset, eval_results

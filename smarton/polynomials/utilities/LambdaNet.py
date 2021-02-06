@@ -39,11 +39,30 @@ from utilities.utility_functions import *
 #######################################################################################################################################################
 
 def initialize_LambdaNet_config_from_curent_notebook(config):
-    globals().update(config['data'])
-    globals().update(config['lambda_net'])
-    globals().update(config['i_net'])
-    globals().update(config['evaluation'])
-    globals().update(config['computation'])
+    try:
+        globals().update(config['data'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['lambda_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['i_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['evaluation'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['computation'])
+    except KeyError:
+        print(KeyError)
     
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -69,9 +88,6 @@ def initialize_LambdaNet_config_from_curent_notebook(config):
 #######################################################################################################################################################
 ##################################################################Lambda Net Wrapper###################################################################
 #######################################################################################################################################################
-
-
-
 class LambdaNetDataset():
     lambda_net_list = None
     
@@ -254,7 +270,7 @@ class LambdaNet():
         globals().update(generate_paths())
 
          ########### LOAD TEST DATA FOR LAMBDA NET #############
-        directory = './data/weights/weights_' + str(dataset_load_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_astep_' + str(a_step)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xstep_' + str(x_step) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
+        directory = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
         path = directory + 'lambda_' + str(self.index) + '_test_data.npy'
         
         self.test_data = np.load(path)
@@ -398,3 +414,276 @@ def weights_to_pred(weights, x, base_model=None):
     base_model.set_weights(shaped_weights)
     y = base_model.predict(x).ravel()
     return y        
+
+
+
+
+#######################################################################################################################################################
+#################################################################Lambda Net TRAINING###################################################################
+#######################################################################################################################################################
+
+def train_nn(lambda_index,
+             X_data_lambda, 
+             y_data_real_lambda, 
+             polynomial, 
+             seed_list, 
+             callbacks=None, 
+             return_history=False, 
+             each_epochs_save=None, 
+             printing=False, 
+             return_model=False):
+    
+    globals().update(generate_paths(inet=False))
+    
+    current_seed = None
+    if fixed_seed_lambda_training or fixed_initialization_lambda_training:
+        current_seed = seed_list[lambda_index%number_different_lambda_trainings]
+    
+    if fixed_seed_lambda_training:
+        random.seed(current_seed)
+        np.random.seed(current_seed)
+        if int(tf.__version__[0]) >= 2:
+            tf.random.set_seed(current_seed)
+        else:
+            tf.set_random_seed(current_seed) 
+            
+            
+    if each_epochs_save_lambda != None:
+        epochs_save_range = range(1, epochs_lambda//each_epochs_save_lambda+1) if each_epochs_save_lambda == 1 else range(epochs_lambda//each_epochs_save_lambda+1)
+    else:
+        epochs_save_range = None
+    
+    if isinstance(X_data_lambda, pd.DataFrame):
+        X_data_lambda = X_data_lambda.values
+    if isinstance(y_data_real_lambda, pd.DataFrame):
+        y_data_real_lambda = y_data_real_lambda.values
+                
+    X_train_lambda_with_valid, X_test_lambda, y_train_real_lambda_with_valid, y_test_real_lambda = train_test_split(X_data_lambda, y_data_real_lambda, test_size=0.25, random_state=current_seed)           
+    X_train_lambda, X_valid_lambda, y_train_real_lambda, y_valid_real_lambda = train_test_split(X_train_lambda_with_valid, y_train_real_lambda_with_valid, test_size=0.25, random_state=current_seed)           
+     
+        
+    model = Sequential()
+    
+    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
+    if fixed_initialization_lambda_training:
+        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=X_data_lambda.shape[1], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros')) #1024
+    else:
+        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=X_data_lambda.shape[1])) #1024
+        
+    if dropout > 0:
+        model.add(Dropout(dropout))
+
+    for neurons in lambda_network_layers[1:]:
+        if fixed_initialization_lambda_training:
+            model.add(Dense(neurons, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
+        else:
+            model.add(Dense(neurons, activation='relu'))
+        if dropout > 0:
+            model.add(Dropout(dropout))   
+    
+    if fixed_initialization_lambda_training:
+        model.add(Dense(1, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
+    else:
+        model.add(Dense(1))
+    
+    model.compile(optimizer=optimizer_lambda,
+                  loss='mae',
+                  metrics=[r2_keras, root_mean_squared_error]
+                 )
+    
+    
+    weights = []
+    polynomial_lstsq_pred_list = []
+    polynomial_lstsq_true_list = []
+
+    lstsq_data = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n)) #y_train_pred_lambda.ravel()
+    terms_matrix = generate_term_matric_for_lstsq(lstsq_data, list(polynomial.index))
+
+        
+    if each_epochs_save == None:   
+        model_history = model.fit(X_train_lambda,
+                      y_train_real_lambda, 
+                      epochs=epochs_lambda, 
+                      batch_size=batch_lambda, 
+                      callbacks=callbacks,
+                      validation_data=(X_valid_lambda, y_valid_real_lambda),
+                      verbose=0,
+                      workers=0)
+        weights.append(model.get_weights())
+        
+        history = model_history.history
+        
+        y_train_pred_lambda = model.predict(X_train_lambda) 
+        y_valid_pred_lambda = model.predict(X_valid_lambda)                
+        y_test_pred_lambda = model.predict(X_test_lambda)
+    
+        y_random_pred_lambda = model.predict(lstsq_data)
+        
+        polynomial_lstsq_pred, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1]
+        polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1] 
+        polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
+        polynomial_lstsq_true_list.append(polynomial_lstsq_true)
+        
+        y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda)
+        y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda)
+        y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda)
+        y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda)    
+        y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda)
+        y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda)  
+        
+        pred_list = (lambda_index,
+                     y_train_real_lambda, 
+                     y_train_pred_lambda, 
+                     y_train_pred_lambda_poly_lstsq,
+                     #y_train_real_lambda_poly_lstsq,
+                     X_train_lambda, 
+                     y_valid_real_lambda,
+                     y_valid_pred_lambda, 
+                     y_valid_pred_lambda_poly_lstsq,
+                     #y_valid_real_lambda_poly_lstsq,
+                     X_valid_lambda, 
+                     y_test_real_lambda, 
+                     y_test_pred_lambda, 
+                     y_test_pred_lambda_poly_lstsq, 
+                     #y_test_real_lambda_poly_lstsq,
+                     X_test_lambda)
+
+        scores_train, std_train, mean_train = evaluate_lambda_net('TRAIN', X_train_lambda, y_train_real_lambda, y_train_pred_lambda, y_train_pred_lambda_poly_lstsq, y_train_real_lambda_poly_lstsq)
+        scores_valid, std_valid, mean_valid = evaluate_lambda_net('VALID', X_valid_lambda, y_valid_real_lambda, y_valid_pred_lambda, y_valid_pred_lambda_poly_lstsq, y_valid_real_lambda_poly_lstsq)
+        scores_test, std_test, mean_test = evaluate_lambda_net('TEST', X_test_lambda, y_test_real_lambda, y_test_pred_lambda, y_test_pred_lambda_poly_lstsq, y_test_real_lambda_poly_lstsq)
+
+        scores_std = {}
+        for aDict in (std_train, std_valid, std_test):
+            scores_std.update(aDict)      
+        scores_mean = {}
+        for aDict in (mean_train, mean_valid, mean_test):
+            scores_mean.update(aDict)
+        
+        scores_list = [lambda_index,
+                     scores_train,
+                     scores_valid,
+                     scores_test,
+                     scores_std,
+                     scores_mean]            
+                            
+    else:
+        scores_list = []
+        pred_list = []
+        for i in epochs_save_range:
+            train_epochs_step = each_epochs_save if i > 1 else max(each_epochs_save-1, 1) if i==1 else 1
+            
+            model_history = model.fit(X_train_lambda, 
+                      y_train_real_lambda, 
+                      epochs=train_epochs_step, 
+                      batch_size=batch_lambda, 
+                      callbacks=callbacks,
+                      validation_data=(X_valid_lambda, y_valid_real_lambda),
+                      verbose=0,
+                      workers=1,
+                      use_multiprocessing=False)
+            
+            #history adjustment for continuing training
+            if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
+                history = model_history.history
+            else:
+                history = mergeDict(history, model_history.history)
+
+            weights.append(model.get_weights())
+            
+            y_train_pred_lambda = model.predict(X_train_lambda)                
+            y_valid_pred_lambda = model.predict(X_valid_lambda)                
+            y_test_pred_lambda = model.predict(X_test_lambda)        
+            
+            y_random_pred_lambda = model.predict(lstsq_data)
+    
+            polynomial_lstsq_pred, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1] 
+            #does not change over time
+            if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
+                polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1] 
+            polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
+            polynomial_lstsq_true_list.append(polynomial_lstsq_true)            
+            
+            y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda)
+            y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda)
+            y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda)           
+            if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
+                y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda)
+                y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda)  
+                y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda)                    
+                
+            pred_list.append((lambda_index,
+                              y_train_real_lambda, 
+                              y_train_pred_lambda, 
+                              y_train_pred_lambda_poly_lstsq,
+                              #y_train_real_lambda_poly_lstsq,
+                              X_train_lambda, 
+                              y_valid_real_lambda,
+                              y_valid_pred_lambda, 
+                              y_valid_pred_lambda_poly_lstsq,
+                              #y_valid_real_lambda_poly_lstsq,
+                              X_valid_lambda, 
+                              y_test_real_lambda, 
+                              y_test_pred_lambda, 
+                              y_test_pred_lambda_poly_lstsq, 
+                              #y_test_real_lambda_poly_lstsq,
+                              X_test_lambda))
+    
+            scores_train, std_train, mean_train = evaluate_lambda_net('TRAIN', X_train_lambda, y_train_real_lambda, y_train_pred_lambda, y_train_pred_lambda_poly_lstsq, y_train_real_lambda_poly_lstsq)
+            scores_valid, std_valid, mean_valid = evaluate_lambda_net('VALID', X_valid_lambda, y_valid_real_lambda, y_valid_pred_lambda, y_valid_pred_lambda_poly_lstsq, y_valid_real_lambda_poly_lstsq)
+            scores_test, std_test, mean_test = evaluate_lambda_net('TEST', X_test_lambda, y_test_real_lambda, y_test_pred_lambda, y_test_pred_lambda_poly_lstsq, y_test_real_lambda_poly_lstsq)
+
+            scores_std = {}
+            for aDict in (std_train, std_valid, std_test):
+                scores_std.update(aDict)
+            scores_mean = {}
+            for aDict in (mean_train, mean_valid, mean_test):
+                scores_mean.update(aDict)
+
+            scores_list_single_epoch =  [lambda_index,
+                                         scores_train,
+                                          scores_valid,
+                                          scores_test,
+                                          scores_std,
+                                          scores_mean]        
+                  
+            scores_list.append(scores_list_single_epoch)
+       
+
+        
+    if printing:        
+        for i, (weights_for_epoch, polynomial_lstsq_pred_for_epoch, polynomial_lstsq_true_for_epoch) in enumerate(zip(weights, polynomial_lstsq_pred_list, polynomial_lstsq_true_list)):        
+            if each_epochs_save == None:
+                path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(epochs).zfill(3)  + filename + '.txt'
+            else:
+                index = (i+1)*each_epochs_save if each_epochs_save==1 else i*each_epochs_save if i > 1 else each_epochs_save if i==1 else 1
+                path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(index).zfill(3)  + filename + '.txt'
+            with open(path, 'a') as text_file: 
+                text_file.write(str(lambda_index))
+                text_file.write(', ' + str(current_seed))
+                for i, value in enumerate(polynomial.values): 
+                    text_file.write(', ' + str(value))   
+                for value in polynomial_lstsq_pred_for_epoch:
+                    text_file.write(', ' + str(value))
+                for value in polynomial_lstsq_true_for_epoch:
+                    text_file.write(', ' + str(value))
+                for layer_weights, biases in pairwise(weights_for_epoch):    #clf.get_weights()
+                    for neuron in layer_weights:
+                        for weight in neuron:
+                            text_file.write(', ' + str(weight))
+                    for bias in biases:
+                        text_file.write(', ' + str(bias))
+                text_file.write('\n')
+
+        text_file.close() 
+
+        directory = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
+        path = directory + 'lambda_' + str(lambda_index) + '_test_data'
+        np.save(path, X_test_lambda)
+            
+    if return_model:
+        return (lambda_index, current_seed, polynomial, polynomial_lstsq_pred_list, polynomial_lstsq_true_list), scores_list, pred_list, history, model
+    elif return_history:
+        return (lambda_index, current_seed, polynomial, polynomial_lstsq_pred_list, polynomial_lstsq_true_list), scores_list, pred_list, history, #polynomial_lstsq_pred_list, polynomial_lstsq_true_list#, weights, history
+    else:
+        return (lambda_index, current_seed, polynomial, polynomial_lstsq_pred_list, polynomial_lstsq_true_list), scores_list, pred_list#, weights
+    
