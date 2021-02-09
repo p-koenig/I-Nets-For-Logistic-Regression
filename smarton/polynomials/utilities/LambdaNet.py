@@ -84,7 +84,7 @@ def initialize_LambdaNet_config_from_curent_notebook(config):
         monomial_identifier_values = list(map(int, list(monomial_identifier)))
         if sum(monomial_identifier_values) <= d:
             list_of_monomial_identifiers.append(monomial_identifier)
-    
+                
 #######################################################################################################################################################
 ##################################################################Lambda Net Wrapper###################################################################
 #######################################################################################################################################################
@@ -267,10 +267,11 @@ class LambdaNet():
         assert self.weights.shape[0] == number_of_lambda_weights, 'weights have incorrect shape ' + str(self.weights.shape[0]) + ' but should be ' + str(number_of_lambda_weights)
         
 
-        globals().update(generate_paths())
 
          ########### LOAD TEST DATA FOR LAMBDA NET #############
-        directory = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
+        paths_dict = generate_paths(path_type = 'interpretation_net')
+        
+        directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
         path = directory + 'lambda_' + str(self.index) + '_test_data.npy'
         
         self.test_data = np.load(path)
@@ -433,7 +434,7 @@ def train_nn(lambda_index,
              printing=False, 
              return_model=False):
     
-    globals().update(generate_paths(inet=False))
+    paths_dict = generate_paths(path_type = 'lambda_net')
     
     current_seed = None
     if fixed_seed_lambda_training or fixed_initialization_lambda_training:
@@ -466,9 +467,9 @@ def train_nn(lambda_index,
     
     #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
     if fixed_initialization_lambda_training:
-        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=X_data_lambda.shape[1], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros')) #1024
+        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=X_data_lambda.shape[1], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
     else:
-        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=X_data_lambda.shape[1])) #1024
+        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=X_data_lambda.shape[1]))
         
     if dropout > 0:
         model.add(Dropout(dropout))
@@ -653,10 +654,10 @@ def train_nn(lambda_index,
     if printing:        
         for i, (weights_for_epoch, polynomial_lstsq_pred_for_epoch, polynomial_lstsq_true_for_epoch) in enumerate(zip(weights, polynomial_lstsq_pred_list, polynomial_lstsq_true_list)):        
             if each_epochs_save == None:
-                path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(epochs).zfill(3)  + filename + '.txt'
+                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(epochs).zfill(3) + '.txt'
             else:
                 index = (i+1)*each_epochs_save if each_epochs_save==1 else i*each_epochs_save if i > 1 else each_epochs_save if i==1 else 1
-                path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(index).zfill(3)  + filename + '.txt'
+                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(index).zfill(3) + '.txt'
             with open(path, 'a') as text_file: 
                 text_file.write(str(lambda_index))
                 text_file.write(', ' + str(current_seed))
@@ -676,7 +677,7 @@ def train_nn(lambda_index,
 
         text_file.close() 
 
-        directory = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/'
+        directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
         path = directory + 'lambda_' + str(lambda_index) + '_test_data'
         np.save(path, X_test_lambda)
             

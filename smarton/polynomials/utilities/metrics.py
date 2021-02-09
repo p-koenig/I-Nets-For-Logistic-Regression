@@ -38,11 +38,30 @@ from utilities.utility_functions import *
 #######################################################################################################################################################
 
 def initialize_metrics_config_from_curent_notebook(config):
-    globals().update(config['data'])
-    globals().update(config['lambda_net'])
-    globals().update(config['i_net'])
-    globals().update(config['evaluation'])
-    globals().update(config['computation'])
+    try:
+        globals().update(config['data'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['lambda_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['i_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['evaluation'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['computation'])
+    except KeyError:
+        print(KeyError)
         
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -50,7 +69,7 @@ def initialize_metrics_config_from_curent_notebook(config):
         tf.random.set_seed(RANDOM_SEED)
     else:
         tf.set_random_seed(RANDOM_SEED)
-
+        
 
 #######################################################################################################################################################
 ######################Manual TF Loss function for comparison with lambda-net prediction based (predictions made in loss function)######################
@@ -68,17 +87,17 @@ def mean_absolute_error_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_o
     def mean_absolute_error_tf_fv_lambda_extended(polynomial_true_with_lambda_fv, polynomial_pred):
 
         if seed_in_inet_training:
-            network_parameters = polynomial_true_with_lambda_fv[:,sparsity+1:]
-            polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            network_parameters = polynomial_true_with_lambda_fv[:,interpretation_net_output_shape+1:]
+            polynomial_true = polynomial_true_with_lambda_fv[:,:interpretation_net_output_shape]
             if preds_include_params:
-                #_ = polynomial_pred_with_lambda_fv[:,sparsity+1:]
-                polynomial_pred = polynomial_pred[:,:sparsity]
+                #_ = polynomial_pred_with_lambda_fv[:,interpretation_net_output_shape+1:]
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
         else:
-            network_parameters = polynomial_true_with_lambda_fv[:,sparsity:]
-            polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            network_parameters = polynomial_true_with_lambda_fv[:,interpretation_net_output_shape:]
+            polynomial_true = polynomial_true_with_lambda_fv[:,:interpretation_net_output_shape]
             if preds_include_params:
-                #_ = polynomial_pred_with_lambda_fv[:,sparsity:]
-                polynomial_pred = polynomial_pred[:,:sparsity]
+                #_ = polynomial_pred_with_lambda_fv[:,interpretation_net_output_shape:]
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
        
             
             
@@ -86,8 +105,8 @@ def mean_absolute_error_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_o
         polynomial_true = return_float_tensor_representation(polynomial_true)
         polynomial_pred = return_float_tensor_representation(polynomial_pred)
         
-        assert polynomial_true.shape[1] == sparsity
-        assert polynomial_pred.shape[1] == sparsity
+        assert polynomial_true.shape[1] == interpretation_net_output_shape
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape
         assert network_parameters.shape[1] == number_of_lambda_weights 
         
         return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
@@ -145,8 +164,8 @@ def mean_absolute_error_tf_fv_poly_extended_wrapper(evaluation_dataset, list_of_
         polynomial_true = return_float_tensor_representation(polynomial_true)
         polynomial_pred = return_float_tensor_representation(polynomial_pred)
 
-        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
-        assert polynomial_pred.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)       
+        assert polynomial_true.shape[1] == interpretation_net_output_shape, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)       
 
         return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
     return mean_absolute_error_tf_fv_poly_extended
@@ -204,16 +223,16 @@ def calculate_mae_single_input(input_list):
 def mean_absolute_error_extended(polynomial_true_with_lambda_fv, polynomial_pred, preds_include_params=False): 
     
     if seed_in_inet_training:
-        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights+1
+        assert polynomial_true_with_lambda_fv.shape[1] == interpretation_net_output_shape+number_of_lambda_weights+1
     else:
-        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights
+        assert polynomial_true_with_lambda_fv.shape[1] == interpretation_net_output_shape+number_of_lambda_weights
     
-    polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]    
+    polynomial_true = polynomial_true_with_lambda_fv[:,:interpretation_net_output_shape]    
     if preds_include_params:
-        polynomial_pred = polynomial_pred[:,:sparsity]    
+        polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]    
     
-    assert polynomial_true.shape[1] == sparsity
-    assert polynomial_pred.shape[1] == sparsity
+    assert polynomial_true.shape[1] == interpretation_net_output_shape
+    assert polynomial_pred.shape[1] == interpretation_net_output_shape
     
     return tf.keras.losses.MAE(polynomial_true, polynomial_pred)
 
@@ -231,24 +250,24 @@ def r2_tf_fv_lambda_extended_wrapper(evaluation_dataset, list_of_monomial_identi
     def r2_tf_fv_lambda_extended(polynomial_true_with_lambda_fv, polynomial_pred):
 
         if seed_in_inet_training:
-            network_parameters = polynomial_true_with_lambda_fv[:,sparsity+1:]
-            polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            network_parameters = polynomial_true_with_lambda_fv[:,interpretation_net_output_shape+1:]
+            polynomial_true = polynomial_true_with_lambda_fv[:,:interpretation_net_output_shape]
             if preds_include_params:
-                #_ = polynomial_pred_with_lambda_fv[:,sparsity+1:]
-                polynomial_pred = polynomial_pred[:,:sparsity]
+                #_ = polynomial_pred_with_lambda_fv[:,interpretation_net_output_shape+1:]
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
         else:
-            network_parameters = polynomial_true_with_lambda_fv[:,sparsity:]
-            polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
+            network_parameters = polynomial_true_with_lambda_fv[:,interpretation_net_output_shape:]
+            polynomial_true = polynomial_true_with_lambda_fv[:,:interpretation_net_output_shape]
             if preds_include_params:
-                #_ = polynomial_pred_with_lambda_fv[:,sparsity:]
-                polynomial_pred = polynomial_pred[:,:sparsity]
+                #_ = polynomial_pred_with_lambda_fv[:,interpretation_net_output_shape:]
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
             
         network_parameters = return_float_tensor_representation(network_parameters)
         polynomial_true = return_float_tensor_representation(polynomial_true)
         polynomial_pred = return_float_tensor_representation(polynomial_pred)
         
-        assert polynomial_true.shape[1] == sparsity
-        assert polynomial_pred.shape[1] == sparsity
+        assert polynomial_true.shape[1] == interpretation_net_output_shape
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape
         assert network_parameters.shape[1] == number_of_lambda_weights
         
         return tf.math.reduce_mean(tf.map_fn(calculate_r2_fv_lambda_wrapper(evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
@@ -307,8 +326,8 @@ def r2_tf_fv_poly_extended_wrapper(evaluation_dataset, list_of_monomial_identifi
         polynomial_true = return_float_tensor_representation(polynomial_true)
         polynomial_pred = return_float_tensor_representation(polynomial_pred)
 
-        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
-        assert polynomial_pred.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)     
+        assert polynomial_true.shape[1] == interpretation_net_output_shape, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)     
 
         return tf.math.reduce_mean(tf.map_fn(calculate_r2_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
     return r2_tf_fv_poly_extended
@@ -344,16 +363,16 @@ def calculate_r2_single_input(input_list):
 def r2_extended(polynomial_true_with_lambda_fv, polynomial_pred, preds_include_params=False): 
 
     if seed_in_inet_training:
-        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights+1
+        assert polynomial_true_with_lambda_fv.shape[1] == interpretation_net_output_shape+number_of_lambda_weights+1
     else:
-        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights
+        assert polynomial_true_with_lambda_fv.shape[1] == interpretation_net_output_shape+number_of_lambda_weights
 
-    polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]  
+    polynomial_true = polynomial_true_with_lambda_fv[:,:interpretation_net_output_shape]  
     if preds_include_params:
-        polynomial_pred = polynomial_pred[:,:sparsity]
+        polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
 
-    assert polynomial_true.shape[1] == sparsity
-    assert polynomial_pred.shape[1] == sparsity
+    assert polynomial_true.shape[1] == interpretation_net_output_shape
+    assert polynomial_pred.shape[1] == interpretation_net_output_shape
 
     return r2_keras(polynomial_true, polynomial_pred)
 
@@ -835,8 +854,8 @@ def evaluate_interpretation_net(y_data_real,
         y_data_real = return_numpy_representation(y_data_real)
         y_data_pred = return_numpy_representation(y_data_pred)     
         
-        assert y_data_real.shape[1] == sparsity
-        assert y_data_pred.shape[1] == sparsity
+        assert y_data_real.shape[1] == interpretation_net_output_shape
+        assert y_data_pred.shape[1] == interpretation_net_output_shape
     
         assert y_data_real.shape == y_data_pred.shape
         

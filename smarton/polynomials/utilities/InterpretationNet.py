@@ -48,11 +48,30 @@ from tqdm import tqdm_notebook as tqdm
 #######################################################################################################################################################
 
 def initialize_InterpretationNet_config_from_curent_notebook(config):
-    globals().update(config['data'])
-    globals().update(config['lambda_net'])
-    globals().update(config['i_net'])
-    globals().update(config['evaluation'])
-    globals().update(config['computation'])
+    try:
+        globals().update(config['data'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['lambda_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['i_net'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['evaluation'])
+    except KeyError:
+        print(KeyError)
+        
+    try:
+        globals().update(config['computation'])
+    except KeyError:
+        print(KeyError)
     
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)
@@ -75,7 +94,6 @@ def initialize_InterpretationNet_config_from_curent_notebook(config):
         if sum(monomial_identifier_values) <= d:
             list_of_monomial_identifiers.append(monomial_identifier)
     
-
 #######################################################################################################################################################
 #################################################################I-NET RESULT CALCULATION##############################################################
 #######################################################################################################################################################
@@ -183,7 +201,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
    
     global optimizer
     
-    globals().update(generate_paths())
+    paths_dict = generate_paths(path_type = 'interpretation_net')
     
     ############################## DATA PREPARATION ###############################
 
@@ -290,11 +308,11 @@ def train_nn_and_pred(lambda_net_train_dataset,
         from tensorflow.keras.utils import CustomObjectScope
         with CustomObjectScope({'custom_loss': loss_function}):                
             if nas_type == 'SEQUENTIAL':
-                directory = './data/autokeras/automodel/' + nas_type + '_' + str(n) + 'n' + str(d) + '_d' + filename
+                directory = './data/autokeras/automodel/' + nas_type + '_' + str(n) + 'n' + str(d) + '_d' + paths_dict['path_identifier_interpretation_net_data']
 
                 auto_model = ak.StructuredDataRegressor(
                     loss='custom_loss',
-                    #output_dim=sparsity,
+                    #output_dim=interpretation_net_output_shape,
                     overwrite=True,
                     max_trials=nas_trials,
                     directory=directory,
@@ -324,7 +342,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
                     output_node = ak.DenseBlock()(output_node)
                     output_node = ak.RegressionHead()(output_node)  
 
-                directory = './data/autokeras/automodel/' + nas_type + '_' + str(n) + 'n' + str(d) + '_d' + filename
+                directory = './data/autokeras/automodel/' + nas_type + '_' + str(n) + 'n' + str(d) + '_d' + paths_dict['path_identifier_interpretation_net_data']
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -346,8 +364,8 @@ def train_nn_and_pred(lambda_net_train_dataset,
             history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
             model = auto_model.export_model()
 
-            y_valid_pred = model.predict(X_valid)[:,:sparsity]
-            y_test_pred = model.predict(X_test)[:,:sparsity]
+            y_valid_pred = model.predict(X_valid)[:,:interpretation_net_output_shape]
+            y_test_pred = model.predict(X_test)[:,:interpretation_net_output_shape]
 
         
     else: 
@@ -365,7 +383,9 @@ def train_nn_and_pred(lambda_net_train_dataset,
 
         if dropout > 0:
             model.add(Dropout(dropout))
-        model.add(Dense(nCr(n+d, d))) 
+        
+        model.add(Dense(interpretation_net_output_shape)) 
+
 
         callbacks = return_callbacks_from_string(callback_names)            
 
@@ -672,7 +692,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
     
 def generate_history_plots(history_list, by='epochs'):
     
-    globals().update(generate_paths())
+    paths_dict = generate_paths(path_type = 'interpretation_net')
     
     for i, history in enumerate(history_list):  
         
@@ -689,9 +709,9 @@ def generate_history_plots(history_list, by='epochs'):
         plt.xlabel('epoch')
         plt.legend(['train', 'valid'], loc='upper left')
         if by == 'epochs':
-            plt.savefig('./data/results/' + interpretation_network_string + filename + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + interpretation_network_string + filename + '_epoch_' + str(index).zfill(3) + '.png')
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + paths_dict['path_identifier_interpretation_net_data'] + '_epoch_' + str(index).zfill(3) + '.png')
         elif by == 'samples':
-            plt.savefig('./data/results/' + interpretation_network_string + filename + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + interpretation_network_string + filename + '_samples_' + str(samples_list[index]).zfill(5) + '.png')
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + paths_dict['path_identifier_interpretation_net_data'] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')
         
         plt.plot(history['loss'])
         if consider_labels_training or evaluate_with_real_function:
@@ -701,29 +721,29 @@ def generate_history_plots(history_list, by='epochs'):
         plt.xlabel('epoch')
         plt.legend(['train', 'valid'], loc='upper left')
         if by == 'epochs':
-            plt.savefig('./data/results/' + interpretation_network_string + filename + '/loss_' + interpretation_network_string + filename + '_epoch_' + str(index).zfill(3) + '.png')    
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + paths_dict['path_identifier_interpretation_net_data'] + '_epoch_' + str(index).zfill(3) + '.png')    
         elif by == 'samples':
-            plt.savefig('./data/results/' + interpretation_network_string + filename + '/loss_' + interpretation_network_string + filename + '_samples_' + str(samples_list[index]).zfill(5) + '.png')    
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + paths_dict['path_identifier_interpretation_net_data'] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')    
         if i < len(history_list)-1:
             plt.clf() 
             
             
 def save_results(history_list, scores_list, by='epochs'):
     
-    globals().update(generate_paths())
+    paths_dict = generate_paths(path_type = 'interpretation_net')
     
     if by == 'epochs':
-        path = './data/results/' + interpretation_network_string + filename + '/history_epochs' + interpretation_network_string + filename + '.pkl'
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'
     elif by == 'samples':
-        path = './data/results/' + interpretation_network_string + filename + '/history_samples' + interpretation_network_string + filename + '.pkl'
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'
     with open(path, 'wb') as f:
         pickle.dump(history_list, f, protocol=2)   
         
         
     if by == 'epochs':
-        path = './data/results/' + interpretation_network_string + filename + '/scores_epochs' + interpretation_network_string + filename + '.pkl'
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_epochs' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'
     elif by == 'samples':
-        path = './data/results/' + interpretation_network_string + filename + '/scores_samples' + interpretation_network_string + filename + '.pkl'    
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_samples' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'    
     with open(path, 'wb') as f:
         pickle.dump(scores_list, f, protocol=2)  
         
@@ -731,7 +751,7 @@ def save_results(history_list, scores_list, by='epochs'):
 
 def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
     
-    globals().update(generate_paths())
+    paths_dict = generate_paths(path_type = 'interpretation_net')
     
     epochs_save_range_lambda = range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda) if each_epochs_save_lambda == 1 else range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda+1) if multi_epoch_analysis else range(1,2)
 
@@ -790,11 +810,11 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
             p.set_xticklabels(p.get_xticks(), size = 20)        
 
         location = './data/plotting/'
-        folder = interpretation_network_string + filename + '/'
+        folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
         if samples_list == None:
-            file = 'multi_epoch_REAL_' + interpretation_network_string+  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'
+            file = 'multi_epoch_REAL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
         else:
-            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_REAL_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'
+            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_REAL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
 
         path = location + folder + file
 
@@ -847,28 +867,22 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
             p.set_xticklabels(p.get_xticks(), size = 20)  
 
         location = './data/plotting/'
-        folder = interpretation_network_string + filename + '/'
+        folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
         if samples_list == None:
-            file = 'multi_epoch_MODEL_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)   + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'
+            file = 'multi_epoch_MODEL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
         else: 
-            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_MODEL_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'
+            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_MODEL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
 
         path = location + folder + file
 
         plt.savefig(path, format='pdf')
         plt.show()
 
-        
-def generate_values_for_single_polynomial_prediction_evaluation(function_values_test_list, rand_index=5):
-
-
-    return plot_data_single, plot_data, x_vars, columns_single
-
 
 
 def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_dataset_list, function_values_test_list, rand_index=1, plot_type=2):
     
-    globals().update(generate_paths())
+    paths_dict = generate_paths(path_type = 'interpretation_net')
     
     lambda_model_preds = function_values_test_list[-1][0][rand_index].ravel()
     real_poly_fvs = function_values_test_list[-1][1][rand_index]
@@ -919,7 +933,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     
     
     location = './data/plotting/'
-    folder = interpretation_network_string + filename + '/'
+    folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
     
     if plot_type == 1:
         pp = sns.pairplot(data=plot_data,
@@ -929,9 +943,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                       x_vars=x_vars)
         
         if evaluate_with_real_function:
-            file = 'pp3in1_REAL_' + str(rand_index) + '_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'        
+            file = 'pp3in1_REAL_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'        
         else:
-            file = 'pp3in1_PRED_' + str(rand_index) + '_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'            
+            file = 'pp3in1_PRED_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'            
         
     elif plot_type == 2:
 
@@ -943,9 +957,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                          )
         
         if evaluate_with_real_function:        
-            file = 'pp3in1_extended_REAL_' + str(rand_index) + '_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'        
+            file = 'pp3in1_extended_REAL_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'        
         else:
-            file = 'pp3in1_extended_PRED_' + str(rand_index) + '_' + interpretation_network_string +  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'  
+            file = 'pp3in1_extended_PRED_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'  
         
     elif plot_type == 3:
         
@@ -955,9 +969,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                           x_vars=x_vars)
 
         if evaluate_with_real_function:        
-            file = 'pp1_REAL_' + str(rand_index) + '_' + interpretation_network_string+  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'        
+            file = 'pp1_REAL_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'        
         else:
-            file = 'pp1_PRED_' + str(rand_index) + '_' + interpretation_network_string+  '_lambda_' + filename + '_' + str(interpretation_dataset_size) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity) + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '.pdf'            
+            file = 'pp1_PRED_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'            
         
     path = location + folder + file
     pp.savefig(path, format='pdf')

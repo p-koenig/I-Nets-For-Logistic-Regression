@@ -94,7 +94,7 @@ def initialize_utility_functions_config_from_curent_notebook(config):
         monomial_identifier_values = list(map(int, list(monomial_identifier)))
         if sum(monomial_identifier_values) <= d:
             list_of_monomial_identifiers.append(monomial_identifier)
-                        
+                                    
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
 #######################################################################################################################################################
@@ -183,11 +183,9 @@ def return_callbacks_from_string(callback_string_list):
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
         earlyStopping = EarlyStopping(monitor='val_loss', patience=10, min_delta=0, verbose=0, mode='min')
-        callbacks.append(earlyStopping)
-        
+        callbacks.append(earlyStopping)        
     #if not multi_epoch_analysis and samples_list == None: 
-        #callbacks.append(TQDMNotebookCallback())
-        
+        #callbacks.append(TQDMNotebookCallback())        
     return callbacks
 
 def arreq_in_list(myarr, list_arrays):
@@ -228,7 +226,8 @@ def get_polynomial_string_from_coefficients(coefficients):
         
     string = ''
     for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
-        string += str(np.round(coefficient, 2))
+        #string += str(np.round(coefficient, 2))
+        string += str(coefficient)
         for index, variable_identifier in enumerate(identifier):  
             if int(variable_identifier) == 1:
                 string += '*'
@@ -249,7 +248,7 @@ def get_critical_points_from_polynomial(coefficient_array):
     
     coefficient_array = return_numpy_representation(coefficient_array)
     
-    assert coefficient_array.shape[0] == sparsity
+    assert coefficient_array.shape[0] == interpretation_net_output_shape
     
     variable_alphabet =  "abcdefghijklmnopqrstuvwxyz"
     
@@ -287,8 +286,17 @@ def calcualate_function_value(coefficient_list, lambda_input_entry):
         
     for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
         value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
-
-        result += coefficient_value * reduce(lambda x, y: x*y, value_without_coefficient)
+        
+        try:
+            result += coefficient_value * reduce(lambda x, y: x*y, value_without_coefficient)
+        except TypeError:
+            print('ERROR')
+            print(lambda_input_entry)
+            print(coefficient_list)
+            
+            print(coefficient_value)
+            print(value_without_coefficient)
+            
 
     return result
 
@@ -308,7 +316,7 @@ def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list):
     lambda_input_list = return_numpy_representation(lambda_input_list)
     
     assert polynomial_list.shape[0] == lambda_input_list.shape[0]
-    assert polynomial_list.shape[1] == sparsity
+    assert polynomial_list.shape[1] == interpretation_net_output_shape
     assert lambda_input_list.shape[2] == n
     
     n_jobs_parallel_fv = 10 if polynomial_list.shape[0] > 10 else polynomial_list.shape[0]
@@ -327,44 +335,129 @@ def sleep_hours(hours):
     time.sleep(int(60*60*hours))
     
     
-def generate_paths(inet=True):
+def generate_paths(path_type='interpretation_net'):
     
     paths_dict = {}
     
-    if fixed_seed_lambda_training:
-        paths_dict['seed_shuffle_string'] = '_' + str(number_different_lambda_trainings) + '-FixedSeed'
-    else:
-        paths_dict['seed_shuffle_string'] = '_NoFixedSeed'
-
-    if fixed_initialization_lambda_training:
-        paths_dict['seed_shuffle_string'] += '_' + str(number_different_lambda_trainings) + '-FixedEvaluation'
-    else:
-        paths_dict['seed_shuffle_string'] += '_NoFixedEvaluation'
-
+    
+      
     if same_training_all_lambda_nets:
-        paths_dict['training_string'] = '_same'
+        training_string = '_sameX'
     else:
-        paths_dict['training_string'] = '_diverse'
+        training_string = '_differentX'
 
-    paths_dict['layers_str'] = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
+    if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
+  
+        path_identifier_polynomial_data = ('polynomials_' + str(polynomial_data_size) + 
+                                           '_train_' + str(lambda_dataset_size) + 
+                                           '_variables_' + str(n) + 
+                                           '_degree_' + str(d) + 
+                                           '_sparsity_' + str(sample_sparsity) + 
+                                           '_amin_' + str(a_min) + 
+                                           '_amax_' + str(a_max) + 
+                                           '_xmin_' + str(x_min) + 
+                                           '_xmax_' + str(x_max) + 
+                                           '_xdistrib_' + str(x_distrib) + 
+                                           '_noise_' + str(noise_distrib) + '_' + str(noise) + 
+                                           training_string)            
 
-    paths_dict['structure'] = '_' + paths_dict['layers_str'] + str(epochs_lambda) + 'e' + str(batch_lambda) + 'b' + '_' + optimizer_lambda
-    paths_dict['filename'] = paths_dict['seed_shuffle_string'] + '_' + str(RANDOM_SEED) + paths_dict['structure']
+        paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
+    
+    if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
+        if fixed_seed_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixedSeed'
+        else:
+            seed_shuffle_string = '_NoFixedSeed'
 
-    if inet:
-        paths_dict['interpretation_network_layers'] = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
-        paths_dict['interpretation_network_string'] = 'drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + paths_dict['interpretation_network_layers']
+        if fixed_initialization_lambda_training:
+            seed_shuffle_string += '_' + str(number_different_lambda_trainings) + '-FixedInitialization'
+        else:
+            seed_shuffle_string += '_NoFixedInitialization'
 
+        lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
+        lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + str(batch_lambda) + 'b' + '_' + optimizer_lambda
+
+        path_identifier_lambda_net_data = ('lambd_nets_' + str(lambda_nets_total) +
+                                           lambda_net_identifier + 
+                                           '_train_' + str(lambda_dataset_size) + 
+                                           '_variables_' + str(n) + 
+                                           '_degree_' + str(d) + 
+                                           '_sparsity_' + str(sample_sparsity) + 
+                                           '_amin_' + str(a_min) + 
+                                           '_amax_' + str(a_max) + 
+                                           '_xmin_' + str(x_min) + 
+                                           '_xmax_' + str(x_max) + 
+                                           '_xdistrib_' + str(x_distrib) + 
+                                           '_noise_' + str(noise_distrib) + '_' + str(noise) + 
+                                           training_string + 
+                                           seed_shuffle_string + '_' + str(RANDOM_SEED))
+        '''
+        path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total) +
+                                           lambda_net_identifier + 
+                                           '_train_' + str(lambda_dataset_size) + 
+                                           '_var_' + str(n) + 
+                                           '_d_' + str(d) + 
+                                           '_sparsity_' + str(sample_sparsity) + 
+                                           '_amin_' + str(a_min) + 
+                                           '_amax_' + str(a_max) + 
+                                           '_xmin_' + str(x_min) + 
+                                           '_xmax_' + str(x_max) + 
+                                           '_xdist_' + str(x_distrib) + 
+                                           '_noise_' + str(noise_distrib) + '_' + str(noise) + 
+                                           training_string + 
+                                           seed_shuffle_string + '_' + str(RANDOM_SEED))        
+        '''
+        paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
+    
+    
+    if path_type == 'interpretation_net': #Interpretation-Net   
+        
+        if same_training_all_lambda_nets:
+            training_string = '_sameX'
+        else:
+            training_string = '_diffX'
+        
+        if fixed_seed_lambda_training and fixed_initialization_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
+        elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
+        elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
+        elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
+            seed_shuffle_string = '_NoFixSeedInit'
+
+            
+        interpretation_network_layers_string = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
+        interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(interpretation_net_output_shape) + '_drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + optimizer
+        
+        path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier + 
+                                                   'lnets_' + str(interpretation_dataset_size) +
+                                                   lambda_net_identifier + 
+                                                   '_train_' + str(lambda_dataset_size) + 
+                                                   '_var_' + str(n) + 
+                                                   '_d_' + str(d) + 
+                                                   '_sparsity_' + str(sample_sparsity) + 
+                                                   '_amin_' + str(a_min) + 
+                                                   '_amax_' + str(a_max) + 
+                                                   '_xmin_' + str(x_min) + 
+                                                   '_xmax_' + str(x_max) + 
+                                                   '_xdist_' + str(x_distrib) + 
+                                                   '_noise_' + str(noise_distrib) + '_' + str(noise) + 
+                                                   training_string + 
+                                                   seed_shuffle_string + '_' + str(RANDOM_SEED))         
+        
+        paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
+        
     return paths_dict
     
-def create_folders():
+def create_folders_inet():
     
-    paths_dict = generate_paths()
-
+    paths_dict = generate_paths(path_type = 'interpretation_net')
+    
     try:
         # Create target Directory
-        os.mkdir('./data/plotting/' + paths_dict['interpretation_network_string'] + paths_dict['filename'] + '/')
-        os.mkdir('./data/results/' + paths_dict['interpretation_network_string'] + paths_dict['filename'] + '/')
+        os.mkdir('./data/plotting/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
+        os.mkdir('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
     except FileExistsError:
         pass
     
@@ -382,40 +475,45 @@ def generate_directory_structure():
             
 def generate_lambda_net_directory():
     
-    globals().update(generate_paths(inet=False))
+    paths_dict = generate_paths(path_type = 'lambda_net')
+    
+    if each_epochs_save_lambda != None:
+        epochs_save_range = range(1, epochs_lambda//each_epochs_save_lambda+1) if each_epochs_save_lambda == 1 else range(epochs_lambda//each_epochs_save_lambda+1)
+    else:
+        epochs_save_range = None    
     
     #clear files
     if each_epochs_save_lambda != None:
         try:
             # Create target Directory
-            os.mkdir('./data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+            os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
         except FileExistsError:
 
             for i in epochs_save_range:
-                index = i*each_epochs_save if i > 1 else each_epochs_save if i==1 else 1
-                path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size)  + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(index).zfill(3)  + filename + '.txt'
+                index = i*each_epochs_save_lambda if i > 1 else each_epochs_save_lambda if i==1 else 1
+                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(index).zfill(3) + '.txt'
 
                 with open(path, 'wt') as text_file:
                     text_file.truncate()   
         try:
             # Create target Directory
-            os.mkdir('./data/results/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+            os.mkdir('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
         except FileExistsError:
             pass
     else:
 
         try:
             # Create target Directory
-            os.mkdir('./data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+            os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
         except FileExistsError:
 
-            path = './data/weights/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename + '/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + '_epoch_' + str(epochs).zfill(3)  + filename + '.txt'
+            path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(epochs).zfill(3) + '.txt'
 
             with open(path, 'wt') as text_file:
                 text_file.truncate()   
         try:
             # Create target Directory
-            os.mkdir('./data/results/weights_' + str(lambda_nets_total) + '_train_' + str(lambda_dataset_size) + '_variables_' + str(n) + '_degree_' + str(d) + '_sparsity_' + str(sparsity)  + '_amin_' + str(a_min) + '_amax_' + str(a_max) + '_xmin_' + str(x_min) + '_xmax_' + str(x_max) + training_string + filename)
+            os.mkdir('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
         except FileExistsError:
             pass
 
@@ -478,7 +576,7 @@ def flip(y,p):
     return np.array(np.logical_xor(y,lst),dtype=int)
 
 
-def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0,noise_dist='normal', seed=42, sympy_calculation=True):
+def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise_dist='normal', seed=42, sympy_calculation=True):
     """
     Generates regression sample based on a symbolic expression. Calculates the output of the symbolic expression 
     at randomly generated (drawn from a Gaussian distribution) points
@@ -513,14 +611,9 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0,noise_
     n_features=len(sympy_function.atoms(Symbol))
         
     eval_results=[]
-    eval_dataset=[]
     
-    for i in range(n_features):
-        eval_dataset.append(np.random.uniform(low=0.0, high=1.0 ,size=n_samples))
-    eval_dataset=np.array(eval_dataset)
-    eval_dataset=eval_dataset.T
-    eval_dataset=eval_dataset.reshape(n_samples,n_features)
-     
+    eval_dataset = generate_random_data_points(low=x_min, high=x_max, size=n_samples, variables=max(1, n_features), distrib=x_distrib)
+             
     if sympy_calculation:
         for i in range(n_samples):
             eval_results.append(eval_multinomial(sympy_string, vals=list(eval_dataset[i])))
@@ -531,15 +624,9 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0,noise_
     eval_results=eval_results.reshape(n_samples,1)
     
     if noise_dist=='normal':
-        noise_sample=noise*np.random.normal(loc=0,scale=1.0,size=n_samples)
+        noise_sample=noise*np.random.normal(loc=0, scale=1.0,size=n_samples)
     elif noise_dist=='uniform':
-        noise_sample=noise*np.random.uniform(low=0,high=1.0,size=n_samples)
-    elif noise_dist=='beta':
-        noise_sample=noise*np.random.beta(a=0.5,b=1.0,size=n_samples)
-    elif noise_dist=='Gamma':
-        noise_sample=noise*np.random.gamma(shape=1.0,scale=1.0,size=n_samples)
-    elif noise_dist=='laplace':
-        noise_sample=noise*np.random.laplace(loc=0.0,scale=1.0,size=n_samples)
+        noise_sample=noise*np.random.uniform(low=0, high=1.0,size=n_samples)
         
     noise_sample=noise_sample.reshape(n_samples,1)
     
@@ -547,3 +634,19 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0,noise_
         
     
     return polynomial_array, eval_dataset, eval_results
+
+
+def generate_random_data_points(low, high, size, variables, distrib='uniform'):
+    if distrib=='normal':
+        list_of_data_points = []
+        for _ in range(size):
+            random_data_points = np.random.normal(loc=(low+high)/2, scale=(low+high)/4, size=variables)
+            while max(random_data_points) > high and min(random_data_points) < low:
+                random_poly = np.random.normal(loc=(low+high)/2, scale=1.0, size= variables)
+            list_of_data_points.append(random_poly)
+        list_of_data_points = np.array(list_of_polynomials)
+        
+    elif distrib=='uniform':
+        list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
+        
+    return list_of_data_points
