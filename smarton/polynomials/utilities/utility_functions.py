@@ -6,6 +6,7 @@
 #from tqdm import tqdm_notebook as tqdm
 #import pickle
 import numpy as np
+from numpy import linspace
 import pandas as pd
 import scipy as sp
 
@@ -18,6 +19,8 @@ import math
 from joblib import Parallel, delayed
 from collections.abc import Iterable
 #from scipy.integrate import quad
+import matplotlib.pyplot as plt 
+
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
@@ -40,7 +43,7 @@ from utilities.metrics import *
 #from utilities.utility_functions import *
 
 import sympy as sym
-from sympy import Symbol, sympify
+from sympy import Symbol, sympify, lambdify
 
 
 #######################################################################################################################################################
@@ -182,7 +185,7 @@ def return_callbacks_from_string(callback_string_list):
         reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=epochs/10, verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=10, min_delta=0, verbose=0, mode='min')
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=10, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
@@ -198,71 +201,147 @@ def flatten(l):
         else:
             yield el
             
-def print_polynomial_from_coefficients(coefficients):
+def print_polynomial_from_coefficients(coefficients, force_complete_poly_representation=False):
 
     global list_of_monomial_identifiers
+    global interpretation_net_output_monomials
     
     string = ''
-    for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
-        string += str(np.round(coefficient, 2))
-        for index, variable_identifier in enumerate(identifier):  
-            if int(variable_identifier) == 1:
-                #string += '*'
-                string += 'abcdefghijklmnopqrstuvwxyz'[index]
-            elif int(variable_identifier) > 1:
-                #string += '*'
-                string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
     
-        string += ' + '
+    try: #catch if this is lambda-net training
+        interpretation_net_output_monomials == None
+    except NameError:
+        interpretation_net_output_monomials = None
         
+    if interpretation_net_output_monomials == None or force_complete_poly_representation:
+        for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
+            #string += str(np.round(coefficient, 2))
+            string += str(coefficient)
+            for index, variable_identifier in enumerate(identifier):  
+                if int(variable_identifier) == 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
+                elif int(variable_identifier) > 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
+            string += ' + '
+    else:
+        for monomial_index, coefficient in pairwise(coefficients):
+            #string += str(np.round(coefficient, 2))
+            string += str(coefficient)
+            for index, variable_identifier in enumerate(list_of_monomial_identifiers[int(np.round(monomial_index))]):  
+                if int(variable_identifier) == 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
+                elif int(variable_identifier) > 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
+            string += ' + '        
     latex_string = "$" + string[:-3] + "$"
     
     return display(Math(latex_string))
 
 
-def get_polynomial_string_from_coefficients(coefficients):
+def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_representation=False):
 
     global list_of_monomial_identifiers
+    global interpretation_net_output_monomials
         
     string = ''
-    for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
-        #string += str(np.round(coefficient, 2))
-        string += str(coefficient)
-        for index, variable_identifier in enumerate(identifier):  
-            if int(variable_identifier) == 1:
-                string += '*'
-                string += 'abcdefghijklmnopqrstuvwxyz'[index]
-            elif int(variable_identifier) > 1:
-                string += '*'
-                string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
     
-        string += ' + '
+    try: #catch if this is lambda-net training
+        interpretation_net_output_monomials == None
+    except NameError:
+        interpretation_net_output_monomials = None
+        
+    if interpretation_net_output_monomials == None or force_complete_poly_representation:
+        for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
+            #string += str(np.round(coefficient, 2))
+            string += str(coefficient)
+            for index, variable_identifier in enumerate(identifier):  
+                if int(variable_identifier) == 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
+                elif int(variable_identifier) > 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
+            string += ' + '
+    else:
+        for monomial_index, coefficient in pairwise(coefficients):
+            #string += str(np.round(coefficient, 2))
+            string += str(coefficient)
+            for index, variable_identifier in enumerate(list_of_monomial_identifiers[int(np.round(monomial_index))]):  
+                if int(variable_identifier) == 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
+                elif int(variable_identifier) > 1:
+                    #string += '*'
+                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
+            string += ' + '   
             
     return string[:-3]
 
-
-
-def get_critical_points_from_polynomial(coefficient_array): 
+def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_representation=False):
     
     global list_of_monomial_identifiers
-    
-    coefficient_array = return_numpy_representation(coefficient_array)
-    
-    assert coefficient_array.shape[0] == interpretation_net_output_shape
+    global interpretation_net_output_monomials
     
     variable_alphabet =  "abcdefghijklmnopqrstuvwxyz"
     
     variable_list = []
     for i in range(n):
-        variable_list.append(sym.symbols(variable_alphabet[i]))
+        variable_list.append(sym.symbols(variable_alphabet[i]))    
     
-    f = 0
-    for monomial_identifier, monomial_coefficient in zip(list_of_monomial_identifiers, coefficient_array):
-        subfunction = monomial_coefficient
-        for i, monomial_exponent in enumerate(monomial_identifier):
-            subfunction *= variable_list[i]**float(monomial_exponent)
-        f += subfunction
+    try: #catch if this is lambda-net training
+        interpretation_net_output_monomials == None
+    except NameError:
+        interpretation_net_output_monomials = None
+    
+    if interpretation_net_output_monomials == None or force_complete_poly_representation:   
+        f = 0
+        for monomial_identifier, monomial_coefficient in zip(list_of_monomial_identifiers, coefficient_array):
+            subfunction = monomial_coefficient
+            for i, monomial_exponent in enumerate(monomial_identifier):
+                subfunction *= variable_list[i]**float(monomial_exponent)
+            f += subfunction
+    else:
+        f = 0
+        for monomial_index, monomial_coefficient in pairwise(coefficient_array):
+            subfunction = monomial_coefficient
+            for i, monomial_exponent in enumerate(list_of_monomial_identifiers[int(np.round(monomial_index))]):
+                subfunction *= variable_list[i]**float(monomial_exponent)
+            f += subfunction    
+    
+    return f
 
+
+def plot_polynomial_from_coefficients(coefficient_array, force_complete_poly_representation=False):
+    
+    sympy_function_string = get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_representation=False)
+    
+    variable_alphabet =  "abcdefghijklmnopqrstuvwxyz"
+    
+    variable_list = []
+    for i in range(n):
+        variable_list.append(sym.symbols(variable_alphabet[i]))       
+    
+    lam_x = lambdify(variable_list, sympy_function_string, modules=['numpy'])
+    
+    x_vals = linspace(x_min, x_max, 100)
+    y_vals = lam_x(x_vals)
+
+    plt.plot(x_vals, y_vals)
+    plt.show()
+    
+                
+def get_critical_points_from_polynomial(coefficient_array, force_complete_poly_representation=False): 
+    
+    
+    coefficient_array = return_numpy_representation(coefficient_array)
+    
+    #assert coefficient_array.shape[0] == interpretation_net_output_shape
+        
+    f = get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_representation=force_complete_poly_representation)
         
     gradient = sym.derive_by_array(f, tuple(f.free_symbols))
         
@@ -278,51 +357,79 @@ def get_critical_points_from_polynomial(coefficient_array):
 ###########################Manual calculations for comparison of polynomials based on function values (no TF!)#########################################
 #######################################################################################################################################################
 
-def calcualate_function_value(coefficient_list, lambda_input_entry):
+def calcualate_function_value(coefficient_list, lambda_input_entry, force_complete_poly_representation=False):
     
     global list_of_monomial_identifiers
+    global interpretation_net_output_monomials
     
     result = 0   
         
-    for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
-        value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
+    try: #catch if this is lambda-net training
+        interpretation_net_output_monomials == None
+    except NameError:
+        interpretation_net_output_monomials = None
         
-        try:
-            result += coefficient_value * reduce(lambda x, y: x*y, value_without_coefficient)
-        except TypeError:
-            print('ERROR')
-            print(lambda_input_entry)
-            print(coefficient_list)
-            
-            print(coefficient_value)
-            print(value_without_coefficient)
-            
+        
+    if interpretation_net_output_monomials == None or force_complete_poly_representation:
+        
+        #print(force_complete_poly_representation)
+        #print(interpretation_net_output_monomials)
+    
+        assert coefficient_list.shape[0] == sparsity, 'Shape of Coefficient List: ' + str(coefficient_list.shape) + str(interpretation_net_output_monomials)
+        
+        for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
+            value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
 
+            try:
+                result += coefficient_value * reduce(lambda x, y: x*y, value_without_coefficient)
+            except TypeError:
+                print('ERROR')
+                print(lambda_input_entry)
+                print(coefficient_list)
+
+                print(coefficient_value)
+                print(value_without_coefficient)
+    else:
+        
+        assert coefficient_list.shape[0] == interpretation_net_output_monomials*2
+        
+        value_without_coefficient_list = []
+        for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
+            value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
+            value_without_coefficient_list.append(reduce(lambda x, y: x*y, value_without_coefficient))
+            
+        for index, coefficient in pairwise(coefficient_list):
+            result += coefficient* value_without_coefficient_list[int(np.round(index))]
+        
     return result
 
-def calculate_function_values_from_polynomial(polynomial, lambda_input_data):        
+def calculate_function_values_from_polynomial(polynomial, lambda_input_data, force_complete_poly_representation=False):        
     function_value_list = []
-        
+                
     for lambda_input_entry in lambda_input_data:
-        function_value = calcualate_function_value(polynomial, lambda_input_entry)
+        function_value = calcualate_function_value(polynomial, lambda_input_entry, force_complete_poly_representation=force_complete_poly_representation)
         function_value_list.append(function_value)
         
     return np.array(function_value_list)
 
 
-def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list):
+def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, force_complete_poly_representation=False):
     
     polynomial_list = return_numpy_representation(polynomial_list)
     lambda_input_list = return_numpy_representation(lambda_input_list)
     
     assert polynomial_list.shape[0] == lambda_input_list.shape[0]
-    assert polynomial_list.shape[1] == interpretation_net_output_shape
+        
+    if force_complete_poly_representation:
+        assert polynomial_list.shape[1] == sparsity
+    else:
+        assert polynomial_list.shape[1] == interpretation_net_output_shape
     assert lambda_input_list.shape[2] == n
     
     n_jobs_parallel_fv = 10 if polynomial_list.shape[0] > 10 else polynomial_list.shape[0]
     
     parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=0, backend='threading')
-    polynomial_true_fv = parallel(delayed(calculate_function_values_from_polynomial)(polynomial, lambda_inputs) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))  
+    polynomial_true_fv = parallel(delayed(calculate_function_values_from_polynomial)(polynomial, lambda_inputs, force_complete_poly_representation=force_complete_poly_representation) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))  
     del parallel   
     
 
@@ -344,7 +451,8 @@ def generate_paths(path_type='interpretation_net'):
     if same_training_all_lambda_nets:
         training_string = '_sameX'
     else:
-        training_string = '_differentX'
+        training_string = '_diffX'
+        
 
     if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
   
@@ -364,34 +472,23 @@ def generate_paths(path_type='interpretation_net'):
         paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
     
     if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
-        if fixed_seed_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixedSeed'
-        else:
-            seed_shuffle_string = '_NoFixedSeed'
+        if fixed_seed_lambda_training and fixed_initialization_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
+        elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
+        elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
+            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
+        elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
+            seed_shuffle_string = '_NoFixSeedInit'
 
-        if fixed_initialization_lambda_training:
-            seed_shuffle_string += '_' + str(number_different_lambda_trainings) + '-FixedInitialization'
-        else:
-            seed_shuffle_string += '_NoFixedInitialization'
+        early_stopping_string = ''
+        if early_stopping_lambda:
+            early_stopping_string = 'ES'
 
+            
         lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
-        lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + str(batch_lambda) + 'b' + '_' + optimizer_lambda
+        lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + early_stopping_string + str(batch_lambda) + 'b' + '_' + optimizer_lambda + '_' + loss_lambda
 
-        path_identifier_lambda_net_data = ('lambd_nets_' + str(lambda_nets_total) +
-                                           lambda_net_identifier + 
-                                           '_train_' + str(lambda_dataset_size) + 
-                                           '_variables_' + str(n) + 
-                                           '_degree_' + str(d) + 
-                                           '_sparsity_' + str(sample_sparsity) + 
-                                           '_amin_' + str(a_min) + 
-                                           '_amax_' + str(a_max) + 
-                                           '_xmin_' + str(x_min) + 
-                                           '_xmax_' + str(x_max) + 
-                                           '_xdistrib_' + str(x_distrib) + 
-                                           '_noise_' + str(noise_distrib) + '_' + str(noise) + 
-                                           training_string + 
-                                           seed_shuffle_string + '_' + str(RANDOM_SEED))
-        '''
         path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total) +
                                            lambda_net_identifier + 
                                            '_train_' + str(lambda_dataset_size) + 
@@ -406,26 +503,11 @@ def generate_paths(path_type='interpretation_net'):
                                            '_noise_' + str(noise_distrib) + '_' + str(noise) + 
                                            training_string + 
                                            seed_shuffle_string + '_' + str(RANDOM_SEED))        
-        '''
+
         paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
     
     
     if path_type == 'interpretation_net': #Interpretation-Net   
-        
-        if same_training_all_lambda_nets:
-            training_string = '_sameX'
-        else:
-            training_string = '_diffX'
-        
-        if fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
-        elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
-        elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
-        elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
-            seed_shuffle_string = '_NoFixSeedInit'
-
             
         interpretation_network_layers_string = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
         interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(interpretation_net_output_shape) + '_drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + optimizer
@@ -477,46 +559,33 @@ def generate_lambda_net_directory():
     
     paths_dict = generate_paths(path_type = 'lambda_net')
     
-    if each_epochs_save_lambda != None:
-        epochs_save_range = range(1, epochs_lambda//each_epochs_save_lambda+1) if each_epochs_save_lambda == 1 else range(epochs_lambda//each_epochs_save_lambda+1)
-    else:
-        epochs_save_range = None    
-    
     #clear files
-    if each_epochs_save_lambda != None:
-        try:
-            # Create target Directory
-            os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
-        except FileExistsError:
+    try:
+        # Create target Directory
+        os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
 
-            for i in epochs_save_range:
-                index = i*each_epochs_save_lambda if i > 1 else each_epochs_save_lambda if i==1 else 1
-                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(index).zfill(3) + '.txt'
-
-                with open(path, 'wt') as text_file:
-                    text_file.truncate()   
-        try:
-            # Create target Directory
-            os.mkdir('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
-        except FileExistsError:
-            pass
-    else:
-
-        try:
-            # Create target Directory
-            os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
-        except FileExistsError:
-
-            path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(epochs).zfill(3) + '.txt'
-
-            with open(path, 'wt') as text_file:
-                text_file.truncate()   
-        try:
-            # Create target Directory
-            os.mkdir('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
-        except FileExistsError:
-            pass
-
+    except FileExistsError:
+        folder = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data']
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e)) 
+    try:
+        # Create target Directory
+        os.mkdir('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
+    except FileExistsError:
+        pass
+    try:
+        # Create target Directory
+        os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/X_test_lambda')
+    except FileExistsError:
+        pass        
+    
     
 ######################################################################################################################################################################################################################
 ########################################################################################  RANDOM FUNCTION GENERATION FROM ############################################################################################ 

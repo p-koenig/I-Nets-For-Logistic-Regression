@@ -102,13 +102,16 @@ def initialize_InterpretationNet_config_from_curent_notebook(config):
 def calculate_interpretation_net_results(lambda_net_train_dataset_list, 
                                          lambda_net_valid_dataset_list, 
                                          lambda_net_test_dataset_list):
-    
+        
     return_model = False
     if n_jobs==1 or (samples_list != None and len(samples_list) == 1) or (len(lambda_net_train_dataset_list) == 1 and samples_list == None):
+        n_jobs_inet_training = 1
         return_model = True
         
+    print(interpretation_net_output_monomials)    
+    
     if samples_list == None: 
-        results_list = Parallel(n_jobs=n_jobs, 
+        results_list = Parallel(n_jobs=n_jobs_inet_training, 
                                 verbose=11, 
                                 backend='multiprocessing')(delayed(train_nn_and_pred)(lambda_net_train_dataset,
                                                                                        lambda_net_valid_dataset,
@@ -143,7 +146,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
             model_list = [result[5] for result in results_list]
 
     else:
-        results_list = Parallel(n_jobs=n_jobs, verbose=11, backend='multiprocessing')(delayed(train_nn_and_pred)(lambda_net_train_dataset.sample(samples),
+        results_list = Parallel(n_jobs=n_jobs_inet_training, verbose=11, backend='multiprocessing')(delayed(train_nn_and_pred)(lambda_net_train_dataset.sample(samples),
                                                                                                       lambda_net_valid_dataset,
                                                                                                       lambda_net_test_dataset, 
                                                                                                       callback_names=['early_stopping'],
@@ -200,24 +203,15 @@ def train_nn_and_pred(lambda_net_train_dataset,
                       return_model = False):       
    
     global optimizer
+    global loss
     
     paths_dict = generate_paths(path_type = 'interpretation_net')
     
     ############################## DATA PREPARATION ###############################
 
-    if seed_in_inet_training:
-        normalizer = Normalizer().fit([np.array(lambda_net_train_dataset.train_settings_list['seed'])])
-        train_seed_list = normalizer.transform([np.array(lambda_net_train_dataset.train_settings_list['seed'])])[0]
-        valid_seed_list = normalizer.transform([np.array(lambda_net_valid_dataset.train_settings_list['seed'])])[0]
-        test_seed_list = normalizer.transform([np.array(lambda_net_test_dataset.train_settings_list['seed'])])[0]
-
-        X_train = np.hstack([np.expand_dims(train_seed_list, axis=1), np.array(lambda_net_train_dataset.weight_list)])
-        X_valid = np.hstack([np.expand_dims(valid_seed_list, axis=1), np.array(lambda_net_valid_dataset.weight_list)])
-        X_test = np.hstack([np.expand_dims(test_seed_list, axis=1), np.array(lambda_net_test_dataset.weight_list)])
-    else:   #normalize if included in training   
-        X_train = np.array(lambda_net_train_dataset.weight_list)
-        X_valid = np.array(lambda_net_valid_dataset.weight_list)
-        X_test = np.array(lambda_net_test_dataset.weight_list) 
+    X_train = np.array(lambda_net_train_dataset.weight_list)
+    X_valid = np.array(lambda_net_valid_dataset.weight_list)
+    X_test = np.array(lambda_net_test_dataset.weight_list) 
         
     if evaluate_with_real_function: #target polynomial as inet target
         y_train = np.array(lambda_net_train_dataset.target_polynomial_list)
@@ -237,70 +231,71 @@ def train_nn_and_pred(lambda_net_train_dataset,
         
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
         
-    if consider_labels_training: #coefficient-based evaluation
-        if evaluate_with_real_function: #based on in-metric fv calculation of real and predicted polynomial
-            random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
-            list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
+    base_model = generate_base_model()
+    random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
+    list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
             
-            if nas:
+    if consider_labels_training: #coefficient-based evaluation
+        
+        if interpretation_net_output_monomials != None:
+            raise SystemExit('No coefficient-based optimization possible with reduced output monomials - Please change settings') 
+        
+        if evaluate_with_real_function: #based on comparison real and predicted polynomial coefficients        
+            if inet_loss == 'mae':
                 loss_function = 'mean_absolute_error'
-                metrics = [r2_tf_fv, mean_absolute_error_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, preds_include_params=True), r2_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, preds_include_params=True)]            
+            elif inet_loss == 'r2':      
+                loss_function = r2_keras_loss
             else:
-                loss_function = 'mean_absolute_error'
-                metrics = [r2_tf_fv, mean_absolute_error_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers), r2_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers)]
+                raise SystemExit('Unknown I-Net Metric: ' + inet_loss)   
+            
+            metrics = ['mean_absolute_error', r2_keras_loss]
+            for inet_metric in list(flatten([inet_metrics, inet_loss])):
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers))
             
             valid_data = (X_valid, y_valid)
             y_train_model = y_train
-        else: #in-metric prediction of lambda-nets
-            base_model = generate_base_model()
-            random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
-            list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
+        else: #based on comparison lstsq-lambda and predicted polynomial coefficients
+            loss_function = inet_coefficient_loss_wrapper(inet_loss)
             
-            if nas:
-                loss_function = mean_absolute_error_extended       
-                metrics = [r2_extended, mean_absolute_error_tf_fv_lambda_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, preds_include_params=True), r2_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, preds_include_params=True)]             
-            else:
-                loss_function = mean_absolute_error_extended       
-                metrics = [r2_extended, mean_absolute_error_tf_fv_lambda_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model), r2_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers)]    
+            metrics = []
+            for inet_metric in list(flatten([inet_metrics, inet_loss])):
+                metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model))            
             
             if data_reshape_version != None:
                 y_train_model = np.hstack((y_train, X_train_flat))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
             else:
                 y_train_model = np.hstack((y_train, X_train))   
-                valid_data = (X_valid, np.hstack((y_valid, X_valid)))     
+                valid_data = (X_valid, np.hstack((y_valid, X_valid)))                                  
     else: #fv-based evaluation
         if evaluate_with_real_function: #based on in-loss fv calculation of real and predicted polynomial
-            random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
-            list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
             
-            if nas:
-                loss_function = mean_absolute_error_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, preds_include_params=True)
-                metrics = [r2_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, preds_include_params=True), 'mean_absolute_error']            
-            else:  
-                loss_function = mean_absolute_error_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers)
-                metrics = [r2_tf_fv_poly_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers), 'mean_absolute_error']                 
+            loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers)
             
+            metrics = []
+            for inet_metric in list(flatten([inet_metrics, inet_loss])):
+                metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers))    
+             
             valid_data = (X_valid, y_valid)
             y_train_model = y_train
         else: #in-loss prediction of lambda-nets
-            base_model = generate_base_model()
-            random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
-            list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
             
-            if nas:
-                loss_function = mean_absolute_error_tf_fv_lambda_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, preds_include_params=True)      
-                metrics = [r2_tf_fv_lambda_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, preds_include_params=True), mean_absolute_error_extended]
-            else:
-                loss_function = mean_absolute_error_tf_fv_lambda_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)      
-                metrics = [r2_tf_fv_lambda_extended_wrapper(random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model), mean_absolute_error_extended]
+            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)
+            
+            metrics = []
+            for inet_metric in list(flatten([inet_metrics, inet_loss])):
+                metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)) 
             
             if data_reshape_version != None:
                 y_train_model = np.hstack((y_train, X_train_flat))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
             else:
                 y_train_model = np.hstack((y_train, X_train))   
-                valid_data = (X_valid, np.hstack((y_valid, X_valid)))               
+                valid_data = (X_valid, np.hstack((y_valid, X_valid)))          
+                 
         
     ############################## BUILD MODEL ###############################
     
@@ -431,6 +426,9 @@ def train_nn_and_pred(lambda_net_train_dataset,
     lstsq_target_polynomial_test_data_fvs_valid = lambda_net_valid_dataset.return_lstsq_target_polynomial_fvs_on_test_data()
     lstsq_target_polynomial_test_data_fvs_test = lambda_net_test_dataset.return_lstsq_target_polynomial_fvs_on_test_data() 
         
+
+    print(interpretation_net_output_monomials)
+    
     inet_poly_test_data_fvs_valid = parallel_fv_calculation_from_polynomial(y_valid_pred, lambda_net_valid_dataset.test_data_list)
     inet_poly_test_data_fvs_test = parallel_fv_calculation_from_polynomial(y_test_pred, lambda_net_test_dataset.test_data_list) 
     
@@ -702,8 +700,7 @@ def generate_history_plots(history_list, by='epochs'):
             index = i
         
         plt.plot(history[list(history.keys())[1]])
-        if consider_labels_training or evaluate_with_real_function:
-            plt.plot(history[list(history.keys())[len(history.keys())//2+1]])
+        plt.plot(history[list(history.keys())[len(history.keys())//2+1]])
         plt.title('model ' + list(history.keys())[len(history.keys())//2+1])
         plt.ylabel('metric')
         plt.xlabel('epoch')
@@ -712,10 +709,10 @@ def generate_history_plots(history_list, by='epochs'):
             plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + paths_dict['path_identifier_interpretation_net_data'] + '_epoch_' + str(index).zfill(3) + '.png')
         elif by == 'samples':
             plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + paths_dict['path_identifier_interpretation_net_data'] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')
+        plt.clf()
         
         plt.plot(history['loss'])
-        if consider_labels_training or evaluate_with_real_function:
-            plt.plot(history['val_loss'])
+        plt.plot(history['val_loss'])
         plt.title('model loss')
         plt.ylabel('loss')
         plt.xlabel('epoch')
@@ -989,87 +986,85 @@ def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
 
     base_model = generate_base_model()
        
-    if seed_in_inet_training:
-        pass
-    else:
-        X_data_flat = X_data
-        
-        shaped_weights_list = []
-        for data in tqdm(X_data):
-            shaped_weights = shape_flat_weights(data, base_model.get_weights())
-            shaped_weights_list.append(shaped_weights)
-            
-        max_size = 0
-        for weights in shaped_weights:
-            max_size = max(max_size, max(weights.shape))      
-    
-         
-        if version == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
-            X_data_list = []
-            for shaped_weights in tqdm(shaped_weights_list):
-                padded_network_parameters_list = []
-                for layer_weights, biases in pairwise(shaped_weights):
-                    padded_weights_train_list = []
-                    for weights in layer_weights:
-                        padded_weights = np.pad(weights, (int(np.floor((max_size-weights.shape[0])/2)), int(np.ceil((max_size-weights.shape[0])/2))), 'constant')
-                        padded_weights_list.append(padded_weights)
-                    padded_biases = np.pad(biases, (int(np.floor((max_size-biases.shape[0])/2)), int(np.ceil((max_size-biases.shape[0])/2))), 'constant')
-                    padded_network_parameters_list.append(padded_biases)
-                    padded_network_parameters_list.extend(padded_weights_list)   
-                X_data_list.append(padded_network_parameters_list)
-            X_data = np.array(X_data_list)    
 
-        elif version == 1 or version == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
-            lambda_net_structure = list(flatten([n, lambda_network_layers, 1]))                    
-            number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
-                        
-            X_data_list = []
-            for shaped_weights in tqdm(shaped_weights_list):        
-                network_parameters_sequence_list = np.array([]).reshape(number_of_paths, 0)    
-                for layer_index, (weights, biases) in zip(range(1, len(lambda_net_structure)), pairwise(shaped_weights)):
+    X_data_flat = X_data
 
-                    layer_neurons = lambda_net_structure[layer_index]    
-                    previous_layer_neurons = lambda_net_structure[layer_index-1]
+    shaped_weights_list = []
+    for data in tqdm(X_data):
+        shaped_weights = shape_flat_weights(data, base_model.get_weights())
+        shaped_weights_list.append(shaped_weights)
 
-                    assert biases.shape[0] == layer_neurons
-                    assert weights.shape[0]*weights.shape[1] == previous_layer_neurons*layer_neurons
-
-                    bias_multiplier = number_of_paths//layer_neurons
-                    weight_multiplier = number_of_paths//(previous_layer_neurons * layer_neurons)
-
-                    extended_bias_list = []
-                    for bias in biases:
-                        extended_bias = np.tile(bias, (bias_multiplier,1))
-                        extended_bias_list.extend(extended_bias)
+    max_size = 0
+    for weights in shaped_weights:
+        max_size = max(max_size, max(weights.shape))      
 
 
-                    extended_weights_list = []
-                    for weight in weights.flatten():
-                        extended_weights = np.tile(weight, (weight_multiplier,1))
-                        extended_weights_list.extend(extended_weights)      
+    if version == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
+        X_data_list = []
+        for shaped_weights in tqdm(shaped_weights_list):
+            padded_network_parameters_list = []
+            for layer_weights, biases in pairwise(shaped_weights):
+                padded_weights_train_list = []
+                for weights in layer_weights:
+                    padded_weights = np.pad(weights, (int(np.floor((max_size-weights.shape[0])/2)), int(np.ceil((max_size-weights.shape[0])/2))), 'constant')
+                    padded_weights_list.append(padded_weights)
+                padded_biases = np.pad(biases, (int(np.floor((max_size-biases.shape[0])/2)), int(np.ceil((max_size-biases.shape[0])/2))), 'constant')
+                padded_network_parameters_list.append(padded_biases)
+                padded_network_parameters_list.extend(padded_weights_list)   
+            X_data_list.append(padded_network_parameters_list)
+        X_data = np.array(X_data_list)    
 
-                    network_parameters_sequence = np.concatenate([extended_weights_list, extended_bias_list], axis=1)
-                    network_parameters_sequence_list = np.hstack([network_parameters_sequence_list, network_parameters_sequence])
+    elif version == 1 or version == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
+        lambda_net_structure = list(flatten([n, lambda_network_layers, 1]))                    
+        number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
+
+        X_data_list = []
+        for shaped_weights in tqdm(shaped_weights_list):        
+            network_parameters_sequence_list = np.array([]).reshape(number_of_paths, 0)    
+            for layer_index, (weights, biases) in zip(range(1, len(lambda_net_structure)), pairwise(shaped_weights)):
+
+                layer_neurons = lambda_net_structure[layer_index]    
+                previous_layer_neurons = lambda_net_structure[layer_index-1]
+
+                assert biases.shape[0] == layer_neurons
+                assert weights.shape[0]*weights.shape[1] == previous_layer_neurons*layer_neurons
+
+                bias_multiplier = number_of_paths//layer_neurons
+                weight_multiplier = number_of_paths//(previous_layer_neurons * layer_neurons)
+
+                extended_bias_list = []
+                for bias in biases:
+                    extended_bias = np.tile(bias, (bias_multiplier,1))
+                    extended_bias_list.extend(extended_bias)
 
 
-                number_of_paths = network_parameters_sequence_list.shape[0]
-                number_of_unique_paths = np.unique(network_parameters_sequence_list, axis=0).shape[0]
-                number_of_nonUnique_paths = number_of_paths-number_of_unique_paths
-                
-                if number_of_nonUnique_paths > 0:
-                    print("Number of non-unique rows: " + str(number_of_nonUnique_paths))
-                    print(network_parameters_sequence_list)
-                    
-                X_data_list.append(network_parameters_sequence_list)
-            X_data = np.array(X_data_list)          
-            
-            if version == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
-                X_data = np.transpose(X_data, (0, 2, 1))
-                
-        if lstm_layers != None and cnn_layers != None: #generate subsequences for cnn-lstm
-            subsequences = 1 #for each bias+weights
-            timesteps = X_train.shape[1]//subsequences
+                extended_weights_list = []
+                for weight in weights.flatten():
+                    extended_weights = np.tile(weight, (weight_multiplier,1))
+                    extended_weights_list.extend(extended_weights)      
 
-            X_data = X_data.reshape((X_data.shape[0], subsequences, timesteps, X_data.shape[2]))
+                network_parameters_sequence = np.concatenate([extended_weights_list, extended_bias_list], axis=1)
+                network_parameters_sequence_list = np.hstack([network_parameters_sequence_list, network_parameters_sequence])
 
-        return X_data, X_data_flat
+
+            number_of_paths = network_parameters_sequence_list.shape[0]
+            number_of_unique_paths = np.unique(network_parameters_sequence_list, axis=0).shape[0]
+            number_of_nonUnique_paths = number_of_paths-number_of_unique_paths
+
+            if number_of_nonUnique_paths > 0:
+                print("Number of non-unique rows: " + str(number_of_nonUnique_paths))
+                print(network_parameters_sequence_list)
+
+            X_data_list.append(network_parameters_sequence_list)
+        X_data = np.array(X_data_list)          
+
+        if version == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
+            X_data = np.transpose(X_data, (0, 2, 1))
+
+    if lstm_layers != None and cnn_layers != None: #generate subsequences for cnn-lstm
+        subsequences = 1 #for each bias+weights
+        timesteps = X_train.shape[1]//subsequences
+
+        X_data = X_data.reshape((X_data.shape[0], subsequences, timesteps, X_data.shape[2]))
+
+    return X_data, X_data_flat
