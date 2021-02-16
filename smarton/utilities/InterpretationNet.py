@@ -931,8 +931,8 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         identifier = np.concatenate([real_poly_fvs_str, lambda_train_data_str, lstsq_target_poly_str, inet_poly_fvs_str, lambda_model_preds_str, lstsq_lambda_preds_poly_str])
     else:
         columns_single.extend(['Lambda Model Preds', 'LSTSQ Lambda Poly FVs', 'I-Net Poly FVs', 'Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs'])
-        plot_data_single = pd.DataFrame(data=np.column_stack([vars_plot, lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_lambda_preds_poly]), columns=columns_single)
-        preds_plot_all = np.vstack([lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_lambda_preds_poly]).ravel()
+        plot_data_single = pd.DataFrame(data=np.column_stack([vars_plot, lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_target_poly]), columns=columns_single)
+        preds_plot_all = np.vstack([lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_target_poly]).ravel()
         vars_plot_all_preds = np.vstack([vars_plot for i in range(len(columns_single[n:]))])
 
         lambda_model_preds_str = np.array(['Lambda Model Preds' for i in range(eval_size_plot)])
