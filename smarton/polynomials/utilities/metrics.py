@@ -84,13 +84,23 @@ def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, force
         if interpretation_net_output_monomials == None or force_complete_poly_representation:
             monomial_values = tf.vectorized_map(lambda x: x[0]*x[1], (monomials_without_coefficient, polynomial))
         else:             
-            #indices, coefficients = tf.transpose(return_float_tensor_representation(list(map(list, pairwise(polynomial)))))         
+            #indices, coefficients = tf.transpose(return_float_tensor_representation(list(map(list, pairwise(polynomial)))))       
             indices = polynomial[::2]
             coefficients = polynomial[1::2]           
-            monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, tf.dtypes.cast(tf.round(x[0]), tf.int32))*x[1], (indices, coefficients)) 
+            #monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, tf.dtypes.cast(tf.round(tf.math.maximum(tf.math.minimum(x[0], sparsity-1), 0)), tf.int32))*x[1], (indices, coefficients)) 
+            indices = tf.where(tf.math.is_nan(indices), tf.zeros_like(indices), indices)
+            indices = tf.minimum(indices, sparsity-1)
+            indices = tf.maximum(indices,0)
+            indices = tf.dtypes.cast(tf.round(indices), tf.int32)
+            monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, x[0])*x[1], (indices, coefficients)) 
 
         polynomial_fv = tf.reduce_sum(monomial_values)     
 
+        #tf.print(coefficients)
+        #tf.print(indices)
+        #tf.print(monomial_values)
+        #tf.print(polynomial_fv)
+        
         return polynomial_fv
     return calculate_poly_fv_tf
 
@@ -151,6 +161,11 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
 
                 lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
 
+                ##### REMOVE NAN VALUES IN BOTH TENSORS #####
+                #lambda_fv = tf.boolean_mask(lambda_fv, tf.math.logical_and(tf.math.logical_not(tf.math.is_nan(lambda_fv)), tf.math.logical_not(tf.math.is_nan(polynomial_pred_fv_list))))
+                #polynomial_pred_fv_list = tf.boolean_mask(polynomial_pred_fv_list, tf.math.logical_and(tf.math.logical_not(tf.math.is_nan(polynomial_pred_fv_list)), tf.math.logical_not(tf.math.is_nan(lambda_fv))))
+                
+                
                 error = None
                 if loss == 'mae':
                     error = tf.keras.losses.MAE(lambda_fv, polynomial_pred_fv_list)
@@ -159,6 +174,9 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
                 else:
                     raise SystemExit('Unknown I-Net Metric: ' + loss)                
 
+                error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
+                #error = np.inf*tf.cast(tf.ones_like(error), tf.float64)
+                    
                 return error#tf.math.reduce_mean(tf.vectorized_map(error_function, (lambda_fv, polynomial_pred_fv_list)))
 
             return calculate_lambda_fv_error            
@@ -184,7 +202,7 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
         return tf.math.reduce_mean(tf.map_fn(calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
     
     
-    inet_lambda_fv_loss.__name__ = loss + inet_lambda_fv_loss.__name__
+    inet_lambda_fv_loss.__name__ = loss + '_' + inet_lambda_fv_loss.__name__
     return inet_lambda_fv_loss
 
 
@@ -218,6 +236,8 @@ def inet_poly_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identif
                 else:
                     raise SystemExit('Unknown I-Net Metric: ' + loss)
 
+                error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
+                    
                 return error#tf.math.reduce_mean(tf.vectorized_map(calculate_mae_single_input, (polynomial_true_fv_list, polynomial_pred_fv_list)))
 
             return calculate_poly_fv_error     
@@ -235,7 +255,7 @@ def inet_poly_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identif
 
         return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))    
     
-    inet_poly_fv_loss.__name__ = loss + inet_poly_fv_loss.__name__
+    inet_poly_fv_loss.__name__ = loss + '_' + inet_poly_fv_loss.__name__
     return inet_poly_fv_loss    
 
 
@@ -260,7 +280,13 @@ def inet_coefficient_loss_wrapper(loss):
         if interpretation_net_output_monomials != None:
             coefficient_indices = tf.map_fn(fn=lambda x: x[::2], elems=polynomial_pred, fn_output_signature=tf.float32)
             polynomial_pred = tf.map_fn(fn=lambda x: x[1::2], elems=polynomial_pred, fn_output_signature=tf.float32)
-            polynomial_true = tf.map_fn(fn=lambda x: tf.gather(x[0], tf.dtypes.cast(tf.round(x[1]), tf.int32)), elems=(polynomial_true, coefficient_indices), fn_output_signature=tf.float32)
+                        
+            coefficient_indices = tf.where(tf.math.is_nan(coefficient_indices), tf.zeros_like(coefficient_indices), coefficient_indices)
+            coefficient_indices = tf.minimum(coefficient_indices, sparsity-1)
+            coefficient_indices = tf.maximum(coefficient_indices,0)
+            coefficient_indices = tf.dtypes.cast(tf.round(coefficient_indices), tf.int32)
+                
+            polynomial_true = tf.map_fn(fn=lambda x: tf.gather(x[0], x[1]), elems=(polynomial_true, coefficient_indices), fn_output_signature=tf.float32)
 
         error = None
         if loss == 'mae':
@@ -269,10 +295,12 @@ def inet_coefficient_loss_wrapper(loss):
             error = r2_keras_loss(polynomial_true, polynomial_pred)  
         else:
             raise SystemExit('Unknown I-Net Metric: ' + loss)
+            
+        error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
                 
         return error#tf.keras.losses.MAE(polynomial_true, polynomial_pred)
 
-    inet_coefficient_loss.__name__ = loss + inet_coefficient_loss.__name__
+    inet_coefficient_loss.__name__ = loss + '_' + inet_coefficient_loss.__name__
     return inet_coefficient_loss   
 
 def r2_keras_loss(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):

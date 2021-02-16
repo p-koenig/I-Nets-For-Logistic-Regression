@@ -201,48 +201,12 @@ def flatten(l):
         else:
             yield el
             
-def print_polynomial_from_coefficients(coefficients, force_complete_poly_representation=False):
-
-    global list_of_monomial_identifiers
-    global interpretation_net_output_monomials
-    
-    string = ''
-    
-    try: #catch if this is lambda-net training
-        interpretation_net_output_monomials == None
-    except NameError:
-        interpretation_net_output_monomials = None
-        
-    if interpretation_net_output_monomials == None or force_complete_poly_representation:
-        for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
-            #string += str(np.round(coefficient, 2))
-            string += str(coefficient)
-            for index, variable_identifier in enumerate(identifier):  
-                if int(variable_identifier) == 1:
-                    #string += '*'
-                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
-                elif int(variable_identifier) > 1:
-                    #string += '*'
-                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
-            string += ' + '
-    else:
-        for monomial_index, coefficient in pairwise(coefficients):
-            #string += str(np.round(coefficient, 2))
-            string += str(coefficient)
-            for index, variable_identifier in enumerate(list_of_monomial_identifiers[int(np.round(monomial_index))]):  
-                if int(variable_identifier) == 1:
-                    #string += '*'
-                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
-                elif int(variable_identifier) > 1:
-                    #string += '*'
-                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
-            string += ' + '        
-    latex_string = "$" + string[:-3] + "$"
-    
-    return display(Math(latex_string))
+            
+def print_polynomial_from_coefficients(coefficient_array, force_complete_poly_representation=False, round_digits=None):
+    return display(get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_representation=force_complete_poly_representation, round_digits=round_digits))
 
 
-def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_representation=False):
+def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_representation=False, round_digits=None):
 
     global list_of_monomial_identifiers
     global interpretation_net_output_monomials
@@ -256,8 +220,10 @@ def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_re
         
     if interpretation_net_output_monomials == None or force_complete_poly_representation:
         for identifier, coefficient in zip(list_of_monomial_identifiers, coefficients):
-            #string += str(np.round(coefficient, 2))
-            string += str(coefficient)
+            if round_digits != None:
+                string += str(np.round(coefficient, round_digits))
+            else:
+                string += str(coefficient)
             for index, variable_identifier in enumerate(identifier):  
                 if int(variable_identifier) == 1:
                     #string += '*'
@@ -268,9 +234,12 @@ def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_re
             string += ' + '
     else:
         for monomial_index, coefficient in pairwise(coefficients):
-            #string += str(np.round(coefficient, 2))
-            string += str(coefficient)
-            for index, variable_identifier in enumerate(list_of_monomial_identifiers[int(np.round(monomial_index))]):  
+            if round_digits != None:
+                string += str(np.round(coefficient, round_digits))
+            else:
+                string += str(coefficient)
+            #REPLACE NAN
+            for index, variable_identifier in enumerate(list_of_monomial_identifiers[int(np.round(np.maximum(np.minimum(monomial_index, sparsity-1), 0)))]):  
                 if int(variable_identifier) == 1:
                     #string += '*'
                     string += 'abcdefghijklmnopqrstuvwxyz'[index]
@@ -281,7 +250,7 @@ def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_re
             
     return string[:-3]
 
-def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_representation=False):
+def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_representation=False, round_digits=None):
     
     global list_of_monomial_identifiers
     global interpretation_net_output_monomials
@@ -300,15 +269,22 @@ def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_re
     if interpretation_net_output_monomials == None or force_complete_poly_representation:   
         f = 0
         for monomial_identifier, monomial_coefficient in zip(list_of_monomial_identifiers, coefficient_array):
-            subfunction = monomial_coefficient
+            if round_digits != None:
+                subfunction = np.round(monomial_coefficient, round_digits)
+            else:
+                subfunction = monomial_coefficient        
             for i, monomial_exponent in enumerate(monomial_identifier):
                 subfunction *= variable_list[i]**float(monomial_exponent)
             f += subfunction
     else:
         f = 0
         for monomial_index, monomial_coefficient in pairwise(coefficient_array):
-            subfunction = monomial_coefficient
-            for i, monomial_exponent in enumerate(list_of_monomial_identifiers[int(np.round(monomial_index))]):
+            if round_digits != None:
+                subfunction = np.round(monomial_coefficient, round_digits)
+            else:
+                subfunction = monomial_coefficient
+                #REPLACE NAN
+            for i, monomial_exponent in enumerate(list_of_monomial_identifiers[int(np.round(np.maximum(np.minimum(monomial_index, sparsity-1), 0)))]):
                 subfunction *= variable_list[i]**float(monomial_exponent)
             f += subfunction    
     
@@ -399,7 +375,8 @@ def calcualate_function_value(coefficient_list, lambda_input_entry, force_comple
             value_without_coefficient_list.append(reduce(lambda x, y: x*y, value_without_coefficient))
             
         for index, coefficient in pairwise(coefficient_list):
-            result += coefficient* value_without_coefficient_list[int(np.round(index))]
+            #REPLACE NAN
+            result += coefficient* value_without_coefficient_list[int(np.round(np.maximum(np.minimum(index, sparsity-1), 0)))]
         
     return result
 
@@ -664,7 +641,8 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise
     np.random.seed(seed)
                 
     if polynomial_array is not None:
-        sympy_string = get_polynomial_string_from_coefficients(polynomial_array)
+        sympy_string = get_sympy_string_from_coefficients(polynomial_array)
+        sympy_function=sympify(sympy_string)
         
     if polynomial_array is None:
         sympy_function=''
@@ -674,9 +652,6 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise
             sympy_function+=c
         sympy_function=sympy_function[:-1]
         
-    if polynomial_array is not None:
-        sympy_function=sympify(sympy_string)
-    
     n_features=len(sympy_function.atoms(Symbol))
         
     eval_results=[]
