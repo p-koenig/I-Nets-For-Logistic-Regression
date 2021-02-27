@@ -35,6 +35,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from IPython.display import display, Math, Latex
 
 import os
+import shutil
 import pickle
     
 #udf import
@@ -450,13 +451,13 @@ def generate_paths(path_type='interpretation_net'):
     
     if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
         if fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
+            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
         elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
+            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
         elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_shuffle_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
+            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
         elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
-            seed_shuffle_string = '_NoFixSeedInit'
+            seed_init_string = '_NoFixSeedInit'
 
         early_stopping_string = ''
         if early_stopping_lambda:
@@ -469,7 +470,9 @@ def generate_paths(path_type='interpretation_net'):
         path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total) +
                                            lambda_net_identifier + 
                                            '_train_' + str(lambda_dataset_size) + 
-                                           '_var_' + str(n) + 
+                                           training_string + 
+                                           seed_init_string + '_' + str(RANDOM_SEED) +
+                                           '/var_' + str(n) + 
                                            '_d_' + str(d) + 
                                            '_sparsity_' + str(sample_sparsity) + 
                                            '_amin_' + str(a_min) + 
@@ -477,33 +480,38 @@ def generate_paths(path_type='interpretation_net'):
                                            '_xmin_' + str(x_min) + 
                                            '_xmax_' + str(x_max) + 
                                            '_xdist_' + str(x_distrib) + 
-                                           '_noise_' + str(noise_distrib) + '_' + str(noise) + 
-                                           training_string + 
-                                           seed_shuffle_string + '_' + str(RANDOM_SEED))        
+                                           '_noise_' + str(noise_distrib) + '_' + str(noise))        
 
         paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
     
     
     if path_type == 'interpretation_net': #Interpretation-Net   
             
-        interpretation_network_layers_string = 'dense' + str(dense_layers) + 'conv' + str(convolution_layers) + 'lstm' + str(lstm_layers)
+        interpretation_network_layers_string = 'dense' + ''.join([str(neurons) + '-' for neurons in dense_layers])
+        
+        if convolution_layers != None:
+            interpretation_network_layers_string += 'conv' + str(convolution_layers)
+        if lstm_layers != None:
+            interpretation_network_layers_string += 'lstm' + str(lstm_layers)
+
         interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(interpretation_net_output_shape) + '_drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + optimizer
         
-        path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier + 
-                                                   'lnets_' + str(interpretation_dataset_size) +
+        path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier +
+                                                   '/lnets_' + str(interpretation_dataset_size) +
                                                    lambda_net_identifier + 
                                                    '_train_' + str(lambda_dataset_size) + 
-                                                   '_var_' + str(n) + 
+                                                   training_string + 
+                                                   seed_init_string + '_' + str(RANDOM_SEED) +
+                                                   '/var_' + str(n) + 
                                                    '_d_' + str(d) + 
                                                    '_sparsity_' + str(sample_sparsity) + 
                                                    '_amin_' + str(a_min) + 
                                                    '_amax_' + str(a_max) + 
-                                                   '_xmin_' + str(x_min) + 
-                                                   '_xmax_' + str(x_max) + 
+                                                   #'_xmin_' + str(x_min) + 
+                                                   #'_xmax_' + str(x_max) + 
                                                    '_xdist_' + str(x_distrib) + 
-                                                   '_noise_' + str(noise_distrib) + '_' + str(noise) + 
-                                                   training_string + 
-                                                   seed_shuffle_string + '_' + str(RANDOM_SEED))         
+                                                   '_noise_' + str(noise_distrib) + '_' + str(noise))       
+        
         
         paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
         
@@ -515,8 +523,8 @@ def create_folders_inet():
     
     try:
         # Create target Directory
-        os.mkdir('./data/plotting/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
-        os.mkdir('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
+        os.makedirs('./data/plotting/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
+        os.makedirs('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
     except FileExistsError:
         pass
     
@@ -525,11 +533,11 @@ def generate_directory_structure():
     
     directory_names = ['parameters', 'plotting', 'saved_polynomial_lists', 'results', 'saved_models', 'weights', 'weights_training']
     if not os.path.exists('./data'):
-        os.mkdir('./data')
+        os.makedirs('./data')
     for directory_name in directory_names:
         path = './data/' + directory_name
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
             
             
 def generate_lambda_net_directory():
@@ -539,7 +547,7 @@ def generate_lambda_net_directory():
     #clear files
     try:
         # Create target Directory
-        os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
+        os.makedirs('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
 
     except FileExistsError:
         folder = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data']
@@ -554,12 +562,13 @@ def generate_lambda_net_directory():
                 print('Failed to delete %s. Reason: %s' % (file_path, e)) 
     try:
         # Create target Directory
-        os.mkdir('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
+        os.makedirs('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
     except FileExistsError:
         pass
     try:
         # Create target Directory
-        os.mkdir('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/X_test_lambda')
+        os.makedirs('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/X_test_lambda')
+        os.makedirs('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/y_test_lambda')
     except FileExistsError:
         pass        
     
@@ -656,7 +665,7 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise
         
     eval_results=[]
     
-    eval_dataset = generate_random_data_points(low=x_min, high=x_max, size=n_samples, variables=max(1, n_features), distrib=x_distrib)
+    eval_dataset = generate_random_data_points(low=x_min, high=x_max, size=n_samples, variables=max(1, n), distrib=x_distrib)
              
     if sympy_calculation:
         for i in range(n_samples):

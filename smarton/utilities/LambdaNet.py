@@ -100,7 +100,8 @@ class LambdaNetDataset():
     lstsq_lambda_pred_polynomial_list = None
     lstsq_target_polynomial_list = None    
         
-    test_data_list = None
+    X_test_data_list = None
+    y_test_data_list = None
     
     def __init__(self, lambda_net_list):
         
@@ -121,7 +122,8 @@ class LambdaNetDataset():
         self.lstsq_lambda_pred_polynomial_list = [lambda_net.lstsq_lambda_pred_polynomial for lambda_net in lambda_net_list]
         self.lstsq_target_polynomial_list = [lambda_net.lstsq_target_polynomial for lambda_net in lambda_net_list]
       
-        self.test_data_list = [lambda_net.test_data for lambda_net in lambda_net_list]
+        self.X_test_data_list = [lambda_net.X_test_data for lambda_net in lambda_net_list]
+        self.y_test_data_list = [lambda_net.y_test_data for lambda_net in lambda_net_list]
     
     def __repr__(self):
         return str(self.as_pandas().head())
@@ -159,7 +161,7 @@ class LambdaNetDataset():
         return np.array(target_poly_fvs_list)
     
     def return_target_poly_fvs_on_test_data(self):        
-        target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, self.test_data_list, force_complete_poly_representation=True)
+        target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True)
         
         return np.array(target_poly_fvs_list)
     
@@ -170,7 +172,7 @@ class LambdaNetDataset():
         return np.array(lstsq_lambda_pred_polynomial_fvs_list)
     
     def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self):
-        lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, self.test_data_list, force_complete_poly_representation=True)
+        lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True)
             
         return np.array(lstsq_lambda_pred_polynomial_fvs_list)
     
@@ -181,7 +183,7 @@ class LambdaNetDataset():
         return np.array(lstsq_target_polynomial_fvs_list)
     
     def return_lstsq_target_polynomial_fvs_on_test_data(self):
-        lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, self.test_data_list, force_complete_poly_representation=True)
+        lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True)
             
         return np.array(lstsq_target_polynomial_fvs_list)
     
@@ -244,7 +246,8 @@ class LambdaNet():
     lstsq_lambda_pred_polynomial = None
     lstsq_target_polynomial = None
     
-    test_data = None
+    X_test_data = None
+    y_test_data = None
     
     def __init__(self, line):
         assert isinstance(line, np.ndarray), 'line is no array: ' + str(line) 
@@ -272,10 +275,11 @@ class LambdaNet():
         paths_dict = generate_paths(path_type = 'interpretation_net')
         
         directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
-        path = directory + 'X_test_lambda/lambda_' + str(self.index) + '_test_data.npy'
-        
-        self.test_data = np.load(path)
-        assert self.test_data.shape[1] == n, 'test data has wrong shape ' + str(self.test_data.shape) + ' but required (x, ' + str(n) + ')'
+        path = directory + 'X_test_lambda/lambda_' + str(self.index) + '_X_test_data.npy'
+        self.X_test_data = np.load(path)
+        assert self.X_test_data.shape[1] == n, 'test data has wrong shape ' + str(self.X_test_data.shape) + ' but required (x, ' + str(n) + ')'
+        path = directory + 'y_test_lambda/lambda_' + str(self.index) + '_y_test_data.npy'
+        self.y_test_data = np.load(path)
         
     def __repr__(self):
         return str(self.weights)
@@ -289,7 +293,7 @@ class LambdaNet():
         return lambda_network_preds
     
     def make_prediction_on_test_data(self):        
-        lambda_network_preds = weights_to_pred(self.weights, self.test_data)
+        lambda_network_preds = weights_to_pred(self.weights, self.X_test_data)
         
         return lambda_network_preds               
         
@@ -300,7 +304,7 @@ class LambdaNet():
         return target_poly_fvs
     
     def return_target_poly_fvs_on_test_data(self):
-        target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [self.test_data], force_complete_poly_representation=True)
+        target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [self.X_test_data], force_complete_poly_representation=True)
     
         return target_poly_fvs    
     
@@ -313,7 +317,7 @@ class LambdaNet():
         return lstsq_lambda_pred_polynomial_fvs
     
     def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self):
-        lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [self.test_data], force_complete_poly_representation=True)
+        lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [self.X_test_data], force_complete_poly_representation=True)
     
         return lstsq_lambda_pred_polynomial_fvs     
     
@@ -324,7 +328,7 @@ class LambdaNet():
         return lstsq_target_polynomial_fvs
     
     def return_lstsq_target_polynomial_fvs_on_test_data(self):
-        lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [self.test_data], force_complete_poly_representation=True)
+        lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [self.X_test_data], force_complete_poly_representation=True)
     
         return lstsq_target_polynomial_fvs  
     
@@ -669,10 +673,13 @@ def train_nn(lambda_index,
     if printing:        
         for i, (weights_for_epoch, polynomial_lstsq_pred_for_epoch, polynomial_lstsq_true_for_epoch) in enumerate(zip(weights, polynomial_lstsq_pred_list, polynomial_lstsq_true_list)):        
             if each_epochs_save == None or each_epochs_save==epochs_lambda:
-                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(epochs_lambda).zfill(3) + '.txt'
+                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + '_epoch_' + str(epochs_lambda).zfill(3) + '.txt'
             else:
                 index = (i+1)*each_epochs_save if each_epochs_save==1 else i*each_epochs_save if i > 1 else each_epochs_save if i==1 else 1
-                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + paths_dict['path_identifier_lambda_net_data'] + '_epoch_' + str(index).zfill(3) + '.txt'
+                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + '_epoch_' + str(index).zfill(3) + '.txt'
+                
+            
+                
             with open(path, 'a') as text_file: 
                 text_file.write(str(lambda_index))
                 text_file.write(', ' + str(current_seed))
@@ -693,8 +700,11 @@ def train_nn(lambda_index,
         text_file.close() 
 
         directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
-        path = directory + 'X_test_lambda/lambda_' + str(lambda_index) + '_test_data'
+        path = directory + 'X_test_lambda/lambda_' + str(lambda_index) + '_X_test_data'
         np.save(path, X_test_lambda)
+        path = directory + 'y_test_lambda/lambda_' + str(lambda_index) + '_y_test_data'
+        np.save(path, y_test_real_lambda)
+
             
     if return_model:
         return (lambda_index, current_seed, polynomial, polynomial_lstsq_pred_list, polynomial_lstsq_true_list), scores_list, pred_list, history, model

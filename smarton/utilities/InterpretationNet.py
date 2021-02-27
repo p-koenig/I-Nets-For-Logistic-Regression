@@ -299,51 +299,44 @@ def train_nn_and_pred(lambda_net_train_dataset,
     
     if nas:
         from tensorflow.keras.utils import CustomObjectScope
-        with CustomObjectScope({'custom_loss': loss_function}):                
+        with CustomObjectScope({'custom_loss': loss_function}):
             if nas_type == 'SEQUENTIAL':
-                directory = './data/autokeras/automodel/' + nas_type + '_' + str(n) + 'n' + str(d) + '_d' + paths_dict['path_identifier_interpretation_net_data']
+                input_node = ak.Input()
+                output_node = ak.DenseBlock()(input_node)
+                output_node = ak.RegressionHead()(output_node)
+            elif nas_type == 'CNN': 
+                input_node = ak.Input()
+                output_node = ak.ConvBlock()(input_node)
+                output_node = ak.DenseBlock()(output_node)
+                output_node = ak.RegressionHead()(output_node)
+            elif nas_type == 'LSTM':
+                input_node = ak.Input()
+                output_node = ak.RNNBlock()(input_node)
+                output_node = ak.DenseBlock()(output_node)
+                output_node = ak.RegressionHead()(output_node)
+            elif nas_type == 'CNN-LSTM': 
+                input_node = ak.Input()
+                output_node = ak.ConvBlock()(input_node)
+                output_node = ak.RNNBlock()(output_node)
+                output_node = ak.DenseBlock()(output_node)
+                output_node = ak.RegressionHead()(output_node)  
+            elif nas_type == 'CNN-LSTM-parallel':                         
+                input_node = ak.Input()
+                output_node1 = ak.ConvBlock()(input_node)
+                output_node2 = ak.RNNBlock()(input_node)
+                output_node = ak.Merge()([output_node1, output_node2])
+                output_node = ak.DenseBlock()(output_node)
+                output_node = ak.RegressionHead()(output_node)  
 
-                auto_model = ak.StructuredDataRegressor(
-                    loss='custom_loss',
-                    #output_dim=interpretation_net_output_shape,
-                    overwrite=True,
-                    max_trials=nas_trials,
-                    directory=directory,
-                    seed=RANDOM_SEED)
-            else:
-                if nas_type == 'CNN': 
-                    input_node = ak.Input()
-                    output_node = ak.ConvBlock()(input_node)
-                    output_node = ak.DenseBlock()(output_node)
-                    output_node = ak.RegressionHead()(output_node)
-                if nas_type == 'LSTM':
-                    input_node = ak.Input()
-                    output_node = ak.RNNBlock()(input_node)
-                    output_node = ak.DenseBlock()(output_node)
-                    output_node = ak.RegressionHead()(output_node)
-                elif nas_type == 'CNN-LSTM': 
-                    input_node = ak.Input()
-                    output_node = ak.ConvBlock()(input_node)
-                    output_node = ak.RNNBlock()(output_node)
-                    output_node = ak.DenseBlock()(output_node)
-                    output_node = ak.RegressionHead()(output_node)  
-                elif nas_type == 'CNN-LSTM-parallel':                         
-                    input_node = ak.Input()
-                    output_node1 = ak.ConvBlock()(input_node)
-                    output_node2 = ak.RNNBlock()(input_node)
-                    output_node = ak.Merge()([output_node1, output_node2])
-                    output_node = ak.DenseBlock()(output_node)
-                    output_node = ak.RegressionHead()(output_node)  
+            directory = './data/autokeras/' + nas_type + '_' + paths_dict['path_identifier_interpretation_net_data']
 
-                directory = './data/autokeras/automodel/' + nas_type + '_' + str(n) + 'n' + str(d) + '_d' + paths_dict['path_identifier_interpretation_net_data']
-
-                auto_model = ak.AutoModel(inputs=input_node, 
-                                    outputs=output_node,
-                                    loss='custom_loss',
-                                    overwrite=True,
-                                    max_trials=nas_trials,
-                                    directory=directory,
-                                    seed=RANDOM_SEED)
+            auto_model = ak.AutoModel(inputs=input_node, 
+                                outputs=output_node,
+                                loss='custom_loss',
+                                overwrite=True,
+                                max_trials=nas_trials,
+                                directory=directory,
+                                seed=RANDOM_SEED)
 
             ############################## PREDICTION ###############################
             
@@ -372,11 +365,11 @@ def train_nn_and_pred(lambda_net_train_dataset,
 
         for neurons in dense_layers[1:]:
             model.add(Dense(neurons, activation='relu'))
-            #if dropout > 0:
-                #model.add(Dropout(dropout))
+            if dropout > 0:
+                model.add(Dropout(dropout))
 
-        if dropout > 0:
-            model.add(Dropout(dropout))
+        #if dropout > 0:
+            #model.add(Dropout(dropout))
         
         model.add(Dense(interpretation_net_output_shape)) 
 
@@ -384,7 +377,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
         callbacks = return_callbacks_from_string(callback_names)            
 
         if optimizer == "custom":
-            optimizer = keras.optimizers.Adam(learning_rate=0.0001)
+            optimizer = keras.optimizers.Adam(learning_rate=2e-05)
 
         model.compile(optimizer=optimizer,
                       loss=loss_function,
@@ -426,8 +419,8 @@ def train_nn_and_pred(lambda_net_train_dataset,
     lstsq_target_polynomial_test_data_fvs_test = lambda_net_test_dataset.return_lstsq_target_polynomial_fvs_on_test_data() 
         
     
-    inet_poly_test_data_fvs_valid = parallel_fv_calculation_from_polynomial(y_valid_pred, lambda_net_valid_dataset.test_data_list)
-    inet_poly_test_data_fvs_test = parallel_fv_calculation_from_polynomial(y_test_pred, lambda_net_test_dataset.test_data_list) 
+    inet_poly_test_data_fvs_valid = parallel_fv_calculation_from_polynomial(y_valid_pred, lambda_net_valid_dataset.X_test_data_list)
+    inet_poly_test_data_fvs_test = parallel_fv_calculation_from_polynomial(y_test_pred, lambda_net_test_dataset.X_test_data_list) 
     
     
     function_values_valid = [lambda_test_data_preds_valid, 
@@ -703,9 +696,9 @@ def generate_history_plots(history_list, by='epochs'):
         plt.xlabel('epoch')
         plt.legend(['train', 'valid'], loc='upper left')
         if by == 'epochs':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + paths_dict['path_identifier_interpretation_net_data'] + '_epoch_' + str(index).zfill(3) + '.png')
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] + '_epoch_' + str(index).zfill(3) + '.png')
         elif by == 'samples':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] +  '_' + paths_dict['path_identifier_interpretation_net_data'] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')
         plt.clf()
         
         plt.plot(history['loss'])
@@ -715,9 +708,9 @@ def generate_history_plots(history_list, by='epochs'):
         plt.xlabel('epoch')
         plt.legend(['train', 'valid'], loc='upper left')
         if by == 'epochs':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + paths_dict['path_identifier_interpretation_net_data'] + '_epoch_' + str(index).zfill(3) + '.png')    
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + '_epoch_' + str(index).zfill(3) + '.png')    
         elif by == 'samples':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + paths_dict['path_identifier_interpretation_net_data'] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')    
+            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + '_samples_' + str(samples_list[index]).zfill(5) + '.png')    
         if i < len(history_list)-1:
             plt.clf() 
             
@@ -727,17 +720,17 @@ def save_results(history_list, scores_list, by='epochs'):
     paths_dict = generate_paths(path_type = 'interpretation_net')
     
     if by == 'epochs':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
     elif by == 'samples':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
     with open(path, 'wb') as f:
         pickle.dump(history_list, f, protocol=2)   
         
         
     if by == 'epochs':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_epochs' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_epochs' + '.pkl'
     elif by == 'samples':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_samples' + paths_dict['path_identifier_interpretation_net_data'] + '.pkl'    
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_samples' + '.pkl'    
     with open(path, 'wb') as f:
         pickle.dump(scores_list, f, protocol=2)  
         
@@ -806,9 +799,9 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
         location = './data/plotting/'
         folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
         if samples_list == None:
-            file = 'multi_epoch_REAL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
+            file = 'multi_epoch_REAL' + '.pdf'
         else:
-            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_REAL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
+            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_REAL' + '.pdf'
 
         path = location + folder + file
 
@@ -863,9 +856,9 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
         location = './data/plotting/'
         folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
         if samples_list == None:
-            file = 'multi_epoch_MODEL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
+            file = 'multi_epoch_MODEL' + '.pdf'
         else: 
-            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_MODEL_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'
+            file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) +'_MODEL' + '.pdf'
 
         path = location + folder + file
 
@@ -902,7 +895,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     lambda_model_preds = function_values_test_list[-1][0][rand_index].ravel()
     lstsq_lambda_preds_poly = function_values_test_list[-1][2][rand_index]
     inet_poly_fvs = function_values_test_list[-1][4][rand_index]  
-    lambda_train_data = calculate_function_values_from_polynomial(polynomial_target, lambda_net_test_dataset_list[-1].test_data_list[rand_index], force_complete_poly_representation=True)
+    lambda_train_data = lambda_net_test_dataset_list[-1].y_test_data_list[rand_index].ravel()[:250]
     
     x_vars = ['x' + str(i) for i in range(1, n+1)]
 
@@ -913,7 +906,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
 
     eval_size_plot = inet_poly_fvs.shape[0]
     lambda_train_data_size = lambda_train_data.shape[0]
-    vars_plot = lambda_net_test_dataset_list[-1].test_data_list[rand_index]    
+    vars_plot = lambda_net_test_dataset_list[-1].X_test_data_list[rand_index]    
     
     if evaluate_with_real_function:
         columns_single.extend(['Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs', 'I-Net Poly FVs', 'Lambda Model Preds', 'LSTSQ Lambda Poly FVs'])
@@ -962,9 +955,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                       height=7.5,
                       aspect=2)
         if evaluate_with_real_function:
-            file = 'pp3in1_REAL_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'        
+            file = 'pp3in1_REAL_' + str(rand_index) + '.pdf'        
         else:
-            file = 'pp3in1_PRED_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'            
+            file = 'pp3in1_PRED_' + str(rand_index) + '.pdf'            
         
     elif plot_type == 2:
 
@@ -976,9 +969,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                           height=10//n)
         
         if evaluate_with_real_function:        
-            file = 'pp3in1_extended_REAL_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'        
+            file = 'pp3in1_extended_REAL_' + str(rand_index) + '.pdf'        
         else:
-            file = 'pp3in1_extended_PRED_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'  
+            file = 'pp3in1_extended_PRED_' + str(rand_index) + '.pdf'  
         
     elif plot_type == 3:
         
@@ -990,9 +983,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                           aspect=3)
 
         if evaluate_with_real_function:        
-            file = 'pp1_REAL_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'        
+            file = 'pp1_REAL_' + str(rand_index) + '.pdf'        
         else:
-            file = 'pp1_PRED_' + str(rand_index) + '_' + paths_dict['path_identifier_interpretation_net_data'] + '.pdf'            
+            file = 'pp1_PRED_' + str(rand_index) + '.pdf'            
         
     path = location + folder + file
     pp.savefig(path, format='pdf')
