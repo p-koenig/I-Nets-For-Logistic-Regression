@@ -234,19 +234,33 @@ def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_re
                     string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
             string += ' + '
     else:
-        for monomial_index, coefficient in pairwise(coefficients):
+        # Convert output array to monomial identifier index and corresponding coefficient
+        assert coefficient_array.shape[0] == interpretation_net_output_shape
+        
+        coefficients = coefficient_array[:interpretation_net_output_monomials]
+        index_array = coefficient_array[interpretation_net_output_monomials:]
+        
+        
+        assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
+        index_list = np.split(index_array, interpretation_net_output_monomials)
+        
+        assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
+        indices = np.argmax(index_list, axis=1)        
+        
+        
+        for monomial_index, monomial_coefficient in zip(indices, coefficients):
             if round_digits != None:
-                string += str(np.round(coefficient, round_digits))
+                string += str(np.round(monomial_coefficient, round_digits))
             else:
-                string += str(coefficient)
-            #REPLACE NAN
-            for index, variable_identifier in enumerate(list_of_monomial_identifiers[int(np.round(np.maximum(np.minimum(monomial_index, sparsity-1), 0)))]):  
-                if int(variable_identifier) == 1:
+                string += str(monomial_coefficient)
+            #REPLACE NAN            
+            for i, monomial_exponent in enumerate(list_of_monomial_identifiers[monomial_index]):
+                if int(monomial_exponent) == 1:
                     #string += '*'
-                    string += 'abcdefghijklmnopqrstuvwxyz'[index]
-                elif int(variable_identifier) > 1:
+                    string += 'abcdefghijklmnopqrstuvwxyz'[i]
+                elif int(monomial_exponent) > 1:
                     #string += '*'
-                    string += 'abcdefghijklmnopqrstuvwxyz'[index] + '^' + str(variable_identifier)
+                    string += 'abcdefghijklmnopqrstuvwxyz'[i] + '^' + str(monomial_exponent)                  
             string += ' + '   
             
     return string[:-3]
@@ -279,13 +293,26 @@ def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_re
             f += subfunction
     else:
         f = 0
-        for monomial_index, monomial_coefficient in pairwise(coefficient_array):
+        
+        # Convert output array to monomial identifier index and corresponding coefficient
+        assert coefficient_array.shape[0] == interpretation_net_output_shape
+        
+        coefficients = coefficient_array[:interpretation_net_output_monomials]
+        index_array = coefficient_array[interpretation_net_output_monomials:]
+        
+        assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
+        index_list = np.split(index_array, interpretation_net_output_monomials)
+        
+        assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
+        indices = np.argmax(index_list, axis=1)
+        
+        for monomial_index, monomial_coefficient in zip(indices, coefficients):
             if round_digits != None:
                 subfunction = np.round(monomial_coefficient, round_digits)
             else:
                 subfunction = monomial_coefficient
                 #REPLACE NAN
-            for i, monomial_exponent in enumerate(list_of_monomial_identifiers[int(np.round(np.maximum(np.minimum(monomial_index, sparsity-1), 0)))]):
+            for i, monomial_exponent in enumerate(list_of_monomial_identifiers[monomial_index]):
                 subfunction *= variable_list[i]**float(monomial_exponent)
             f += subfunction    
     
@@ -368,16 +395,29 @@ def calcualate_function_value(coefficient_list, lambda_input_entry, force_comple
                 print(value_without_coefficient)
     else:
         
-        assert coefficient_list.shape[0] == interpretation_net_output_monomials*2
+        # Convert output array to monomial identifier index and corresponding coefficient
+        assert coefficient_list.shape[0] == interpretation_net_output_shape
         
+        coefficients = coefficient_list[:interpretation_net_output_monomials]
+        index_array = coefficient_list[interpretation_net_output_monomials:]
+        
+        assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
+        index_list = np.split(index_array, interpretation_net_output_monomials)
+        
+        assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
+        indices = np.argmax(index_list, axis=1)
+
+        # Calculate monomial values without coefficient
         value_without_coefficient_list = []
-        for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
+        for coefficient_multipliers in list_of_monomial_identifiers:
             value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
             value_without_coefficient_list.append(reduce(lambda x, y: x*y, value_without_coefficient))
-            
-        for index, coefficient in pairwise(coefficient_list):
-            #REPLACE NAN
-            result += coefficient* value_without_coefficient_list[int(np.round(np.maximum(np.minimum(index, sparsity-1), 0)))]
+        value_without_coefficient_by_indices = np.array(value_without_coefficient_list)[[indices]]
+
+        # Select relevant monomial values without coefficient and calculate final polynomial
+        for coefficient, monomial_index in zip(coefficients, indices):
+            #TODOOOOO
+            result += coefficient * value_without_coefficient_list[monomial_index]
         
     return result
 
@@ -461,7 +501,7 @@ def generate_paths(path_type='interpretation_net'):
 
         early_stopping_string = ''
         if early_stopping_lambda:
-            early_stopping_string = 'ES'
+            early_stopping_string = '_ES' + str(early_stopping_min_delta_lambda) + '_'
 
             
         lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
@@ -534,6 +574,11 @@ def generate_directory_structure():
     directory_names = ['parameters', 'plotting', 'saved_polynomial_lists', 'results', 'saved_models', 'weights', 'weights_training']
     if not os.path.exists('./data'):
         os.makedirs('./data')
+        
+        text_file = open('./data/.gitignore', 'w')
+        text_file.write('*')
+        text_file.close()  
+        
     for directory_name in directory_names:
         path = './data/' + directory_name
         if not os.path.exists(path):
@@ -565,12 +610,6 @@ def generate_lambda_net_directory():
         os.makedirs('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
     except FileExistsError:
         pass
-    try:
-        # Create target Directory
-        os.makedirs('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/X_test_lambda')
-        os.makedirs('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/y_test_lambda')
-    except FileExistsError:
-        pass        
     
     
 ######################################################################################################################################################################################################################

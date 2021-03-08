@@ -22,10 +22,13 @@ from sklearn.model_selection import train_test_split
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
 from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 
-
+from tensorflow.keras.layers import Dense, concatenate
+from tensorflow.keras import Input, Model
 import tensorflow as tf
 
 import autokeras as ak
+from autokeras import adapters, analysers
+from tensorflow.python.util import nest
 
 import random 
 
@@ -93,7 +96,72 @@ def initialize_InterpretationNet_config_from_curent_notebook(config):
         monomial_identifier_values = list(map(int, list(monomial_identifier)))
         if sum(monomial_identifier_values) <= d:
             list_of_monomial_identifiers.append(monomial_identifier)
-    
+            
+            
+#######################################################################################################################################################
+######################################################################AUTOKERAS BLOCKS#################################################################
+#######################################################################################################################################################
+
+class CombinedOutputInet(ak.Head):
+
+    def __init__(self, loss = None, metrics = None, **kwargs):
+        super().__init__(loss=loss, metrics=metrics, **kwargs)
+        self.output_dim = None
+
+    def get_config(self):
+        config = super().get_config()
+        return config
+
+    def build(self, hp, inputs=None):    
+        inputs = nest.flatten(inputs)
+        if len(inputs) == 1:
+            return inputs
+        #output_node = layers.Concatenate()(inputs)
+        output_node = concatenate(inputs)           
+        return output_node
+
+    def config_from_analyser(self, analyser):
+        super().config_from_analyser(analyser)
+        self._add_one_dimension = len(analyser.shape) == 1
+
+    def get_adapter(self):
+        return adapters.RegressionAdapter(name=self.name)
+
+    def get_analyser(self):
+        return analysers.RegressionAnalyser(
+            name=self.name, output_dim=self.output_dim
+        )
+
+    def get_hyper_preprocessors(self):
+        hyper_preprocessors = []
+        if self._add_one_dimension:
+            hyper_preprocessors.append(
+                hpps_module.DefaultHyperPreprocessor(preprocessors.AddOneDimension())
+            )
+        return hyper_preprocessors            
+
+class ClassificationDenseInet(ak.Block):
+
+    def build(self, hp, inputs=None):
+        # Get the input_node from inputs.
+        input_node = tf.python.util.nest.flatten(inputs)[0]
+        layer = Dense(sparsity, activation='softmax')
+        output_node = layer(input_node)
+        return output_node    
+
+class RegressionDenseInet(ak.Block):
+
+    def build(self, hp, inputs=None):
+        # Get the input_node from inputs.
+        input_node = tf.python.util.nest.flatten(inputs)[0]
+        layer = Dense(interpretation_net_output_monomials)
+        output_node = layer(input_node)
+        return output_node     
+
+
+
+
+
 #######################################################################################################################################################
 #################################################################I-NET RESULT CALCULATION##############################################################
 #######################################################################################################################################################
@@ -190,11 +258,14 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
             model_list)
         
     
+
+    
+    
+    
     
 #######################################################################################################################################################
 ######################################################################I-NET TRAINING###################################################################
 #######################################################################################################################################################
-
 
 def train_nn_and_pred(lambda_net_train_dataset,
                       lambda_net_valid_dataset,
@@ -204,6 +275,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
    
     global optimizer
     global loss
+    global data_reshape_version
     
     paths_dict = generate_paths(path_type = 'interpretation_net')
     
@@ -223,6 +295,8 @@ def train_nn_and_pred(lambda_net_train_dataset,
         y_test = np.array(lambda_net_test_dataset.lstsq_lambda_pred_polynomial_list)
         
         if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+            if data_reshape_version == None:
+                data_reshape_version = 2
             X_train, X_train_flat = restructure_data_cnn_lstm(X_train, version=data_reshape_version, subsequences=None)
             X_valid, X_valid_flat = restructure_data_cnn_lstm(X_valid, version=data_reshape_version, subsequences=None)
             X_test, X_test_flat = restructure_data_cnn_lstm(X_test, version=data_reshape_version, subsequences=None)
@@ -260,7 +334,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
                 metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model))            
             
-            if data_reshape_version != None:
+            if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
             else:
@@ -287,7 +361,7 @@ def train_nn_and_pred(lambda_net_train_dataset,
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
                 metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)) 
             
-            if data_reshape_version != None:
+            if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
             else:
@@ -302,31 +376,97 @@ def train_nn_and_pred(lambda_net_train_dataset,
         with CustomObjectScope({'custom_loss': loss_function}):
             if nas_type == 'SEQUENTIAL':
                 input_node = ak.Input()
-                output_node = ak.DenseBlock()(input_node)
-                output_node = ak.RegressionHead()(output_node)
+                hidden_node = ak.DenseBlock()(input_node)
+                
+                        
+                if interpretation_net_output_monomials == None:
+                    output_node = ak.RegressionHead()(hidden_node)  
+                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                else:
+                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                    outputs_coeff = RegressionDenseInet()(hidden_node)  
+                    outputs_list = [outputs_coeff]
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                        outputs_list.append(outputs_identifer)
+
+                    output_node = CombinedOutputInet()(outputs_list)
+
             elif nas_type == 'CNN': 
                 input_node = ak.Input()
-                output_node = ak.ConvBlock()(input_node)
-                output_node = ak.DenseBlock()(output_node)
-                output_node = ak.RegressionHead()(output_node)
+                hidden_node = ak.ConvBlock()(input_node)
+                hidden_node = ak.DenseBlock()(hidden_node)
+                
+                if interpretation_net_output_monomials == None:
+                    output_node = ak.RegressionHead()(hidden_node)  
+                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                else:
+                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                    outputs_coeff = RegressionDenseInet()(hidden_node)  
+                    outputs_list = [outputs_coeff]
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                        outputs_list.append(outputs_identifer)
+
+                    output_node = CombinedOutputInet()(outputs_list)
+                    
+                    
             elif nas_type == 'LSTM':
                 input_node = ak.Input()
-                output_node = ak.RNNBlock()(input_node)
-                output_node = ak.DenseBlock()(output_node)
-                output_node = ak.RegressionHead()(output_node)
+                hidden_node = ak.RNNBlock()(input_node)
+                hidden_node = ak.DenseBlock()(hidden_node)
+                
+                if interpretation_net_output_monomials == None:
+                    output_node = ak.RegressionHead()(hidden_node)  
+                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                else:
+                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                    outputs_coeff = RegressionDenseInet()(hidden_node)  
+                    outputs_list = [outputs_coeff]
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                        outputs_list.append(outputs_identifer)
+
+                    output_node = CombinedOutputInet()(outputs_list)            
+                
             elif nas_type == 'CNN-LSTM': 
                 input_node = ak.Input()
                 output_node = ak.ConvBlock()(input_node)
                 output_node = ak.RNNBlock()(output_node)
                 output_node = ak.DenseBlock()(output_node)
-                output_node = ak.RegressionHead()(output_node)  
+
+                if interpretation_net_output_monomials == None:
+                    output_node = ak.RegressionHead()(hidden_node)  
+                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                else:
+                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                    outputs_coeff = RegressionDenseInet()(hidden_node)  
+                    outputs_list = [outputs_coeff]
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                        outputs_list.append(outputs_identifer)
+
+                    output_node = CombinedOutputInet()(outputs_list)           
+                
             elif nas_type == 'CNN-LSTM-parallel':                         
                 input_node = ak.Input()
-                output_node1 = ak.ConvBlock()(input_node)
-                output_node2 = ak.RNNBlock()(input_node)
-                output_node = ak.Merge()([output_node1, output_node2])
-                output_node = ak.DenseBlock()(output_node)
-                output_node = ak.RegressionHead()(output_node)  
+                hidden_node1 = ak.ConvBlock()(input_node)
+                hidden_node2 = ak.RNNBlock()(input_node)
+                hidden_node = ak.Merge()([hidden_node1, hidden_node2])
+                hidden_node = ak.DenseBlock()(hidden_node)
+                
+                if interpretation_net_output_monomials == None:
+                    output_node = ak.RegressionHead()(hidden_node)  
+                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                else:
+                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                    outputs_coeff = RegressionDenseInet()(hidden_node)  
+                    outputs_list = [outputs_coeff]
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                        outputs_list.append(outputs_identifer)
+
+                    output_node = CombinedOutputInet()(outputs_list)            
 
             directory = './data/autokeras/' + nas_type + '_' + paths_dict['path_identifier_interpretation_net_data']
 
@@ -356,24 +496,37 @@ def train_nn_and_pred(lambda_net_train_dataset,
 
         
     else: 
-        model = Sequential()
-
-        model.add(Dense(dense_layers[0], activation='relu', input_dim=X_train.shape[1])) #1024
-
-        #if dropout > 0:
-            #model.add(Dropout(dropout))
-
-        for neurons in dense_layers[1:]:
-            model.add(Dense(neurons, activation='relu'))
-            if dropout > 0:
-                model.add(Dropout(dropout))
-
-        #if dropout > 0:
-            #model.add(Dropout(dropout))
+        inputs = Input(shape=X_train.shape[1], name='input')
         
-        model.add(Dense(interpretation_net_output_shape)) 
+        hidden = Dense(dense_layers[0], activation='relu', name='hidden1_' + str(dense_layers[0]))(inputs)
 
+        if dropout > 0:
+            hidden = Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
 
+        for layer_index, neurons in enumerate(dense_layers[1:]):
+            if dropout > 0 and layer_index > 0:
+                hidden = Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)            
+            hidden = Dense(neurons, activation='relu', name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+                
+        if dropout_output > 0:
+            hidden = Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)            
+        
+        if interpretation_net_output_monomials == None:
+            outputs = Dense(sparsity, name='output_' + str(neurons))(hidden)
+        else:
+            outputs_coeff = Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
+
+            outputs_list = [outputs_coeff]
+            for outputs_index in range(interpretation_net_output_monomials):
+                outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                outputs_list.append(outputs_identifer)
+                
+                
+            outputs = concatenate(outputs_list, name='output_combined')
+            
+            
+        model = Model(inputs=inputs, outputs=outputs)
+            
         callbacks = return_callbacks_from_string(callback_names)            
 
         if optimizer == "custom":
@@ -895,7 +1048,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     lambda_model_preds = function_values_test_list[-1][0][rand_index].ravel()
     lstsq_lambda_preds_poly = function_values_test_list[-1][2][rand_index]
     inet_poly_fvs = function_values_test_list[-1][4][rand_index]  
-    lambda_train_data = lambda_net_test_dataset_list[-1].y_test_data_list[rand_index].ravel()[:250]
+    lambda_train_data = lambda_net_test_dataset_list[-1].y_test_data_list[rand_index].ravel()
     
     x_vars = ['x' + str(i) for i in range(1, n+1)]
 
@@ -906,7 +1059,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
 
     eval_size_plot = inet_poly_fvs.shape[0]
     lambda_train_data_size = lambda_train_data.shape[0]
-    vars_plot = lambda_net_test_dataset_list[-1].X_test_data_list[rand_index]    
+    vars_plot = lambda_net_test_dataset_list[-1].X_test_data_list[rand_index]
     
     if evaluate_with_real_function:
         columns_single.extend(['Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs', 'I-Net Poly FVs', 'Lambda Model Preds', 'LSTSQ Lambda Poly FVs'])

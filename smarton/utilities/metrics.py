@@ -79,34 +79,34 @@ def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, force
 
     def calculate_poly_fv_tf(evaluation_entry):        
         
+        
         monomials_without_coefficient = tf.vectorized_map(calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry), (list_of_monomial_identifiers))      
         
         if interpretation_net_output_monomials == None or force_complete_poly_representation:
             monomial_values = tf.vectorized_map(lambda x: x[0]*x[1], (monomials_without_coefficient, polynomial))
-        else:             
-            #indices, coefficients = tf.transpose(return_float_tensor_representation(list(map(list, pairwise(polynomial)))))       
-            indices = polynomial[::2]
-            coefficients = polynomial[1::2]           
-            #monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, tf.dtypes.cast(tf.round(tf.math.maximum(tf.math.minimum(x[0], sparsity-1), 0)), tf.int32))*x[1], (indices, coefficients)) 
-            indices = tf.where(tf.math.is_nan(indices), tf.zeros_like(indices), indices)
-            indices = tf.minimum(indices, sparsity-1)
-            indices = tf.maximum(indices,0)
-            indices = tf.dtypes.cast(tf.round(indices), tf.int32)
-            monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, x[0])*x[1], (indices, coefficients)) 
+        else: 
+            coefficients = polynomial[:interpretation_net_output_monomials]
+            index_array = polynomial[interpretation_net_output_monomials:]
+            
+            assert index_array.shape[0] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices : ' + str(index_array.shape)
+            
+            index_list = tf.split(index_array, interpretation_net_output_monomials)
+            
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(index_list))
+            
+            indices = tf.argmax(index_list, axis=1) 
 
+            monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, x[0])*x[1], (indices, coefficients)) 
+            
+            
         polynomial_fv = tf.reduce_sum(monomial_values)     
 
-        #tf.print(coefficients)
-        #tf.print(indices)
-        #tf.print(monomial_values)
-        #tf.print(polynomial_fv)
-        
         return polynomial_fv
     return calculate_poly_fv_tf
 
 #calculate intermediate term (without coefficient multiplication)
 def calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry):
-    def calculate_monomial_without_coefficient_tf(coefficient_multiplier_term):      
+    def calculate_monomial_without_coefficient_tf(coefficient_multiplier_term) :      
 
         return tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**x[1], (evaluation_entry, coefficient_multiplier_term)))
     return calculate_monomial_without_coefficient_tf
@@ -125,7 +125,8 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
     weights_structure = base_model.get_weights()
     dims = [np_arrays.shape for np_arrays in weights_structure]
     
-    def inet_lambda_fv_loss(polynomial_true_with_lambda_fv, polynomial_pred):
+    def inet_lambda_fv_loss(polynomial_true_with_lambda_fv, polynomial_pred):     
+        
         
         def calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder):
 
@@ -135,9 +136,9 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
                 #polynomial_true = input_list[0]
                 polynomial_pred = input_list[0]
                 network_parameters = input_list[1]
-
+                
                 polynomial_pred_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial_pred), (evaluation_dataset))
-
+                
                 #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
                 # build models
                 start = 0
@@ -186,18 +187,16 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
         polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
         
         if nas:
-            assert polynomial_pred.shape[1] != interpretation_net_output_shape
-            polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
-       
-            
+            if polynomial_pred.shape[1] != interpretation_net_output_shape:
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
             
         network_parameters = return_float_tensor_representation(network_parameters)
         polynomial_true = return_float_tensor_representation(polynomial_true)
         polynomial_pred = return_float_tensor_representation(polynomial_pred)
         
-        assert polynomial_true.shape[1] == sparsity
-        assert polynomial_pred.shape[1] == interpretation_net_output_shape
-        assert network_parameters.shape[1] == number_of_lambda_weights 
+        assert network_parameters.shape[1] == number_of_lambda_weights, 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)      
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of Pred Polynomial: ' + str(polynomial_pred.shape)   
         
         return tf.math.reduce_mean(tf.map_fn(calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
     
@@ -247,11 +246,12 @@ def inet_poly_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identif
         polynomial_pred = return_float_tensor_representation(polynomial_pred)
         
         if nas:
-            assert polynomial_pred.shape[1] != interpretation_net_output_shape
-            polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
+            if polynomial_pred.shape[1] != interpretation_net_output_shape:
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
             
-        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)
-        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of True Polynomial: ' + str(polynomial_pred.shape)       
+        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)      
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of Pred Polynomial: ' + str(polynomial_pred.shape) 
+   
 
         return tf.math.reduce_mean(tf.map_fn(calculate_mae_fv_poly_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))    
     
@@ -266,28 +266,33 @@ def inet_coefficient_loss_wrapper(loss):
 
     def inet_coefficient_loss(polynomial_true_with_lambda_fv, polynomial_pred): 
 
-        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights
-
+        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights, 'Shape of Polynomial True with Lambda: ' + str(polynomial_true_with_lambda_fv.shape) 
+        
         polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]    
         
         if nas:
-            assert polynomial_pred.shape[1] != interpretation_net_output_shape
-            polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]   
+            if polynomial_pred.shape[1] != interpretation_net_output_shape:
+                polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape] 
 
-        assert polynomial_true.shape[1] == sparsity
-        assert polynomial_pred.shape[1] == interpretation_net_output_shape
+        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape) 
+        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of Pred Polynomial: ' + str(polynomial_pred.shape) 
         
         if interpretation_net_output_monomials != None:
-            coefficient_indices = tf.map_fn(fn=lambda x: x[::2], elems=polynomial_pred, fn_output_signature=tf.float32)
-            polynomial_pred = tf.map_fn(fn=lambda x: x[1::2], elems=polynomial_pred, fn_output_signature=tf.float32)
-                        
-            coefficient_indices = tf.where(tf.math.is_nan(coefficient_indices), tf.zeros_like(coefficient_indices), coefficient_indices)
-            coefficient_indices = tf.minimum(coefficient_indices, sparsity-1)
-            coefficient_indices = tf.maximum(coefficient_indices,0)
-            coefficient_indices = tf.dtypes.cast(tf.round(coefficient_indices), tf.int32)
-                
+            #get relevant indices and compare just coefficients for those indices with predicted coefficients --> no good metric, just for consistency included
+            #TODO add 0 for all other indices?
+            coefficient_indices_array = tf.map_fn(fn=lambda x: x[interpretation_net_output_monomials:], elems=polynomial_pred, fn_output_signature=tf.float32)
+            polynomial_pred = tf.map_fn(fn=lambda x: x[:interpretation_net_output_monomials], elems=polynomial_pred, fn_output_signature=tf.float32)      
+            
+            assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+            
+            coefficient_indices_list = tf.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
+       
+            assert len(coefficient_indices_list) == polynomial_pred.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+            
+            coefficient_indices = tf.transpose(tf.argmax(coefficient_indices_list, axis=2))
+                       
             polynomial_true = tf.map_fn(fn=lambda x: tf.gather(x[0], x[1]), elems=(polynomial_true, coefficient_indices), fn_output_signature=tf.float32)
-
+            
         error = None
         if loss == 'mae':
             error = tf.keras.losses.MAE(polynomial_true, polynomial_pred)
@@ -768,19 +773,56 @@ def evaluate_interpretation_net(y_data_real,
         
         assert y_data_real.shape[1] == sparsity or y_data_real.shape[1] == interpretation_net_output_shape, 'Polynomial Real not in shape ' + str(y_data_real.shape)
         assert y_data_pred.shape[1] == sparsity or y_data_pred.shape[1] == interpretation_net_output_shape, 'Polynomial Pred not in shape ' + str(y_data_pred.shape)
-        
+       
         
         if y_data_real.shape[1] != y_data_pred.shape[1]:
+            
             if y_data_real.shape[1] == interpretation_net_output_shape:
-                indices = np.round(np.array([data[::2] for data in y_data_real])).astype(int)
-                y_data_real = np.array([data[1::2] for data in y_data_real])
-                y_data_pred = np.array([data[index] for data, index in zip(y_data_pred, indices)])
+            
+                coefficient_indices_array = y_data_real[:,interpretation_net_output_monomials:]
+                y_data_real_reduced = y_data_real[:,:interpretation_net_output_monomials]
+
+                assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+
+                coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
+
+                assert len(coefficient_indices_list) == y_data_real_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+
+                coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
+
+                y_data_pred_reduced = []
+                for y_data_pred_entry, coefficient_indices_entry in zip(y_data_pred, coefficient_indices):
+                    y_data_pred_reduced.append(y_data_pred_entry[[coefficient_indices_entry]])
+                y_data_pred_reduced = np.array(y_data_pred_reduced)
+
+                y_data_real = y_data_real_reduced
+                y_data_pred = y_data_pred_reduced
+            
             elif y_data_pred.shape[1] == interpretation_net_output_shape:
-                indices = np.round(np.array([data[::2] for data in y_data_pred])).astype(int)
-                y_data_pred = np.array([data[1::2] for data in y_data_pred])
-                y_data_real = np.array([data[index] for data, index in zip(y_data_real, indices)])
+                
+                coefficient_indices_array = y_data_pred[:,interpretation_net_output_monomials:]
+                y_data_pred_reduced = y_data_pred[:,:interpretation_net_output_monomials]
+
+                assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+
+                coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
+
+                assert len(coefficient_indices_list) == y_data_pred_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+
+                coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
+
+                y_data_real_reduced = []
+                for y_data_real_entry, coefficient_indices_entry in zip(y_data_real, coefficient_indices):
+                    y_data_real_reduced.append(y_data_real_entry[[coefficient_indices_entry]])
+                y_data_real_reduced = np.array(y_data_real_reduced)
+
+                y_data_pred = y_data_pred_reduced
+                y_data_real = y_data_real_reduced            
+            
             else:
                 raise SystemExit('Shapes Inconsistent') 
+                
+                
         
         mae_coeff = np.round(mean_absolute_error(y_data_real, y_data_pred), 4)
         rmse_coeff = np.round(root_mean_squared_error(y_data_real, y_data_pred), 4)
@@ -797,7 +839,7 @@ def evaluate_interpretation_net(y_data_real,
     polynomial_true_fv = return_numpy_representation(polynomial_true_fv)
     polynomial_pred_inet_fv = return_numpy_representation(polynomial_pred_inet_fv)
     
-    assert polynomial_true_fv.shape == polynomial_pred_inet_fv.shape
+    assert polynomial_true_fv.shape == polynomial_pred_inet_fv.shape, 'Shape of True Polynomial FVs: ' + str(polynomial_true_fv.shape) 
         
     mae_fv = np.round(mean_absolute_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
     rmse_fv = np.round(root_mean_squared_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)

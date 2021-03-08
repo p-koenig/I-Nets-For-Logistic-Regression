@@ -249,37 +249,30 @@ class LambdaNet():
     X_test_data = None
     y_test_data = None
     
-    def __init__(self, line):
-        assert isinstance(line, np.ndarray), 'line is no array: ' + str(line) 
+    def __init__(self, line_weights, line_X_data, line_y_data):
+        assert isinstance(line_weights, np.ndarray), 'line is no array: ' + str(line_weights) 
         
-        self.index = int(line[0])
+        self.index = int(line_weights[0])
         try:
-            self.train_settings = {'seed': int(line[1])}
+            self.train_settings = {'seed': int(line_weights[1])}
         except ValueError:
             self.train_settings = {'seed': -1}
             
-        self.target_polynomial = line[range(2, nCr(n+d, d)+2)].astype(float)
-        self.lstsq_lambda_pred_polynomial = line[range(nCr(n+d, d)+2, nCr(n+d, d)*2+2)].astype(float)
-        self.lstsq_target_polynomial = line[range(nCr(n+d, d)*2+2, nCr(n+d, d)*3+2)].astype(float)
+        self.target_polynomial = line_weights[range(2, nCr(n+d, d)+2)].astype(float)
+        self.lstsq_lambda_pred_polynomial = line_weights[range(nCr(n+d, d)+2, nCr(n+d, d)*2+2)].astype(float)
+        self.lstsq_target_polynomial = line_weights[range(nCr(n+d, d)*2+2, nCr(n+d, d)*3+2)].astype(float)
         assert self.target_polynomial.shape[0] == sparsity, 'target polynomial has incorrect shape ' + str(self.target_polynomial.shape[0]) + ' but should be ' + str(sparsity)
         assert self.lstsq_lambda_pred_polynomial.shape[0] == sparsity, 'lstsq lambda pred polynomial has incorrect shape ' + str(self.lstsq_lambda_pred_polynomial.shape[0]) + ' but should be ' + str(sparsity)
         assert self.lstsq_target_polynomial.shape[0] == sparsity, 'lstsq target polynomial has incorrect shape ' + str(self.lstsq_target_polynomial.shape[0]) + ' but should be ' + str(sparsity)
         
-        self.weights = line[nCr(n+d, d)*3+2:].astype(float)
+        self.weights = line_weights[nCr(n+d, d)*3+2:].astype(float)
         
         assert self.weights.shape[0] == number_of_lambda_weights, 'weights have incorrect shape ' + str(self.weights.shape[0]) + ' but should be ' + str(number_of_lambda_weights)
         
-
-
-         ########### LOAD TEST DATA FOR LAMBDA NET #############
-        paths_dict = generate_paths(path_type = 'interpretation_net')
-        
-        directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
-        path = directory + 'X_test_lambda/lambda_' + str(self.index) + '_X_test_data.npy'
-        self.X_test_data = np.load(path)
-        assert self.X_test_data.shape[1] == n, 'test data has wrong shape ' + str(self.X_test_data.shape) + ' but required (x, ' + str(n) + ')'
-        path = directory + 'y_test_lambda/lambda_' + str(self.index) + '_y_test_data.npy'
-        self.y_test_data = np.load(path)
+        line_X_data = line_X_data[1:]
+        line_y_data = line_y_data[1:]
+        self.X_test_data = np.transpose(np.array([line_X_data[i::n] for i in range(n)]))
+        self.y_test_data = line_y_data.reshape(-1,1)
         
     def __repr__(self):
         return str(self.weights)
@@ -509,7 +502,7 @@ def train_nn(lambda_index,
     if early_stopping_lambda:
         if callbacks == None:
             callbacks = []
-        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=1e-4, verbose=0, mode='min', restore_best_weights=True)
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, min_delta=early_stopping_min_delta_lambda, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(early_stopping)
     
     weights = []
@@ -671,16 +664,18 @@ def train_nn(lambda_index,
 
         
     if printing:        
-        for i, (weights_for_epoch, polynomial_lstsq_pred_for_epoch, polynomial_lstsq_true_for_epoch) in enumerate(zip(weights, polynomial_lstsq_pred_list, polynomial_lstsq_true_list)):        
+        for i, (weights_for_epoch, polynomial_lstsq_pred_for_epoch, polynomial_lstsq_true_for_epoch) in enumerate(zip(weights, polynomial_lstsq_pred_list, polynomial_lstsq_true_list)):
+            
+            directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
+            
             if each_epochs_save == None or each_epochs_save==epochs_lambda:
-                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + '_epoch_' + str(epochs_lambda).zfill(3) + '.txt'
+                path_weights = directory + 'weights_epoch_' + str(epochs_lambda).zfill(3) + '.txt'
             else:
                 index = (i+1)*each_epochs_save if each_epochs_save==1 else i*each_epochs_save if i > 1 else each_epochs_save if i==1 else 1
-                path = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/weights_' + '_epoch_' + str(index).zfill(3) + '.txt'
-                
+                path_weights = directory + 'weights_epoch_' + str(index).zfill(3) + '.txt'                       
             
                 
-            with open(path, 'a') as text_file: 
+            with open(path_weights, 'a') as text_file: 
                 text_file.write(str(lambda_index))
                 text_file.write(', ' + str(current_seed))
                 for i, value in enumerate(polynomial.values): 
@@ -697,13 +692,30 @@ def train_nn(lambda_index,
                         text_file.write(', ' + str(bias))
                 text_file.write('\n')
 
-        text_file.close() 
+                text_file.close() 
+            
+            
+        path_X_data = directory + 'lambda_X_test_data.txt'
+        path_y_data = directory + 'lambda_y_test_data.txt'             
 
-        directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'
-        path = directory + 'X_test_lambda/lambda_' + str(lambda_index) + '_X_test_data'
-        np.save(path, X_test_lambda)
-        path = directory + 'y_test_lambda/lambda_' + str(lambda_index) + '_y_test_data'
-        np.save(path, y_test_real_lambda)
+        with open(path_X_data, 'a') as text_file: 
+            text_file.write(str(lambda_index))
+
+            for row in X_test_lambda:
+                for value in row:
+                    text_file.write(', ' + str(value))
+            text_file.write('\n')
+
+            text_file.close()                
+
+        with open(path_y_data, 'a') as text_file: 
+            text_file.write(str(lambda_index))          
+            for value in y_test_real_lambda.flatten():
+                text_file.write(', ' + str(value))
+            text_file.write('\n')
+
+            text_file.close()                    
+
 
             
     if return_model:
