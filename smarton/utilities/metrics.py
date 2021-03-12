@@ -75,7 +75,11 @@ def initialize_metrics_config_from_curent_notebook(config):
 #######################################################################################################################################################
 
 #GENERAL LOSS UTILITY FUNCTIONS
-def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, force_complete_poly_representation=False):
+def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, force_complete_poly_representation=False, set_config=False, config=None):
+    
+    if set_config:
+        #globals().update(dict(config))
+        globals().update(config)
 
     def calculate_poly_fv_tf(evaluation_entry):        
         
@@ -113,17 +117,21 @@ def calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry):
 
 
 
-def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, base_model):        
+def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, base_model, set_config=False, config=None, dims=None):        
+        
+        
+    if set_config:
+        globals().update(config)
         
     global nas
         
-    evaluation_dataset = return_float_tensor_representation(evaluation_dataset)
-    list_of_monomial_identifiers = return_float_tensor_representation(list_of_monomial_identifiers)    
+    evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(evaluation_dataset), tf.float32)#return_float_tensor_representation(evaluation_dataset)
+    list_of_monomial_identifiers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers)    
     
-    model_lambda_placeholder = keras.models.clone_model(base_model)  
-    
-    weights_structure = base_model.get_weights()
-    dims = [np_arrays.shape for np_arrays in weights_structure]
+    model_lambda_placeholder = base_model#keras.models.clone_model(base_model)  
+    if not set_config:
+        weights_structure = base_model.get_weights()
+        dims = [np_arrays.shape for np_arrays in weights_structure]
     
     def inet_lambda_fv_loss(polynomial_true_with_lambda_fv, polynomial_pred):     
         
@@ -143,25 +151,72 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
                 # build models
                 start = 0
                 layers = []
-                for i in range(len(dims)//2):
+                if not set_config:
+                    for i in range(len(dims)//2):
 
-                    # set weights of layer
-                    index = i*2
-                    size = np.product(dims[index])
-                    weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                    model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
-                    start += size
+                        # set weights of layer
+                        index = i*2
+                        size = np.product(dims[index])
+                        weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+                        model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+                        start += size
 
-                    # set biases of layer
-                    index += 1
-                    size = np.product(dims[index])
-                    biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                    model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-                    start += size
+                        # set biases of layer
+                        index += 1
+                        size = np.product(dims[index])
+                        biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+                        model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+                        start += size
+                else:
+                    #tf.print(dims)
+                    for i in range(dims.shape[0]//2):
+                        # set weights of layer
+                        
+                        index = i*2
+                        dim = dims[index]
+                        if tf.math.equal(dim[1], 0):                            
+                            size = tf.math.reduce_prod((dim[0],))
+                            #tf.print(network_parameters[start:start+size].shape)
+                            #tf.print((dim[0],))
+                            weights_tf_true = tf.reshape(network_parameters[start:start+size], (dim[0],))
+                            #tf.print(weights_tf_true)
+                            
+                            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+                            start += size                        
+                        else:
+                            size = tf.math.reduce_prod((dim[0],dim[1]))
+                            #tf.print(network_parameters[start:start+size].shape)
+                            #tf.print((dim[0],dim[1]))
+                            weights_tf_true = tf.reshape(network_parameters[start:start+size], (dim[0],dim[1]))
+                            #tf.print(weights_tf_true)
+                            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+                            start += size                                
+                            
+                        # set biases of layer
+                        index += 1
+                        dim = dims[index]
+                        if tf.math.equal(dim[1], 0):                            
+                            size = tf.math.reduce_prod((dim[0],))
+                            #tf.print(network_parameters[start:start+size].shape)
+                            #tf.print((dim[0],))
+                            weights_tf_true = tf.reshape(network_parameters[start:start+size], (dim[0],))
+                            #tf.print(weights_tf_true)
+                            
+                            model_lambda_placeholder.layers[i].weights[1].assign(weights_tf_true)
+                            start += size                        
+                        else:
+                            size = tf.math.reduce_prod((dim[0],dim[1]))
+                            #tf.print(network_parameters[start:start+size].shape)
+                            #tf.print((dim[0],dim[1]))
+                            weights_tf_true = tf.reshape(network_parameters[start:start+size], (dim[0],dim[1]))
+                            #tf.print(weights_tf_true)
+                            model_lambda_placeholder.layers[i].weights[1].assign(weights_tf_true)
+                            start += size                      
 
 
                 lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
-
+                #lambda_fv = tf.zeros_like(polynomial_pred_fv_list)
+                
                 ##### REMOVE NAN VALUES IN BOTH TENSORS #####
                 #lambda_fv = tf.boolean_mask(lambda_fv, tf.math.logical_and(tf.math.logical_not(tf.math.is_nan(lambda_fv)), tf.math.logical_not(tf.math.is_nan(polynomial_pred_fv_list))))
                 #polynomial_pred_fv_list = tf.boolean_mask(polynomial_pred_fv_list, tf.math.logical_and(tf.math.logical_not(tf.math.is_nan(polynomial_pred_fv_list)), tf.math.logical_not(tf.math.is_nan(lambda_fv))))
@@ -173,7 +228,8 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
                 elif loss == 'r2':
                     error = r2_keras_loss(lambda_fv, polynomial_pred_fv_list)  
                 else:
-                    raise SystemExit('Unknown I-Net Metric: ' + loss)                
+                    error = tf.keras.losses.MAE(lambda_fv, polynomial_pred_fv_list)
+                    #raise SystemExit('Unknown I-Net Metric: ' + loss)                
 
                 error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
                 #error = np.inf*tf.cast(tf.ones_like(error), tf.float64)
@@ -185,14 +241,26 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
         
         network_parameters = polynomial_true_with_lambda_fv[:,sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
         polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
-        
+        if False:
+            tf.print(network_parameters.shape)
+            tf.print(polynomial_true.shape)
+            tf.print(polynomial_pred.shape)
+            tf.print(polynomial_true_with_lambda_fv.shape)
+            tf.print(evaluation_dataset.shape)
+            tf.print(list_of_monomial_identifiers.shape)            
+            tf.print(network_parameters.dtype)
+            tf.print(polynomial_true.dtype)
+            tf.print(polynomial_pred.dtype)
+            tf.print(polynomial_true_with_lambda_fv.dtype) 
+            tf.print(evaluation_dataset.dtype)
+            tf.print(list_of_monomial_identifiers.dtype)                
         if nas:
             if polynomial_pred.shape[1] != interpretation_net_output_shape:
                 polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
             
-        network_parameters = return_float_tensor_representation(network_parameters)
-        polynomial_true = return_float_tensor_representation(polynomial_true)
-        polynomial_pred = return_float_tensor_representation(polynomial_pred)
+        network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)#return_float_tensor_representation(network_parameters)
+        polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
+        polynomial_pred = tf.dtypes.cast(tf.convert_to_tensor(polynomial_pred), tf.float32)#return_float_tensor_representation(polynomial_pred)
         
         assert network_parameters.shape[1] == number_of_lambda_weights, 'Shape of Network Parameters: ' + str(network_parameters.shape)            
         assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)      
@@ -200,8 +268,8 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
         
         return tf.math.reduce_mean(tf.map_fn(calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
     
-    
-    inet_lambda_fv_loss.__name__ = loss + '_' + inet_lambda_fv_loss.__name__
+    if not set_config:
+        inet_lambda_fv_loss.__name__ = loss + '_' + inet_lambda_fv_loss.__name__
     return inet_lambda_fv_loss
 
 

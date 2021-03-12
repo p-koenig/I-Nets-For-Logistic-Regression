@@ -177,19 +177,21 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
     if n_jobs==1 or (samples_list != None and len(samples_list) == 1) or (len(lambda_net_train_dataset_list) == 1 and samples_list == None):
         n_jobs_inet_training = 1
         return_model = True
-            
+                        
     if samples_list == None: 
+        
         results_list = Parallel(n_jobs=n_jobs_inet_training, 
                                 verbose=11, 
                                 backend='multiprocessing')(delayed(train_nn_and_pred)(lambda_net_train_dataset,
                                                                                        lambda_net_valid_dataset,
                                                                                        lambda_net_test_dataset,
+                                                                                       current_jobs=n_jobs_inet_training,
                                                                                        callback_names=['early_stopping'],
                                                                                        return_model=return_model) for lambda_net_train_dataset,
                                                                                                                       lambda_net_valid_dataset,
                                                                                                                       lambda_net_test_dataset  in zip(lambda_net_train_dataset_list,
                                                                                                                                                       lambda_net_valid_dataset_list,
-                                                                                                                                                      lambda_net_test_dataset_list))      
+                                                                                                                                                      lambda_net_test_dataset_list))          
 
         history_list = [result[0] for result in results_list]
 
@@ -217,6 +219,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         results_list = Parallel(n_jobs=n_jobs_inet_training, verbose=11, backend='multiprocessing')(delayed(train_nn_and_pred)(lambda_net_train_dataset.sample(samples),
                                                                                                       lambda_net_valid_dataset,
                                                                                                       lambda_net_test_dataset, 
+                                                                                                      current_jobs=n_jobs_inet_training,
                                                                                                       callback_names=['early_stopping'],
                                                                                                       return_model=return_model) for samples in samples_list)     
 
@@ -270,8 +273,9 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
 def train_nn_and_pred(lambda_net_train_dataset,
                       lambda_net_valid_dataset,
                       lambda_net_test_dataset, 
+                      current_jobs,
                       callback_names = [],
-                      return_model = False):       
+                      return_model = False ):       
    
     global optimizer
     global loss
@@ -540,7 +544,6 @@ def train_nn_and_pred(lambda_net_train_dataset,
         verbosity = 1 if n_jobs ==1 else 0
 
         ############################## PREDICTION ###############################
-
         history = model.fit(X_train,
                   y_train_model,
                   epochs=epochs, 
@@ -555,8 +558,79 @@ def train_nn_and_pred(lambda_net_train_dataset,
         y_test_pred = model.predict(X_test)
     
     pred_list = [y_valid_pred, y_test_pred]
-              
         
+    ############################## PER NETWORK OPTIMIZATION ###############################
+        
+    lr=0.5
+    max_steps = 100
+    early_stopping=10
+    restarts=5
+    per_network_dataset_size = 500
+
+    random_lambda_input_data = 500#generate_random_data_points(low=x_min, high=x_max, size=per_network_dataset_size, variables=max(1, n), distrib='uniform')
+    list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
+
+    if n_jobs != -1:
+        n_jobs_per_network = min(n_jobs, os.cpu_count() // current_jobs)
+    else: 
+        n_jobs_per_network = os.cpu_count() // current_jobs - 1
+        
+    printing = True if n_jobs_per_network == 1 else False
+        
+        
+    lambda_network_weights_list = np.array(lambda_net_test_dataset.weight_list)
+    if evaluate_with_real_function: #target polynomial as inet target
+        poly_representation_list = np.array(lambda_net_test_dataset.target_polynomial_list)
+    else: #lstsq lambda pred polynomial as inet target
+        poly_representation_list = np.array(lambda_net_test_dataset.lstsq_lambda_pred_polynomial_list)
+          
+    
+    config = {
+             'n': n,
+             'inet_loss': inet_loss,
+             'sparsity': sparsity,
+             'lambda_network_layers': lambda_network_layers,
+             'interpretation_net_output_shape': interpretation_net_output_shape,
+             'RANDOM_SEED': RANDOM_SEED,
+             'nas': nas,
+             'number_of_lambda_weights': number_of_lambda_weights,
+             'interpretation_net_output_monomials': interpretation_net_output_monomials,
+             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
+             'x_min': x_min,
+             'x_max': x_max,
+             }
+    
+    config_list = [('n', n),
+             ('inet_loss', inet_loss),
+             ('sparsity', sparsity),
+             ('lambda_network_layers', lambda_network_layers),
+             ('interpretation_net_output_shape', interpretation_net_output_shape),
+             ('RANDOM_SEED', RANDOM_SEED),
+             ('nas', nas),
+             ('number_of_lambda_weights', number_of_lambda_weights),
+             ('interpretation_net_output_monomials', interpretation_net_output_monomials),
+             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
+             ('x_min', x_min),
+             ('x_max', x_max)]
+    
+    
+    parallel_per_network = Parallel(n_jobs=n_jobs_per_network, verbose=111, backend='loky')
+                
+    per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf_3)(random_lambda_input_data, 
+                                                                                                      lambda_network_weights, 
+                                                                                                      #poly_representation,
+                                                                                                      list_of_monomial_identifiers_numbers, 
+                                                                                                      config,
+                                                                                                      lr=lr, 
+                                                                                                      max_steps = max_steps, 
+                                                                                                      early_stopping=early_stopping, 
+                                                                                                      restarts=restarts,
+                                                                                                      printing=printing) for lambda_network_weights, poly_representation in zip(lambda_network_weights_list,
+                                                                                                                                                                                poly_representation_list))      
+
+    del parallel_per_network
+    
+                
     ############################## FUNCTION VALUE CALCULATION ###############################
     
     lambda_test_data_preds_valid = lambda_net_valid_dataset.make_prediction_on_test_data()
@@ -571,10 +645,10 @@ def train_nn_and_pred(lambda_net_train_dataset,
     lstsq_target_polynomial_test_data_fvs_valid = lambda_net_valid_dataset.return_lstsq_target_polynomial_fvs_on_test_data()
     lstsq_target_polynomial_test_data_fvs_test = lambda_net_test_dataset.return_lstsq_target_polynomial_fvs_on_test_data() 
         
-    
     inet_poly_test_data_fvs_valid = parallel_fv_calculation_from_polynomial(y_valid_pred, lambda_net_valid_dataset.X_test_data_list)
     inet_poly_test_data_fvs_test = parallel_fv_calculation_from_polynomial(y_test_pred, lambda_net_test_dataset.X_test_data_list) 
     
+    per_network_optimization_poly_test_data_fvs_test = parallel_fv_calculation_from_polynomial(per_network_optimization_polynomials, lambda_net_test_dataset.X_test_data_list)     
     
     function_values_valid = [lambda_test_data_preds_valid, 
                             target_poly_test_data_fvs_valid, 
@@ -586,7 +660,8 @@ def train_nn_and_pred(lambda_net_train_dataset,
                             target_poly_test_data_fvs_test, 
                             lstsq_lambda_pred_polynomial_test_data_fvs_test, 
                             lstsq_target_polynomial_test_data_fvs_test,
-                            inet_poly_test_data_fvs_test]
+                            inet_poly_test_data_fvs_test,
+                            per_network_optimization_poly_test_data_fvs_test]
     
     function_values = [function_values_valid, function_values_test]    
     
@@ -693,6 +768,50 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                                                                      lstsq_target_polynomial_test_data_fvs_test, 
                                                                                      target_poly_test_data_fvs_test)
         
+    
+    
+    
+    
+    
+    
+    #evaluate per-network poly against target poly on fv-basis
+    scores_perNetworkPoly_VS_targetPoly_test_data_fv_test, distrib_perNetworkPoly_VS_targetPoly_test_data_fv_test = evaluate_interpretation_net(per_network_optimization_polynomials, 
+                                                                                  lambda_net_test_dataset.target_polynomial_list, 
+                                                                                  per_network_optimization_poly_test_data_fvs_test, 
+                                                                                  target_poly_test_data_fvs_test)    
+    
+    #evaluate per-network poly against inet poly on fv-basis
+    scores_perNetworkPoly_VS_inetPoly_test_data_fv_test, distrib_perNetworkPoly_VS_inetPoly_test_data_fv_test = evaluate_interpretation_net(per_network_optimization_polynomials, 
+                                                                                     y_test_pred, 
+                                                                                     per_network_optimization_poly_test_data_fvs_test, 
+                                                                                     target_poly_test_data_fvs_test)    
+    
+ 
+    
+    #evaluate per-network poly against lambda-net preds on fv-basis
+    scores_perNetworkPoly_VS_predLambda_test_data_fv_test, distrib_perNetworkPoly_VS_predLambda_test_data_fv_test = evaluate_interpretation_net(per_network_optimization_polynomials, 
+                                                                                  None, 
+                                                                                  per_network_optimization_poly_test_data_fvs_test, 
+                                                                                  lambda_test_data_preds_test)         
+    
+   
+    
+    #evaluate per-network poly against lstsq target poly on fv-basis
+    scores_perNetworkPoly_VS_lstsqTarget_test_data_fv_test, distrib_perNetworkPoly_VS_lstsqTarget_test_data_fv_test = evaluate_interpretation_net(per_network_optimization_polynomials, 
+                                                                                   lambda_net_test_dataset.lstsq_target_polynomial_list, 
+                                                                                   per_network_optimization_poly_test_data_fvs_test, 
+                                                                                   lstsq_target_polynomial_test_data_fvs_test)       
+    
+
+          
+    
+    #evaluate per-network poly against lstsq lambda poly on fv-basis
+    scores_perNetworkPoly_VS_lstsqLambda_test_data_fv_test, distrib_perNetworkPoly_VS_lstsqLambda_test_data_fv_test = evaluate_interpretation_net(per_network_optimization_polynomials, 
+                                                                                   lambda_net_test_dataset.lstsq_lambda_pred_polynomial_list, 
+                                                                                   per_network_optimization_poly_test_data_fvs_test, 
+                                                                                   lstsq_lambda_pred_polynomial_test_data_fvs_test)    
+    
+    
     scores_dict = pd.DataFrame(data=[scores_inetPoly_VS_targetPoly_test_data_fv_valid, 
                                      scores_inetPoly_VS_targetPoly_test_data_fv_test, 
                                      scores_inetPoly_VS_predLambda_test_data_fv_valid,
@@ -712,7 +831,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                      scores_predLambda_VS_targetPoly_test_data_fv_valid,
                                      scores_predLambda_VS_targetPoly_test_data_fv_test,
                                      scores_lstsqTarget_VS_targetPoly_test_data_fv_valid,
-                                     scores_lstsqTarget_VS_targetPoly_test_data_fv_test],
+                                     scores_lstsqTarget_VS_targetPoly_test_data_fv_test,
+                                     scores_perNetworkPoly_VS_targetPoly_test_data_fv_test,
+                                     scores_perNetworkPoly_VS_inetPoly_test_data_fv_test,
+                                     scores_perNetworkPoly_VS_predLambda_test_data_fv_test,
+                                     scores_perNetworkPoly_VS_lstsqTarget_test_data_fv_test,
+                                     scores_perNetworkPoly_VS_lstsqLambda_test_data_fv_test],
                                index=['inetPoly_VS_targetPoly_valid', 
                                       'inetPoly_VS_targetPoly_test', 
                                       'inetPoly_VS_predLambda_valid',
@@ -732,7 +856,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                       'predLambda_VS_targetPoly_valid',
                                       'predLambda_VS_targetPoly_test',
                                       'lstsqTarget_VS_targetPoly_valid',
-                                      'lstsqTarget_VS_targetPoly_test'])
+                                      'lstsqTarget_VS_targetPoly_test',
+                                      'perNetworkPoly_VS_targetPoly_test',
+                                      'perNetworkPoly_VS_inetPoly_test',
+                                      'perNetworkPoly_VS_predLambda_test',
+                                      'perNetworkPoly_VS_lstsqTarget_test',
+                                      'perNetworkPoly_VS_lstsqLambda_test'])
     
     mae_distrib_dict = pd.DataFrame(data=[distrib_inetPoly_VS_targetPoly_test_data_fv_valid['MAE'], 
                                      distrib_inetPoly_VS_targetPoly_test_data_fv_test['MAE'], 
@@ -753,7 +882,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                      distrib_predLambda_VS_targetPoly_test_data_fv_valid['MAE'],
                                      distrib_predLambda_VS_targetPoly_test_data_fv_test['MAE'],
                                      distrib_lstsqTarget_VS_targetPoly_test_data_fv_valid['MAE'],
-                                     distrib_lstsqTarget_VS_targetPoly_test_data_fv_test['MAE']],
+                                     distrib_lstsqTarget_VS_targetPoly_test_data_fv_test['MAE'],
+                                     distrib_perNetworkPoly_VS_targetPoly_test_data_fv_test['MAE'],
+                                     distrib_perNetworkPoly_VS_inetPoly_test_data_fv_test['MAE'],
+                                     distrib_perNetworkPoly_VS_predLambda_test_data_fv_test['MAE'],
+                                     distrib_perNetworkPoly_VS_lstsqTarget_test_data_fv_test['MAE'],
+                                     distrib_perNetworkPoly_VS_lstsqLambda_test_data_fv_test['MAE']],
                                index=['inetPoly_VS_targetPoly_valid', 
                                       'inetPoly_VS_targetPoly_test', 
                                       'inetPoly_VS_predLambda_valid',
@@ -773,7 +907,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                       'predLambda_VS_targetPoly_valid',
                                       'predLambda_VS_targetPoly_test',
                                       'lstsqTarget_VS_targetPoly_valid',
-                                      'lstsqTarget_VS_targetPoly_test'])
+                                      'lstsqTarget_VS_targetPoly_test',
+                                      'perNetworkPoly_VS_targetPoly_test',
+                                      'perNetworkPoly_VS_inetPoly_test',
+                                      'perNetworkPoly_VS_predLambda_test',
+                                      'perNetworkPoly_VS_lstsqTarget_test',
+                                      'perNetworkPoly_VS_lstsqLambda_test'])
     
     r2_distrib_dict = pd.DataFrame(data=[distrib_inetPoly_VS_targetPoly_test_data_fv_valid['R2'], 
                                      distrib_inetPoly_VS_targetPoly_test_data_fv_test['R2'], 
@@ -794,7 +933,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                      distrib_predLambda_VS_targetPoly_test_data_fv_valid['R2'],
                                      distrib_predLambda_VS_targetPoly_test_data_fv_test['R2'],
                                      distrib_lstsqTarget_VS_targetPoly_test_data_fv_valid['R2'],
-                                     distrib_lstsqTarget_VS_targetPoly_test_data_fv_test['R2']],
+                                     distrib_lstsqTarget_VS_targetPoly_test_data_fv_test['R2'],
+                                     distrib_perNetworkPoly_VS_targetPoly_test_data_fv_test['R2'],
+                                     distrib_perNetworkPoly_VS_inetPoly_test_data_fv_test['R2'],
+                                     distrib_perNetworkPoly_VS_predLambda_test_data_fv_test['R2'],
+                                     distrib_perNetworkPoly_VS_lstsqTarget_test_data_fv_test['R2'],
+                                     distrib_perNetworkPoly_VS_lstsqLambda_test_data_fv_test['R2']],
                                index=['inetPoly_VS_targetPoly_valid', 
                                       'inetPoly_VS_targetPoly_test', 
                                       'inetPoly_VS_predLambda_valid',
@@ -814,7 +958,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
                                       'predLambda_VS_targetPoly_valid',
                                       'predLambda_VS_targetPoly_test',
                                       'lstsqTarget_VS_targetPoly_valid',
-                                      'lstsqTarget_VS_targetPoly_test'])    
+                                      'lstsqTarget_VS_targetPoly_test',
+                                      'perNetworkPoly_VS_targetPoly_test',
+                                      'perNetworkPoly_VS_inetPoly_test',
+                                      'perNetworkPoly_VS_predLambda_test',
+                                      'perNetworkPoly_VS_lstsqTarget_test',
+                                      'perNetworkPoly_VS_lstsqLambda_test'])    
     
     distrib_dicts = {'MAE': mae_distrib_dict, 
                      'R2': r2_distrib_dict}
@@ -1206,7 +1355,7 @@ def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
     #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
     #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
     
-    base_model = generate_base_model()
+    base_model = l
        
     X_data_flat = X_data
 

@@ -32,7 +32,7 @@ import random
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
-from IPython.display import display, Math, Latex
+from IPython.display import display, Math, Latex, clear_output
 
 import os
 import shutil
@@ -186,7 +186,7 @@ def return_callbacks_from_string(callback_string_list):
         reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=epochs/10, verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=10, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=20, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
@@ -742,3 +742,692 @@ def generate_random_data_points(low, high, size, variables, distrib='uniform'):
         list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
         
     return list_of_data_points
+
+
+
+
+######################################################################################################################################################################################################################
+###########################################################################################  PER NETWORK OPTIMIZATION ################################################################################################ 
+######################################################################################################################################################################################################################
+
+
+
+
+
+def per_network_poly_optimization(random_lambda_input_data, 
+                                  lambda_network_weights, 
+                                  poly_representation, 
+                                  list_of_monomial_identifiers_numbers, 
+                                  config, 
+                                  lr=0.05, 
+                                  max_steps = 1000, 
+                                  early_stopping=10, 
+                                  restarts=5, 
+                                  printing=True):
+    
+    def function_to_optimize():       
+            
+        poly_optimize = poly_optimize_input[0]
+            
+        poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
+        
+        poly_optimize_identifiers_list = []
+        for i in range(interpretation_net_output_monomials):
+            poly_optimize_identifiers = tf.math.sigmoid(poly_optimize[interpretation_net_output_monomials*(i+1):interpretation_net_output_monomials*(i+2)])
+            poly_optimize_identifiers_list.append(poly_optimize_identifiers)
+        poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
+                
+        tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)        
+        
+        poly_optimize = tf.convert_to_tensor(poly_optimize, dtype=tf.float32)
+        
+        poly_optimize_fv_list = []
+        for lambda_input_entry in random_lambda_input_data:
+            result = 0   
+            
+            value_without_coefficient_list = []
+            for coefficient_multipliers in list_of_monomial_identifiers:
+                value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
+                value_without_coefficient_list.append(reduce(lambda x, y: x*y, value_without_coefficient))
+            
+            
+            if interpretation_net_output_monomials == None:
+                result = tf.reduce_sum(tf.vectorized_map(lambda x: x[0]*x[1], (value_without_coefficient_list, poly_optimize)))
+            else:
+                coefficients = poly_optimize[:interpretation_net_output_monomials]
+                index_array = poly_optimize[interpretation_net_output_monomials:]
+                
+                index_list = tf.split(index_array, interpretation_net_output_monomials)
+                
+                indices = tf.argmax(index_list, axis=1) 
+                
+                result = tf.reduce_sum(tf.vectorized_map(lambda x: tf.gather(value_without_coefficient_list, x[0])*x[1], (indices, coefficients)))             
+                   
+            poly_optimize_fv_list.append(result)
+            
+
+        #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
+        # build models
+        start = 0
+        layers = []
+        for i in range(len(dims)//2):
+
+            # set weights of layer
+            index = i*2
+            size = np.product(dims[index])
+            weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+            start += size
+
+            # set biases of layer
+            index += 1
+            size = np.product(dims[index])
+            biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+            start += size
+
+
+        lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_lambda_input_data))
+
+
+        error = None
+        if inet_loss == 'mae':
+            error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
+        elif inet_loss == 'r2':
+            error = r2_keras_loss(lambda_fv, poly_optimize_fv_list)  
+        else:
+            raise SystemExit('Unknown I-Net Metric: ' + inet_loss)                
+
+        error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)        
+                    
+        #result = inet_lambda_fv_loss_wrapper(inet_loss, random_lambda_input_data, list_of_monomial_identifiers_numbers, base_model, set_config=True, config=config)(tf.convert_to_tensor([poly_with_lambda_network_weights]), poly_optimize)
+
+        return error #tf.reduce_mean(poly_optimize)#result        
+  
+    globals().update(config)
+    
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)    
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)       
+    
+    poly_with_lambda_network_weights = np.hstack((poly_representation, lambda_network_weights))           
+
+    base_model = Sequential()
+
+    base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+
+    for neurons in lambda_network_layers[1:]:
+        base_model.add(Dense(neurons, activation='relu'))
+
+    base_model.add(Dense(1))
+    
+    weights_structure = base_model.get_weights()
+    
+    #base_model = generate_base_model()
+    
+    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(random_lambda_input_data, max(1, n)))
+    #random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)#return_float_tensor_representation(evaluation_dataset)
+    #list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers_numbers)    
+    
+    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    
+    dims = [np_arrays.shape for np_arrays in weights_structure]
+    
+    
+    network_parameters = poly_with_lambda_network_weights[sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
+    #polynomial_true = poly_with_lambda_network_weights[:,:sparsity]
+
+    network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)#return_float_tensor_representation(network_parameters)
+    #polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
+    
+    
+    
+    
+    
+        
+    
+    best_result = np.inf
+
+    for current_iteration in range(restarts):
+        
+        opt = tf.keras.optimizers.Adam(learning_rate=lr)
+        
+        poly_optimize_input = tf.Variable(tf.random.uniform([1, interpretation_net_output_shape]))
+        
+        stop_counter = 0
+        best_result_iteration = np.inf
+
+        for current_step in range(max_steps):
+            if stop_counter>=early_stopping:
+                break
+            
+            opt.minimize(function_to_optimize, var_list=[poly_optimize_input])
+            current_result = function_to_optimize()
+            if printing:
+                clear_output(wait=True)
+                print("Current best: {} \n Curr_res: {} \n Iteration {}, Step {}".format(best_result_iteration,current_result, current_iteration, current_step), end='\r')
+ 
+            stop_counter += 1
+            if current_result < best_result_iteration:
+                best_result_iteration = current_result
+                stop_counter = 0
+                best_poly_optimize_iteration = tf.identity(poly_optimize_input)
+                
+        if best_result_iteration < best_result:
+            best_result = best_result_iteration
+            best_poly_optimize = tf.identity(best_poly_optimize_iteration)
+
+    per_network_poly = best_poly_optimize[0].numpy()
+    
+    if printing:
+        print("Optimization terminated at {}".format(best_result))
+        
+    print(per_network_poly)
+        
+    return per_network_poly
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def per_network_poly_optimization_tf(random_lambda_input_data, 
+                                  lambda_network_weights, 
+                                  poly_representation, 
+                                  list_of_monomial_identifiers_numbers, 
+                                  config, 
+                                  lr=0.05, 
+                                  max_steps = 1000, 
+                                  early_stopping=10, 
+                                  restarts=5, 
+                                  printing=True):
+    
+    @tf.function(experimental_compile=True) 
+    def function_to_optimize():
+
+        def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, polynomial, force_complete_poly_representation=False):
+            def calculate_poly_fv_tf(evaluation_entry):        
+
+
+                monomials_without_coefficient = tf.vectorized_map(calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry), (list_of_monomial_identifiers_numbers))      
+
+                if interpretation_net_output_monomials == None or force_complete_poly_representation:
+                    monomial_values = tf.vectorized_map(lambda x: x[0]*x[1], (monomials_without_coefficient, polynomial))
+                else: 
+                    coefficients = polynomial[:interpretation_net_output_monomials]
+                    index_array = polynomial[interpretation_net_output_monomials:]
+
+                    assert index_array.shape[0] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices : ' + str(index_array.shape)
+
+                    index_list = tf.split(index_array, interpretation_net_output_monomials)
+
+                    assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(index_list))
+
+                    indices = tf.argmax(index_list, axis=1) 
+
+                    monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, x[0])*x[1], (indices, coefficients)) 
+
+
+                polynomial_fv = tf.reduce_sum(monomial_values)     
+
+                return polynomial_fv
+            return calculate_poly_fv_tf
+
+        #calculate intermediate term (without coefficient multiplication)
+        def calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry):
+            def calculate_monomial_without_coefficient_tf(coefficient_multiplier_term) :      
+
+                return tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**x[1], (evaluation_entry, coefficient_multiplier_term)))
+            return calculate_monomial_without_coefficient_tf        
+                        
+        poly_optimize = poly_optimize_input[0]
+            
+        poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
+        
+        poly_optimize_identifiers_list = []
+        for i in range(interpretation_net_output_monomials):
+            poly_optimize_identifiers = tf.math.sigmoid(poly_optimize[interpretation_net_output_monomials*(i+1):interpretation_net_output_monomials*(i+2)])
+            poly_optimize_identifiers_list.append(poly_optimize_identifiers)
+        poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
+                
+        tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
+        
+        
+        
+        poly_optimize = tf.convert_to_tensor(poly_optimize, dtype=tf.float32)
+        
+        
+        poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize), (random_lambda_input_data))
+
+        #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
+        # build models
+        start = 0
+        layers = []
+        for i in range(len(dims)//2):
+
+            # set weights of layer
+            index = i*2
+            size = np.product(dims[index])
+            weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+            start += size
+
+            # set biases of layer
+            index += 1
+            size = np.product(dims[index])
+            biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+            model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+            start += size
+
+
+        lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_lambda_input_data))
+
+        
+        error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
+                
+        error = None
+        if inet_loss == 'mae':
+            error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
+        elif inet_loss == 'r2':
+            error = r2_keras_loss(lambda_fv, poly_optimize_fv_list)  
+        else:
+            raise SystemExit('Unknown I-Net Metric: ' + inet_loss)                
+
+        #error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
+        
+        #result = inet_lambda_fv_loss_wrapper(inet_loss, random_lambda_input_data, list_of_monomial_identifiers_numbers, base_model, set_config=True, config=config)(tf.convert_to_tensor([poly_with_lambda_network_weights]), poly_optimize)
+
+        return error #tf.reduce_mean(poly_optimize)#result        
+     
+
+        
+        
+    globals().update(config)
+    
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)    
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)       
+    
+    poly_with_lambda_network_weights = np.hstack((poly_representation, lambda_network_weights))           
+
+    base_model = Sequential()
+
+    base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+
+    for neurons in lambda_network_layers[1:]:
+        base_model.add(Dense(neurons, activation='relu'))
+
+    base_model.add(Dense(1))
+    
+    weights_structure = base_model.get_weights()
+    
+    #base_model = generate_base_model()
+    
+    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(random_lambda_input_data, max(1, n)))
+    random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)#return_float_tensor_representation(evaluation_dataset)
+    list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers_numbers)    
+    
+    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    
+    dims = [np_arrays.shape for np_arrays in weights_structure]
+    
+    
+    network_parameters = poly_with_lambda_network_weights[sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
+    #polynomial_true = poly_with_lambda_network_weights[:,:sparsity]
+
+    network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)#return_float_tensor_representation(network_parameters)
+    #polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
+    
+    
+    
+    
+    
+        
+    
+    best_result = np.inf
+
+    for current_iteration in range(restarts):
+        
+        opt = tf.keras.optimizers.Adam(learning_rate=lr)
+        
+        poly_optimize_input = tf.Variable(tf.random.uniform([1, interpretation_net_output_shape]))
+        
+        stop_counter = 0
+        best_result_iteration = np.inf
+
+        for current_step in range(max_steps):
+            if stop_counter>=early_stopping:
+                break
+            
+            opt.minimize(function_to_optimize, var_list=[poly_optimize_input])
+            current_result = function_to_optimize()
+            if printing:
+                clear_output(wait=True)
+                print("Current best: {} \n Curr_res: {} \n Iteration {}, Step {}".format(best_result_iteration,current_result, current_iteration, current_step), end='\r')
+ 
+            stop_counter += 1
+            if current_result < best_result_iteration:
+                best_result_iteration = current_result
+                stop_counter = 0
+                best_poly_optimize_iteration = tf.identity(poly_optimize_input)
+                
+        if best_result_iteration < best_result:
+            best_result = best_result_iteration
+            best_poly_optimize = tf.identity(best_poly_optimize_iteration)
+
+    per_network_poly = best_poly_optimize[0].numpy()
+    
+    if printing:
+        print("Optimization terminated at {}".format(best_result))
+        
+    print(per_network_poly)
+        
+    return per_network_poly
+
+
+
+
+
+def per_network_poly_optimization_tf_2(random_lambda_input_data, 
+                                  lambda_network_weights, 
+                                  poly_representation, 
+                                  list_of_monomial_identifiers_numbers, 
+                                  config, 
+                                  lr=0.05, 
+                                  max_steps = 1000, 
+                                  early_stopping=10, 
+                                  restarts=5, 
+                                  printing=True):
+    
+    from utilities.metrics import inet_lambda_fv_loss_wrapper
+    
+    #@tf.function(experimental_compile=True) 
+    def function_to_optimize():
+        poly_optimize = poly_optimize_input
+                
+        error = inet_lambda_fv_loss_wrapper(inet_loss, random_lambda_input_data, list_of_monomial_identifiers_numbers, base_model, set_config=True, config=config, dims=dims)(poly_with_lambda_network_weights, poly_optimize)
+        #error = inet_lambda_fv_loss_wrapper(inet_loss, random_lambda_input_data, list_of_monomial_identifiers_numbers, base_model, set_config=True, config=config)(tf.convert_to_tensor([poly_with_lambda_network_weights]), poly_optimize)
+
+        return error #tf.reduce_mean(poly_optimize)#result        
+     
+
+        
+        
+    #globals().update(dict(config))
+    globals().update(config)
+    global inet_loss
+    
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)    
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)       
+    
+    poly_with_lambda_network_weights = np.hstack((poly_representation, lambda_network_weights))           
+
+    base_model = Sequential()
+
+    base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+
+    for neurons in lambda_network_layers[1:]:
+        base_model.add(Dense(neurons, activation='relu'))
+
+    base_model.add(Dense(1))
+    
+    weights_structure = base_model.get_weights()
+    
+    #base_model = generate_base_model()
+    
+    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(random_lambda_input_data, max(1, n)))
+    random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)#return_float_tensor_representation(evaluation_dataset)
+    list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers_numbers)    
+    
+    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    
+    dims = [np_arrays.shape for np_arrays in weights_structure]
+    
+    
+    network_parameters = poly_with_lambda_network_weights[sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
+    #polynomial_true = poly_with_lambda_network_weights[:,:sparsity]
+    
+    network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)#return_float_tensor_representation(network_parameters)
+    #polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
+
+    poly_with_lambda_network_weights = tf.convert_to_tensor([poly_with_lambda_network_weights])     
+    inet_loss = tf.convert_to_tensor(inet_loss)    
+    
+    new_dims = []
+    for dim in dims:
+        if len(dim) != 2:
+            dim = (dim[0], 0)
+        new_dims.append(dim)
+    dims = new_dims    
+    dims = tf.convert_to_tensor(dims)  
+    
+    best_result = np.inf
+
+    for current_iteration in range(restarts):
+        
+        opt = tf.keras.optimizers.Adam(learning_rate=lr)
+        
+        poly_optimize_input = tf.Variable(tf.random.uniform([1, interpretation_net_output_shape]))
+        
+        stop_counter = 0
+        best_result_iteration = np.inf
+
+        for current_step in range(max_steps):
+            if stop_counter>=early_stopping:
+                break
+            
+            opt.minimize(function_to_optimize, var_list=[poly_optimize_input])
+            current_result = function_to_optimize()
+            if printing:
+                clear_output(wait=True)
+                print("Current best: {} \n Curr_res: {} \n Iteration {}, Step {}".format(best_result_iteration,current_result, current_iteration, current_step), end='\r')
+ 
+            stop_counter += 1
+            if current_result < best_result_iteration:
+                best_result_iteration = current_result
+                stop_counter = 0
+                best_poly_optimize_iteration = tf.identity(poly_optimize_input)
+                
+        if best_result_iteration < best_result:
+            best_result = best_result_iteration
+            best_poly_optimize = tf.identity(best_poly_optimize_iteration)
+
+    per_network_poly = best_poly_optimize[0].numpy()
+    
+    if printing:
+        print("Optimization terminated at {}".format(best_result))
+                
+    return per_network_poly
+
+
+
+
+
+#AUßERHALB MODEL ERSTELLEN (WENN X GLEICH BLEIBEN AUCH PREDICTEN) UND IN OPTIMIZE NUR NOCH POLY FV BERECHNEN (ODER NOCH PREDICTIONS MACHEN, ABER KEIN MODEL BAUEN)
+
+
+def per_network_poly_optimization_tf_3(random_lambda_input_data, 
+                                  lambda_network_weights, 
+                                  #poly_representation, 
+                                  list_of_monomial_identifiers_numbers, 
+                                  config, 
+                                  lr=0.05, 
+                                  max_steps = 1000, 
+                                  early_stopping=10, 
+                                  restarts=5, 
+                                  printing=True):
+    
+    from utilities.metrics import calculate_poly_fv_tf_wrapper
+
+    def function_to_optimize():
+
+        
+     
+                        
+        poly_optimize = poly_optimize_input[0]
+            
+            
+            
+        #poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
+        
+        #poly_optimize_identifiers_list = []
+        #for i in range(interpretation_net_output_monomials):
+        #    poly_optimize_identifiers = tf.math.softmax(poly_optimize[interpretation_net_output_monomials*(i+1):interpretation_net_output_monomials*(i+2)])
+        #    poly_optimize_identifiers_list.append(poly_optimize_identifiers)
+        #poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
+                
+        #tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
+        
+        
+        #poly_optimize = tf.convert_to_tensor(poly_optimize, dtype=tf.float32)
+        
+        
+        
+        
+        poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, set_config=True, config=config), (random_lambda_input_data))
+
+        
+
+
+        error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)             
+
+        #error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
+        
+        #result = inet_lambda_fv_loss_wrapper(inet_loss, random_lambda_input_data, list_of_monomial_identifiers_numbers, base_model, set_config=True, config=config)(tf.convert_to_tensor([poly_with_lambda_network_weights]), poly_optimize)
+
+        return error #tf.reduce_mean(poly_optimize)#result        
+     
+
+        
+        
+    globals().update(config)
+    
+    random.seed(RANDOM_SEED)
+    np.random.seed(RANDOM_SEED)    
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(RANDOM_SEED)
+    else:
+        tf.set_random_seed(RANDOM_SEED)       
+    
+    #poly_with_lambda_network_weights = np.hstack((poly_representation, lambda_network_weights))           
+
+    base_model = Sequential()
+
+    base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+
+    for neurons in lambda_network_layers[1:]:
+        base_model.add(Dense(neurons, activation='relu'))
+
+    base_model.add(Dense(1))
+    
+    weights_structure = base_model.get_weights()
+    
+    #base_model = generate_base_model()
+    
+    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(random_lambda_input_data, max(1, n)))
+    
+    random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)#return_float_tensor_representation(evaluation_dataset)
+    list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers_numbers)    
+    
+    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    
+    dims = [np_arrays.shape for np_arrays in weights_structure]
+    
+    
+    #network_parameters = poly_with_lambda_network_weights[sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
+    #polynomial_true = poly_with_lambda_network_weights[:,:sparsity]
+
+    network_parameters = tf.dtypes.cast(tf.convert_to_tensor(lambda_network_weights), tf.float32)#return_float_tensor_representation(network_parameters)
+    #polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
+    
+    
+    # build models
+    start = 0
+    layers = []
+    for i in range(len(dims)//2):
+
+        # set weights of layer
+        index = i*2
+        size = np.product(dims[index])
+        weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+        model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+        start += size
+
+        # set biases of layer
+        index += 1
+        size = np.product(dims[index])
+        biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
+        model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+        start += size
+
+
+    lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_lambda_input_data))    
+    
+        
+    
+    best_result = np.inf
+
+    for current_iteration in range(restarts):
+        
+        opt = tf.keras.optimizers.Adam(learning_rate=lr)
+        
+        poly_optimize_input = tf.Variable(tf.random.uniform([1, interpretation_net_output_shape]))
+        
+        stop_counter = 0
+        best_result_iteration = np.inf
+
+        for current_step in range(max_steps):
+            if stop_counter>=early_stopping:
+                break
+            
+            opt.minimize(function_to_optimize, var_list=[poly_optimize_input])
+            current_result = function_to_optimize()
+            if printing:
+                clear_output(wait=True)
+                print("Current best: {} \n Curr_res: {} \n Iteration {}, Step {}".format(best_result_iteration,current_result, current_iteration, current_step), end='\r')
+ 
+            stop_counter += 1
+            if current_result < best_result_iteration:
+                best_result_iteration = current_result
+                stop_counter = 0
+                best_poly_optimize_iteration = tf.identity(poly_optimize_input)
+                
+        if best_result_iteration < best_result:
+            best_result = best_result_iteration
+            best_poly_optimize = tf.identity(best_poly_optimize_iteration)
+
+    per_network_poly = best_poly_optimize[0].numpy()
+    
+    if printing:
+        print("Optimization terminated at {}".format(best_result))
+        
+    print(per_network_poly)
+        
+    return per_network_poly
