@@ -113,10 +113,9 @@ class CombinedOutputInet(ak.Head):
         return config
 
     def build(self, hp, inputs=None):    
-        inputs = nest.flatten(inputs)
-        if len(inputs) == 1:
-            return inputs
-        #output_node = layers.Concatenate()(inputs)
+        #inputs = nest.flatten(inputs)
+        #if len(inputs) == 1:
+        #    return inputs
         output_node = concatenate(inputs)           
         return output_node
 
@@ -144,7 +143,7 @@ class ClassificationDenseInet(ak.Block):
 
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
-        input_node = tf.python.util.nest.flatten(inputs)[0]
+        input_node = tf.nest.flatten(inputs)[0]
         layer = Dense(sparsity, activation='softmax')
         output_node = layer(input_node)
         return output_node    
@@ -153,7 +152,7 @@ class RegressionDenseInet(ak.Block):
 
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
-        input_node = tf.python.util.nest.flatten(inputs)[0]
+        input_node = tf.nest.flatten(inputs)[0]
         layer = Dense(interpretation_net_output_monomials)
         output_node = layer(input_node)
         return output_node     
@@ -201,10 +200,13 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         function_values_valid_list = [function_values[0] for function_values in function_values_complete_list]
         function_values_test_list = [function_values[1] for function_values in function_values_complete_list]
 
-        inet_preds_list = [result[3] for result in results_list]
+        preds_list =  [result[3] for result in results_list]
+        inet_preds_list = [preds[0] for preds in preds_list]
         inet_preds_valid_list = [inet_preds[0] for inet_preds in inet_preds_list]
         inet_preds_test_list = [inet_preds[1] for inet_preds in inet_preds_list]
 
+        per_network_preds_list = [preds[1] for preds in preds_list]
+        
         distrib_dict_list = [result[4] for result in results_list]
 
         if not nas:
@@ -231,9 +233,12 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         function_values_valid_list = [function_values[0] for function_values in function_values_complete_list]
         function_values_test_list = [function_values[1] for function_values in function_values_complete_list]
 
-        inet_preds_list = [result[3] for result in results_list]
+        preds_list =  [result[3] for result in results_list]
+        inet_preds_list = [preds[0] for preds in preds_list]
         inet_preds_valid_list = [inet_preds[0] for inet_preds in inet_preds_list]
         inet_preds_test_list = [inet_preds[1] for inet_preds in inet_preds_list]
+
+        per_network_preds_list = [preds[1] for preds in preds_list]
 
 
         distrib_dict_list = [result[4] for result in results_list]
@@ -256,6 +261,8 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
             inet_preds_list, 
             inet_preds_valid_list, 
             inet_preds_test_list, 
+            
+            per_network_preds_list,
             
             distrib_dict_list,
             model_list)
@@ -567,7 +574,6 @@ def train_nn_and_pred(lambda_net_train_dataset,
     restarts=5
     per_network_dataset_size = 500
 
-    random_lambda_input_data = 500#generate_random_data_points(low=x_min, high=x_max, size=per_network_dataset_size, variables=max(1, n), distrib='uniform')
     list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
 
     if n_jobs != -1:
@@ -579,10 +585,6 @@ def train_nn_and_pred(lambda_net_train_dataset,
         
         
     lambda_network_weights_list = np.array(lambda_net_test_dataset.weight_list)
-    if evaluate_with_real_function: #target polynomial as inet target
-        poly_representation_list = np.array(lambda_net_test_dataset.target_polynomial_list)
-    else: #lstsq lambda pred polynomial as inet target
-        poly_representation_list = np.array(lambda_net_test_dataset.lstsq_lambda_pred_polynomial_list)
           
     
     config = {
@@ -600,35 +602,21 @@ def train_nn_and_pred(lambda_net_train_dataset,
              'x_max': x_max,
              }
     
-    config_list = [('n', n),
-             ('inet_loss', inet_loss),
-             ('sparsity', sparsity),
-             ('lambda_network_layers', lambda_network_layers),
-             ('interpretation_net_output_shape', interpretation_net_output_shape),
-             ('RANDOM_SEED', RANDOM_SEED),
-             ('nas', nas),
-             ('number_of_lambda_weights', number_of_lambda_weights),
-             ('interpretation_net_output_monomials', interpretation_net_output_monomials),
-             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
-             ('x_min', x_min),
-             ('x_max', x_max)]
-    
-    
-    parallel_per_network = Parallel(n_jobs=n_jobs_per_network, verbose=111, backend='loky')
+    parallel_per_network = Parallel(n_jobs=n_jobs_per_network, verbose=1, backend='loky')
                 
-    per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf_3)(random_lambda_input_data, 
+    per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_dataset_size, 
                                                                                                       lambda_network_weights, 
-                                                                                                      #poly_representation,
                                                                                                       list_of_monomial_identifiers_numbers, 
                                                                                                       config,
                                                                                                       lr=lr, 
                                                                                                       max_steps = max_steps, 
                                                                                                       early_stopping=early_stopping, 
                                                                                                       restarts=restarts,
-                                                                                                      printing=printing) for lambda_network_weights, poly_representation in zip(lambda_network_weights_list,
-                                                                                                                                                                                poly_representation_list))      
+                                                                                                      printing=printing) for lambda_network_weights in lambda_network_weights_list)      
 
     del parallel_per_network
+    
+    pred_list = [pred_list, per_network_optimization_polynomials]
     
                 
     ############################## FUNCTION VALUE CALCULATION ###############################
@@ -1063,6 +1051,7 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
         for index, metric in enumerate(plot_metric_list):
 
             inetPoly_VS_targetPoly_test = []
+            perNetworkPoly_VS_targetPoly_test = []
             #inetPoly_VS_predLambda_test = []
             #inetPoly_VS_lstsqTarget_test = []
             #inetPoly_VS_lstsqLambda_test = []
@@ -1075,13 +1064,14 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
 
             for scores in scores_list:
                 inetPoly_VS_targetPoly_test.append(scores[metric].loc['inetPoly_VS_targetPoly_test'])
+                perNetworkPoly_VS_targetPoly_test.append(scores[metric].loc['perNetworkPoly_VS_targetPoly_test'])
                 predLambda_VS_targetPoly_test.append(scores[metric].loc['predLambda_VS_targetPoly_test'])
                 lstsqLambda_VS_targetPoly_test.append(scores[metric].loc['lstsqLambda_VS_targetPoly_test'])     
                 lstsqTarget_VS_targetPoly_test.append(scores[metric].loc['lstsqTarget_VS_targetPoly_test'])
 
-            plot_df = pd.DataFrame(data=np.vstack([inetPoly_VS_targetPoly_test, predLambda_VS_targetPoly_test, lstsqLambda_VS_targetPoly_test, lstsqTarget_VS_targetPoly_test]).T, 
+            plot_df = pd.DataFrame(data=np.vstack([inetPoly_VS_targetPoly_test, perNetworkPoly_VS_targetPoly_test, predLambda_VS_targetPoly_test, lstsqLambda_VS_targetPoly_test, lstsqTarget_VS_targetPoly_test]).T, 
                                    index=x_axis_steps,
-                                   columns=['inetPoly_VS_targetPoly_test', 'predLambda_VS_targetPoly_test', 'lstsqLambda_VS_targetPoly_test', 'lstsqTarget_VS_targetPoly_test'])
+                                   columns=['inetPoly_VS_targetPoly_test', 'perNetworkPoly_VS_targetPoly_test', 'predLambda_VS_targetPoly_test', 'lstsqLambda_VS_targetPoly_test', 'lstsqTarget_VS_targetPoly_test'])
             
             if length_plt >= 2:
                 ax[index//2, index%2].set_title(metric)
@@ -1123,6 +1113,8 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
             inetPoly_VS_predLambda_test = []
             #inetPoly_VS_lstsqTarget_test = []
             inetPoly_VS_lstsqLambda_test = []
+            perNetworkPoly_VS_predLambda_test = []
+            perNetworkPoly_VS_lstsqLambda_test = []
             lstsqLambda_VS_predLambda_test = []
             #lstsqLambda_VS_lstsqTarget_test = []
             #lstsqLambda_VS_targetPoly_test = []
@@ -1133,12 +1125,14 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
             for scores in scores_list:
                 inetPoly_VS_lstsqLambda_test.append(scores[metric].loc['inetPoly_VS_lstsqLambda_test'])
                 inetPoly_VS_predLambda_test.append(scores[metric].loc['inetPoly_VS_predLambda_test'])
+                perNetworkPoly_VS_lstsqLambda_test.append(scores[metric].loc['perNetworkPoly_VS_lstsqLambda_test'])
+                perNetworkPoly_VS_predLambda_test.append(scores[metric].loc['perNetworkPoly_VS_predLambda_test'])                
                 lstsqLambda_VS_predLambda_test.append(scores[metric].loc['lstsqLambda_VS_predLambda_test'])     
                 predLambda_VS_targetPoly_test.append(scores[metric].loc['predLambda_VS_targetPoly_test'])     
 
-            plot_df = pd.DataFrame(data=np.vstack([inetPoly_VS_predLambda_test, inetPoly_VS_lstsqLambda_test, lstsqLambda_VS_predLambda_test, predLambda_VS_targetPoly_test]).T, 
+            plot_df = pd.DataFrame(data=np.vstack([inetPoly_VS_predLambda_test, inetPoly_VS_lstsqLambda_test, perNetworkPoly_VS_predLambda_test, perNetworkPoly_VS_lstsqLambda_test, lstsqLambda_VS_predLambda_test, predLambda_VS_targetPoly_test]).T, 
                                    index=x_axis_steps,
-                                   columns=['inetPoly_VS_predLambda_test', 'inetPoly_VS_lstsqLambda_test', 'lstsqLambda_VS_predLambda_test', 'predLambda_VS_targetPoly_test'])
+                                   columns=['inetPoly_VS_predLambda_test', 'inetPoly_VS_lstsqLambda_test', 'perNetworkPoly_VS_predLambda_test', 'perNetworkPoly_VS_lstsqLambda_test', 'lstsqLambda_VS_predLambda_test', 'predLambda_VS_targetPoly_test'])
 
             if length_plt >= 2:
                 ax[index//2, index%2].set_title(metric)
@@ -1169,7 +1163,7 @@ def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
 
 
 
-def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_dataset_list, function_values_test_list, inet_preds_test_list, rand_index=1, plot_type=2):
+def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_dataset_list, function_values_test_list, inet_preds_test_list, per_network_preds_list, rand_index=1, plot_type=2):
     
     paths_dict = generate_paths(path_type = 'interpretation_net')
     
@@ -1177,11 +1171,14 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     polynomial_lstsq_target = lambda_net_test_dataset_list[-1].lstsq_target_polynomial_list[rand_index]
     polynomial_lstsq_lambda = lambda_net_test_dataset_list[-1].lstsq_lambda_pred_polynomial_list[rand_index]
     polynomial_inet = inet_preds_test_list[-1][rand_index]
+    polynomial_per_network_opt = per_network_preds_list[-1][rand_index]
+    
     
     polynomial_target_string = get_sympy_string_from_coefficients(polynomial_target, force_complete_poly_representation=True, round_digits=4)
     polynomial_lstsq_target_string = get_sympy_string_from_coefficients(polynomial_lstsq_target, force_complete_poly_representation=True, round_digits=4)
     polynomial_lstsq_lambda_string = get_sympy_string_from_coefficients(polynomial_lstsq_lambda, force_complete_poly_representation=True, round_digits=4)
     polynomial_inet_string = get_sympy_string_from_coefficients(polynomial_inet, round_digits=4)
+    polynomial_per_network_opt_string = get_sympy_string_from_coefficients(polynomial_per_network_opt, round_digits=4)
     
     #print('Target Poly:')
     #print_polynomial_from_coefficients(polynomial_target, force_complete_poly_representation=True, round_digits=4)
@@ -1197,6 +1194,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     lambda_model_preds = function_values_test_list[-1][0][rand_index].ravel()
     lstsq_lambda_preds_poly = function_values_test_list[-1][2][rand_index]
     inet_poly_fvs = function_values_test_list[-1][4][rand_index]  
+    per_network_opt_poly_fvs = function_values_test_list[-1][5][rand_index]  
     lambda_train_data = lambda_net_test_dataset_list[-1].y_test_data_list[rand_index].ravel()
     
     x_vars = ['x' + str(i) for i in range(1, n+1)]
@@ -1211,33 +1209,35 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     vars_plot = lambda_net_test_dataset_list[-1].X_test_data_list[rand_index]
     
     if evaluate_with_real_function:
-        columns_single.extend(['Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs', 'I-Net Poly FVs', 'Lambda Model Preds', 'LSTSQ Lambda Poly FVs'])
-        plot_data_single = pd.DataFrame(data=np.column_stack([vars_plot, real_poly_fvs, lambda_train_data, lstsq_target_poly, inet_poly_fvs, lambda_model_preds, lstsq_lambda_preds_poly]), columns=columns_single)
-        preds_plot_all = np.vstack([real_poly_fvs, lambda_train_data, lstsq_target_poly, inet_poly_fvs, lambda_model_preds, lstsq_lambda_preds_poly]).ravel()
+        columns_single.extend(['Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs', 'I-Net Poly FVs', 'Per Network Opt Poly FVs', 'Lambda Model Preds', 'LSTSQ Lambda Poly FVs'])
+        plot_data_single = pd.DataFrame(data=np.column_stack([vars_plot, real_poly_fvs, lambda_train_data, lstsq_target_poly, inet_poly_fvs, per_network_opt_poly_fvs, lambda_model_preds, lstsq_lambda_preds_poly]), columns=columns_single)
+        preds_plot_all = np.vstack([real_poly_fvs, lambda_train_data, lstsq_target_poly, inet_poly_fvs, per_network_opt_poly_fvs, lambda_model_preds, lstsq_lambda_preds_poly]).ravel()
         vars_plot_all_preds = np.vstack([vars_plot for i in range(len(columns_single[n:]))])
 
         real_poly_fvs_str = np.array(['Target Poly FVs' for i in range(eval_size_plot)])
         lambda_train_data_str = np.array(['Lambda Train Data' for i in range(lambda_train_data_size)])
         lstsq_target_poly_str = np.array(['LSTSQ Target Poly FVs' for i in range(eval_size_plot)])
         inet_poly_fvs_str = np.array(['I-Net Poly FVs' for i in range(eval_size_plot)])
+        per_network_opt_poly_fvs_str = np.array(['Per Network Opt Poly FVs' for i in range(eval_size_plot)])
         lambda_model_preds_str = np.array(['Lambda Model Preds' for i in range(eval_size_plot)])
         lstsq_lambda_preds_poly_str = np.array(['LSTSQ Lambda Poly FVs' for i in range(eval_size_plot)])
 
-        identifier = np.concatenate([real_poly_fvs_str, lambda_train_data_str, lstsq_target_poly_str, inet_poly_fvs_str, lambda_model_preds_str, lstsq_lambda_preds_poly_str])
+        identifier = np.concatenate([real_poly_fvs_str, lambda_train_data_str, lstsq_target_poly_str, inet_poly_fvs_str, per_network_opt_poly_fvs_str, lambda_model_preds_str, lstsq_lambda_preds_poly_str])
     else:
-        columns_single.extend(['Lambda Model Preds', 'LSTSQ Lambda Poly FVs', 'I-Net Poly FVs', 'Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs'])
-        plot_data_single = pd.DataFrame(data=np.column_stack([vars_plot, lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_target_poly]), columns=columns_single)
-        preds_plot_all = np.vstack([lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_target_poly]).ravel()
+        columns_single.extend(['Lambda Model Preds', 'LSTSQ Lambda Poly FVs', 'I-Net Poly FVs', 'Per Network Opt Poly FVs', 'Target Poly FVs', 'Lambda Train Data', 'LSTSQ Target Poly FVs'])
+        plot_data_single = pd.DataFrame(data=np.column_stack([vars_plot, lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, per_network_opt_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_target_poly]), columns=columns_single)
+        preds_plot_all = np.vstack([lambda_model_preds, lstsq_lambda_preds_poly, inet_poly_fvs, per_network_opt_poly_fvs, real_poly_fvs, lambda_train_data, lstsq_target_poly]).ravel()
         vars_plot_all_preds = np.vstack([vars_plot for i in range(len(columns_single[n:]))])
 
         lambda_model_preds_str = np.array(['Lambda Model Preds' for i in range(eval_size_plot)])
         lstsq_lambda_preds_poly_str = np.array(['LSTSQ Lambda Poly FVs' for i in range(eval_size_plot)])        
         inet_poly_fvs_str = np.array(['I-Net Poly FVs' for i in range(eval_size_plot)])
+        per_network_opt_poly_fvs_str = np.array(['Per Network Opt Poly FVs' for i in range(eval_size_plot)])
         real_poly_fvs_str = np.array(['Target Poly FVs' for i in range(eval_size_plot)])
         lambda_train_data_str = np.array(['Lambda Train Data' for i in range(lambda_train_data_size)])
         lstsq_target_poly_str = np.array(['LSTSQ Target Poly FVs' for i in range(eval_size_plot)])
 
-        identifier = np.concatenate([lambda_model_preds_str, lstsq_lambda_preds_poly_str, inet_poly_fvs_str, real_poly_fvs_str, lambda_train_data_str, lstsq_target_poly_str])
+        identifier = np.concatenate([lambda_model_preds_str, lstsq_lambda_preds_poly_str, inet_poly_fvs_str, per_network_opt_poly_fvs_str, real_poly_fvs_str, lambda_train_data_str, lstsq_target_poly_str])
         
     plot_data = pd.DataFrame(data=np.column_stack([vars_plot_all_preds, preds_plot_all]), columns=columns)
     plot_data['Identifier'] = identifier       
@@ -1300,6 +1300,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         real_poly_VS_inet_poly_mae = mean_absolute_error(real_poly_fvs, inet_poly_fvs)
         real_poly_VS_inet_poly_r2 = r2_score(real_poly_fvs, inet_poly_fvs)    
         
+        real_poly_VS_perNet_poly_mae = mean_absolute_error(real_poly_fvs, per_network_opt_poly_fvs)
+        real_poly_VS_perNet_poly_r2 = r2_score(real_poly_fvs, per_network_opt_poly_fvs)    
+        
         real_poly_VS_lambda_model_preds_mae = mean_absolute_error(real_poly_fvs, lambda_model_preds)
         real_poly_VS_lambda_model_preds_r2 = r2_score(real_poly_fvs, lambda_model_preds)
         
@@ -1315,6 +1318,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         
         tab.add_row(["Target Poly \n vs. \n LSTSQ Target Poly \n", real_poly_VS_lstsq_target_poly_mae, real_poly_VS_lstsq_target_poly_r2, polynomial_target_string, polynomial_lstsq_target_string])
         tab.add_row(["Target Poly \n vs. \n I-Net Poly \n", real_poly_VS_inet_poly_mae, real_poly_VS_inet_poly_r2, polynomial_target_string, polynomial_inet_string])
+        tab.add_row(["Target Poly \n vs. \n Per Network Opt Poly \n", real_poly_VS_perNet_poly_mae, real_poly_VS_perNet_poly_r2, polynomial_target_string, polynomial_per_network_opt_string])
         tab.add_row(["Target Poly \n vs. \n Lambda Preds \n", real_poly_VS_lambda_model_preds_mae, real_poly_VS_lambda_model_preds_r2, polynomial_target_string, '-'])
         tab.add_row(["Target Poly \n vs. \n LSTSQ Lambda Preds Poly \n", real_poly_VS_lstsq_lambda_preds_poly_mae, real_poly_VS_lstsq_lambda_preds_poly_r2, polynomial_target_string, polynomial_lstsq_lambda_string])
         
@@ -1327,6 +1331,9 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         
         lambda_model_preds_VS_inet_poly_mae = mean_absolute_error(lambda_model_preds, inet_poly_fvs)
         lambda_model_preds_VS_inet_poly_r2 = r2_score(lambda_model_preds, inet_poly_fvs)
+        
+        lambda_model_preds_VS_perNet_poly_mae = mean_absolute_error(lambda_model_preds, per_network_opt_poly_fvs)
+        lambda_model_preds_VS_perNet_poly_r2 = r2_score(lambda_model_preds, per_network_opt_poly_fvs)
         
         lambda_model_preds_VS_real_poly_mae = mean_absolute_error(lambda_model_preds, real_poly_fvs)
         lambda_model_preds_VS_real_poly_r2 = r2_score(lambda_model_preds, real_poly_fvs)
@@ -1343,6 +1350,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         
         tab.add_row(["Lambda Preds \n vs. \n LSTSQ Lambda Preds Poly \n", lambda_model_preds_VS_lstsq_lambda_preds_poly_mae, lambda_model_preds_VS_lstsq_lambda_preds_poly_r2, '-', polynomial_lstsq_lambda_string])
         tab.add_row(["Lambda Preds \n vs. \n I-Net Poly \n", lambda_model_preds_VS_inet_poly_mae, lambda_model_preds_VS_inet_poly_r2, '-', polynomial_inet_string])
+        tab.add_row(["Lambda Preds \n vs. \n Per Network Opt Poly \n", lambda_model_preds_VS_perNet_poly_mae, lambda_model_preds_VS_perNet_poly_r2, '-', polynomial_per_network_opt_string])
         tab.add_row(["Lambda Preds \n vs. \n Target Poly \n", lambda_model_preds_VS_real_poly_mae, lambda_model_preds_VS_real_poly_r2, '-', polynomial_target_string])
         tab.add_row(["Lambda Preds \n vs. \n LSTSQ Target Poly \n", lambda_model_preds_VS_lstsq_target_poly_mae, lambda_model_preds_VS_lstsq_target_poly_r2, '-', polynomial_lstsq_target_string])
         

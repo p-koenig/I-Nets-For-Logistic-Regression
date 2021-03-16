@@ -512,6 +512,7 @@ def train_nn(lambda_index,
     lstsq_data = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n)) #y_train_pred_lambda.ravel()
     terms_matrix = generate_term_matric_for_lstsq(lstsq_data, list(polynomial.index))
 
+    terms_matrix_train = generate_term_matric_for_lstsq(X_train_lambda, list(polynomial.index))
         
     if each_epochs_save == None or each_epochs_save==epochs_lambda:   
         model_history = model.fit(X_train_lambda,
@@ -532,8 +533,9 @@ def train_nn(lambda_index,
     
         y_random_pred_lambda = model.predict(lstsq_data)
         
+        
         polynomial_lstsq_pred, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1]
-        polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1] 
+        polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix_train, y_train_real_lambda.ravel(), rcond=-1)#[::-1] 
         polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
         polynomial_lstsq_true_list.append(polynomial_lstsq_true)
         
@@ -612,7 +614,7 @@ def train_nn(lambda_index,
             polynomial_lstsq_pred, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1] 
             #does not change over time
             if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
-                polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix, y_random_pred_lambda.ravel(), rcond=-1)#[::-1] 
+                polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix_train, y_train_real_lambda.ravel(), rcond=-1)#[::-1] 
             polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
             polynomial_lstsq_true_list.append(polynomial_lstsq_true)            
             
