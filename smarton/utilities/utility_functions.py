@@ -44,6 +44,7 @@ from utilities.metrics import *
 #from utilities.utility_functions import *
 
 from scipy.optimize import minimize
+from scipy import optimize
 import sympy as sym
 from sympy import Symbol, sympify, lambdify
 
@@ -907,13 +908,12 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
 
 
 
-
-
 def per_network_poly_optimization_scipy(per_network_dataset_size, 
                                           lambda_network_weights, 
                                           list_of_monomial_identifiers_numbers, 
                                           config, 
                                           optimizer = 'Nelder-Mead',
+                                          jac = None,
                                           max_steps = 1000, 
                                           restarts=5, 
                                           printing=True,
@@ -995,12 +995,10 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
     for current_iteration in range(restarts):
                         
         @tf.function(experimental_compile=True) 
-        def function_to_optimize_scipy(poly_optimize_input):    
-
+        def function_to_optimize_scipy(poly_optimize_input):   
             
             #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
             poly_optimize = tf.cast(poly_optimize_input, tf.float32)
-
 
             if interpretation_net_output_monomials != None:
                 poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
@@ -1014,7 +1012,6 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 
             poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, config=config), (random_lambda_input_data))
 
-
             error = None
             if inet_loss == 'mae':
                 error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
@@ -1025,17 +1022,27 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 
             error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
     
-            
-
             return error
     
                     
         poly_optimize_input = tf.random.uniform([1, interpretation_net_output_shape])    
 
+        def function_to_optimize_scipy_grad(poly_optimize_input):
+            
+            error = function_to_optimize_scipy(poly_optimize_input)
+            error = error.numpy()
+            return error
         
         stop_counter = 0
         
-        opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
+        if jac=='fprime':
+            jac = lambda x: optimize.approx_fprime(x, function_to_optimize_scipy_grad, 0.01)
+        
+        tf.print(interpretation_net_output_monomials)
+        tf.print(config)        
+        opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, jac=jac, options={'maxfun': None, 'maxiter': max_steps})
+        
+        #opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
 
         best_result_iteration = opt_res.fun
         best_poly_optimize_iteration = opt_res.x

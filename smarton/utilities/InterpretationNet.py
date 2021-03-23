@@ -173,7 +173,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
     
     return_model = False
     n_jobs_inet_training = n_jobs
-    if n_jobs==1 or (samples_list != None and len(samples_list) == 1) or (len(lambda_net_train_dataset_list) == 1 and samples_list == None):
+    if n_jobs==1 or (samples_list != None and len(samples_list) == 1) or (len(lambda_net_train_dataset_list) == 1 and samples_list == None) or use_gpu:
         n_jobs_inet_training = 1
         return_model = True
                         
@@ -318,6 +318,8 @@ def train_nn_and_pred(lambda_net_train_dataset,
     random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
     list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
             
+    weights_structure = base_model.get_weights()
+    dims = [np_arrays.shape for np_arrays in weights_structure]        
     if consider_labels_training: #coefficient-based evaluation
         
         if interpretation_net_output_monomials != None:
@@ -365,12 +367,13 @@ def train_nn_and_pred(lambda_net_train_dataset,
             y_train_model = y_train
         else: #in-loss prediction of lambda-nets
             
-            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)
-            
+            #loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)
+            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, weights_structure, dims)
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)) 
+                #metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)) 
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, weights_structure, dims)) 
             
             if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
@@ -442,9 +445,9 @@ def train_nn_and_pred(lambda_net_train_dataset,
                 
             elif nas_type == 'CNN-LSTM': 
                 input_node = ak.Input()
-                output_node = ak.ConvBlock()(input_node)
-                output_node = ak.RNNBlock()(output_node)
-                output_node = ak.DenseBlock()(output_node)
+                hidden_node = ak.ConvBlock()(input_node)
+                hidden_node = ak.RNNBlock()(hidden_node)
+                hidden_node = ak.DenseBlock()(hidden_node)
 
                 if interpretation_net_output_monomials == None:
                     output_node = ak.RegressionHead()(hidden_node)  
@@ -484,10 +487,12 @@ def train_nn_and_pred(lambda_net_train_dataset,
             auto_model = ak.AutoModel(inputs=input_node, 
                                 outputs=output_node,
                                 loss='custom_loss',
+                                objective='val_loss',
                                 overwrite=True,
+                                tuner='hyperband',#"greedy",
                                 max_trials=nas_trials,
                                 directory=directory,
-                                seed=RANDOM_SEED)
+                                seed=RANDOM_SEED+1)
 
             ############################## PREDICTION ###############################
             
@@ -495,17 +500,21 @@ def train_nn_and_pred(lambda_net_train_dataset,
                 x=X_train,
                 y=y_train_model,
                 validation_data=valid_data,
-                epochs=epochs
+                epochs=epochs,
+                batch_size=batch_size,
+                callbacks=return_callbacks_from_string('early_stopping'),
                 )
 
 
             history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
             model = auto_model.export_model()
+            print(auto_model.evaluate(valid_data[0], valid_data[1]))
+            print(model.evaluate(valid_data[0], valid_data[1]))
 
             y_valid_pred = model.predict(X_valid)[:,:interpretation_net_output_shape]
             y_test_pred = model.predict(X_test)[:,:interpretation_net_output_shape]
 
-        
+
     else: 
         inputs = Input(shape=X_train.shape[1], name='input')
         
@@ -568,53 +577,120 @@ def train_nn_and_pred(lambda_net_train_dataset,
         
     ############################## PER NETWORK OPTIMIZATION ###############################
         
-    lr=0.5
-    max_steps = 100
-    early_stopping=10
-    restarts=5
-    per_network_dataset_size = 500
+    if use_gpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        
+    if False:
+        
+        per_network_hyperparams = {
+            'optimizer': tf.keras.optimizers.RMSprop,
+            'lr': 0.02,
+            'max_steps': 500,
+            'early_stopping': 10,
+            'restarts': 3,
+            'per_network_dataset_size': 5000,
+        }
 
-    list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
+        list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
 
-    if n_jobs != -1:
-        n_jobs_per_network = min(n_jobs, os.cpu_count() // current_jobs)
-    else: 
-        n_jobs_per_network = os.cpu_count() // current_jobs - 1
+        if n_jobs != -1:
+            n_jobs_per_network = min(n_jobs, os.cpu_count() // current_jobs)
+        else: 
+            n_jobs_per_network = os.cpu_count() // current_jobs - 1
+
+        printing = True if n_jobs_per_network == 1 else False
+
+
+        lambda_network_weights_list = np.array(lambda_net_test_dataset.weight_list)
+
+
+        config = {
+                 'n': n,
+                 'inet_loss': inet_loss,
+                 'sparsity': sparsity,
+                 'lambda_network_layers': lambda_network_layers,
+                 'interpretation_net_output_shape': interpretation_net_output_shape,
+                 'RANDOM_SEED': RANDOM_SEED,
+                 'nas': nas,
+                 'number_of_lambda_weights': number_of_lambda_weights,
+                 'interpretation_net_output_monomials': interpretation_net_output_monomials,
+                 #'list_of_monomial_identifiers': list_of_monomial_identifiers,
+                 'x_min': x_min,
+                 'x_max': x_max,
+                 }
+
+        parallel_per_network = Parallel(n_jobs=n_jobs_per_network, verbose=1, backend='loky')
+
+        per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_hyperparams['per_network_dataset_size'], 
+                                                                                                              lambda_network_weights, 
+                                                                                                              list_of_monomial_identifiers_numbers, 
+                                                                                                              config,
+                                                                                                              optimizer = per_network_hyperparams['optimizer'],
+                                                                                                              lr = per_network_hyperparams['lr'], 
+                                                                                                              max_steps = per_network_hyperparams['max_steps'], 
+                                                                                                              early_stopping = per_network_hyperparams['early_stopping'], 
+                                                                                                              restarts = per_network_hyperparams['restarts'],
+                                                                                                              printing = printing,
+                                                                                                              return_error = True) for lambda_network_weights in lambda_network_weights_list)      
+
+        del parallel_per_network
         
-    printing = True if n_jobs_per_network == 1 else False
+    else:    
+
+        per_network_hyperparams = {
+            'optimizer':  'Powell',
+            'jac': 'fprime',
+            'max_steps': 5000,#100,
+            'restarts': 3,
+            'per_network_dataset_size': 500,
+        }
+
+        list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
+
+        if n_jobs != -1:
+            n_jobs_per_network = min(n_jobs, os.cpu_count() // current_jobs)
+        else: 
+            n_jobs_per_network = os.cpu_count() // current_jobs - 1
+
+        printing = True if n_jobs_per_network == 1 else False
+
+
+        lambda_network_weights_list = np.array(lambda_net_test_dataset.weight_list)
+
+
+        config = {
+                 'n': n,
+                 'inet_loss': inet_loss,
+                 'sparsity': sparsity,
+                 'lambda_network_layers': lambda_network_layers,
+                 'interpretation_net_output_shape': interpretation_net_output_shape,
+                 'RANDOM_SEED': RANDOM_SEED,
+                 'nas': nas,
+                 'number_of_lambda_weights': number_of_lambda_weights,
+                 'interpretation_net_output_monomials': interpretation_net_output_monomials,
+                 'x_min': x_min,
+                 'x_max': x_max,
+                 }
+
+        parallel_per_network = Parallel(n_jobs=n_jobs_per_network, verbose=1, backend='loky')
+
+        result_list_per_network = parallel_per_network(delayed(per_network_poly_optimization_scipy)(per_network_hyperparams['per_network_dataset_size'], 
+                                                                                                                  lambda_network_weights, 
+                                                                                                                  list_of_monomial_identifiers_numbers, 
+                                                                                                                  config,
+                                                                                                                  optimizer = per_network_hyperparams['optimizer'],
+                                                                                                                  jac = per_network_hyperparams['jac'],
+                                                                                                                  max_steps = per_network_hyperparams['max_steps'], 
+                                                                                                                  restarts = per_network_hyperparams['restarts'],
+                                                                                                                  printing = printing,
+                                                                                                                  return_error = True) for lambda_network_weights in lambda_network_weights_list)      
+        per_network_optimization_errors = [result[0] for result in result_list_per_network]
+        per_network_optimization_polynomials = [result[1] for result in result_list_per_network]          
         
-        
-    lambda_network_weights_list = np.array(lambda_net_test_dataset.weight_list)
-          
+        del parallel_per_network    
     
-    config = {
-             'n': n,
-             'inet_loss': inet_loss,
-             'sparsity': sparsity,
-             'lambda_network_layers': lambda_network_layers,
-             'interpretation_net_output_shape': interpretation_net_output_shape,
-             'RANDOM_SEED': RANDOM_SEED,
-             'nas': nas,
-             'number_of_lambda_weights': number_of_lambda_weights,
-             'interpretation_net_output_monomials': interpretation_net_output_monomials,
-             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
-             'x_min': x_min,
-             'x_max': x_max,
-             }
-    
-    parallel_per_network = Parallel(n_jobs=n_jobs_per_network, verbose=1, backend='loky')
-                
-    per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_dataset_size, 
-                                                                                                      lambda_network_weights, 
-                                                                                                      list_of_monomial_identifiers_numbers, 
-                                                                                                      config,
-                                                                                                      lr=lr, 
-                                                                                                      max_steps = max_steps, 
-                                                                                                      early_stopping=early_stopping, 
-                                                                                                      restarts=restarts,
-                                                                                                      printing=printing) for lambda_network_weights in lambda_network_weights_list)      
-
-    del parallel_per_network
+    if use_gpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers
     
     pred_list = [pred_list, per_network_optimization_polynomials]
     
@@ -1363,7 +1439,7 @@ def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
     #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
     #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
     
-    base_model = l
+    base_model = generate_base_model()
        
     X_data_flat = X_data
 
