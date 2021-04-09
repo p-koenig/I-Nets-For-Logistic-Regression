@@ -154,36 +154,36 @@ class LambdaNetDataset():
         return np.array(lambda_network_preds_list)
                 
         
-    def return_target_poly_fvs_on_dataset(self, evaluation_dataset):
+    def return_target_poly_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'  
-        target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True)
+        target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(target_poly_fvs_list)
     
-    def return_target_poly_fvs_on_test_data(self):        
-        target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True)
+    def return_target_poly_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):        
+        target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
         
         return np.array(target_poly_fvs_list)
     
-    def return_lstsq_lambda_pred_polynomial_fvs_on_dataset(self, evaluation_dataset):
+    def return_lstsq_lambda_pred_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
-        lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True)
+        lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_lambda_pred_polynomial_fvs_list)
     
-    def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self):
-        lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True)
+    def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_lambda_pred_polynomial_fvs_list)
     
-    def return_lstsq_target_polynomial_fvs_on_dataset(self, evaluation_dataset):
+    def return_lstsq_target_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
-        lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True)
+        lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_target_polynomial_fvs_list)
     
-    def return_lstsq_target_polynomial_fvs_on_test_data(self):
-        lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True)
+    def return_lstsq_target_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_target_polynomial_fvs_list)
     
@@ -290,38 +290,38 @@ class LambdaNet():
         
         return lambda_network_preds               
         
-    def return_target_poly_fvs_on_dataset(self, evaluation_dataset):
+    def return_target_poly_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
-        target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [evaluation_dataset], force_complete_poly_representation=True)
+        target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [evaluation_dataset], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return target_poly_fvs
     
-    def return_target_poly_fvs_on_test_data(self):
-        target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [self.X_test_data], force_complete_poly_representation=True)
+    def return_target_poly_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [self.X_test_data], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return target_poly_fvs    
     
     
     
-    def return_lstsq_lambda_pred_polynomial_fvs_on_dataset(self, evaluation_dataset):
+    def return_lstsq_lambda_pred_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
-        lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [evaluation_dataset], force_complete_poly_representation=True)
+        lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [evaluation_dataset], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_lambda_pred_polynomial_fvs
     
-    def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self):
-        lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [self.X_test_data], force_complete_poly_representation=True)
+    def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [self.X_test_data], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_lambda_pred_polynomial_fvs     
     
-    def return_lstsq_target_polynomial_fvs_on_dataset(self, evaluation_dataset):
+    def return_lstsq_target_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
-        lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [evaluation_dataset], force_complete_poly_representation=True)
+        lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [evaluation_dataset], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_target_polynomial_fvs
     
-    def return_lstsq_target_polynomial_fvs_on_test_data(self):
-        lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [self.X_test_data], force_complete_poly_representation=True)
+    def return_lstsq_target_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [self.X_test_data], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_target_polynomial_fvs  
     
@@ -349,7 +349,10 @@ class LambdaNet():
                 
         return columns 
 
-    
+    def return_model(self, config=None):
+        model = weights_to_model(self.weights, config)
+        
+        return model    
     
     
 def split_LambdaNetDataset(dataset, test_split, random_seed='RANDOM_SEED'):
@@ -387,6 +390,8 @@ def generate_base_model(): #without dropout
 
 def shape_flat_weights(flat_weights, target_weights):
     
+    from utilities.utility_functions import flatten
+    
     shaped_weights =[]
     start = 0
     for el in target_weights:
@@ -411,9 +416,47 @@ def weights_to_pred(weights, x, base_model=None):
     # Make prediction
     base_model.set_weights(shaped_weights)
     y = base_model.predict(x).ravel()
-    return y        
+    return y
 
+    
+def weights_to_model(weights, config=None):
 
+    if config != None:
+        globals().update(config) 
+    
+    model = Sequential()
+    
+    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
+    if fixed_initialization_lambda_training:
+        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
+    else:
+        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+        
+    if dropout > 0:
+        model.add(Dropout(dropout))
+
+    for neurons in lambda_network_layers[1:]:
+        if fixed_initialization_lambda_training:
+            model.add(Dense(neurons, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
+        else:
+            model.add(Dense(neurons, activation='relu'))
+        if dropout > 0:
+            model.add(Dropout(dropout))   
+    
+    if fixed_initialization_lambda_training:
+        model.add(Dense(1, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=self.train_settings['seed']), bias_initializer='zeros'))
+    else:
+        model.add(Dense(1))
+
+    # Shape weights (flat) into correct model structure
+    shaped_weights = shape_flat_weights(weights, model.get_weights())
+
+    model.set_weights(shaped_weights)
+    
+    model.compile(optimizer=optimizer_lambda,
+                  loss=loss_lambda,
+                  metrics=[r2_keras_loss, 'mae', root_mean_squared_error])    
+    return model  
 
 
 #######################################################################################################################################################

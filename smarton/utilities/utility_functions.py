@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
-#from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
+from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
 from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 import time
 
@@ -46,7 +46,7 @@ from utilities.metrics import *
 from scipy.optimize import minimize
 from scipy import optimize
 import sympy as sym
-from sympy import Symbol, sympify, lambdify
+from sympy import Symbol, sympify, lambdify, abc
 
 
 #######################################################################################################################################################
@@ -433,7 +433,9 @@ def calculate_function_values_from_polynomial(polynomial, lambda_input_data, for
     return np.array(function_value_list)
 
 
-def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, force_complete_poly_representation=False):
+
+def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, force_complete_poly_representation=False, n_jobs_parallel_fv=10, backend='threading'):
+    
     
     polynomial_list = return_numpy_representation(polynomial_list)
     lambda_input_list = return_numpy_representation(lambda_input_list)
@@ -445,15 +447,57 @@ def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, 
     else:
         assert polynomial_list.shape[1] == interpretation_net_output_shape
     assert lambda_input_list.shape[2] == n
-    
-    n_jobs_parallel_fv = 10 if polynomial_list.shape[0] > 10 else polynomial_list.shape[0]
-    
-    parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=0, backend='threading')
+        
+    parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=0, backend=backend)
     polynomial_true_fv = parallel(delayed(calculate_function_values_from_polynomial)(polynomial, lambda_inputs, force_complete_poly_representation=force_complete_poly_representation) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))  
+    del parallel   
+    
+    return np.array(polynomial_true_fv)
+
+
+def calculate_function_values_from_sympy(function, data_points):
+    
+    try:
+        function_vars = function.atoms(Symbol)
+        lambda_function = lambdify(function_vars, function, modules=["scipy", "numpy"])
+        if len(function_vars) >= 1:
+            function_values = lambda_function(data_points)
+        else:
+            function_values = [lambda_function() for i in range(data_points.shape[0])]
+    except (NameError, KeyError) as e:
+        #print(e)
+        function_values = []
+        for data_point in data_points:
+            function_value = function.evalf(subs={var: data_point[index] for index, var in enumerate(list(function.atoms(Symbol)))})
+            try:
+                function_value = float(function_value)
+            except TypeError as te:
+                #print(te)
+                #print(function_value)
+                function_value = np.inf
+            function_values.append(function_value)
+    function_values = np.nan_to_num(function_values).ravel()
+                
+    return function_values
+
+
+
+def parallel_fv_calculation_from_sympy(function_list, lambda_input_list, n_jobs_parallel_fv=10, backend='threading'):
+    
+    
+    
+    lambda_input_list = return_numpy_representation(lambda_input_list)
+    
+    assert len(function_list) == lambda_input_list.shape[0]
+             
+    parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=1, backend=backend)
+    polynomial_true_fv = parallel(delayed(calculate_function_values_from_sympy)(function, lambda_inputs) for function, lambda_inputs in zip(function_list, lambda_input_list))  
     del parallel   
     
 
     return np.array(polynomial_true_fv)
+
+
 
 def sleep_minutes(minutes):
     time.sleep(int(60*minutes))
@@ -1038,8 +1082,8 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
         if jac=='fprime':
             jac = lambda x: optimize.approx_fprime(x, function_to_optimize_scipy_grad, 0.01)
         
-        tf.print(interpretation_net_output_monomials)
-        tf.print(config)        
+        #tf.print(interpretation_net_output_monomials)
+        #tf.print(config)        
         opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, jac=jac, options={'maxfun': None, 'maxiter': max_steps})
         
         #opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
@@ -1060,6 +1104,103 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
         return best_result, per_network_poly
     
     return per_network_poly
+
+
+
+def symbolic_regression(lambda_net, 
+                          config,
+                          metamodeling_hyperparams,
+                          #printing = True,
+                          return_error = False):
+
+    from pysymbolic.algorithms.symbolic_expressions import symbolic_regressor
+    
+    globals().update(config) 
+    
+    global x_min
+    
+    model = lambda_net.return_model(config=config)
+    
+    if x_min == 0:
+        x_min = 1e-5    
+    
+    symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+    
+    if return_error:
+        return r2_score, symbolic_reg
+    
+    return symbolic_reg
+        
+def symbolic_metamodeling(lambda_net, 
+                          config,
+                          metamodeling_hyperparams,
+                          #printing = True,
+                          return_error = False,
+                          return_expression = 'approx', #'approx', #'exact',
+                          function_metamodeling = True,
+                          force_polynomial=False):
+    
+    
+    
+    from pysymbolic.algorithms.symbolic_metamodeling import symbolic_metamodel
+    from pysymbolic.algorithms.symbolic_expressions import get_symbolic_model
+    
+    
+    ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
+            
+    globals().update(config) 
+    
+    global x_min
+    
+    model = lambda_net.return_model(config=config)
+    
+    if x_min == 0:
+        x_min = 1e-5
+    
+    
+    ########################################### OPTIMIZATION ########################################################
+    
+    if function_metamodeling:    
+        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+        symbolic_model.approximation_order = d
+        
+        if return_expression == 'exact':
+            metamodel_function = symbolic_model.exact_expression()
+            #print(metamodel_function)
+        elif return_expression == 'approx':
+            metamodel_function = symbolic_model.approx_expression()       
+            
+        if return_error:
+            return r2_score, metamodel_function
+            
+    else:   
+        random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(metamodeling_hyperparams['dataset_size'], max(1, n)))
+        
+        if metamodeling_hyperparams['batch_size'] == None:
+            metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
+
+        metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", approximation_order = d, force_polynomial=force_polynomial)
+        metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
+
+
+        if return_expression == 'exact':
+            metamodel_function = metamodel.exact_expression
+            #print(metamodel_function)
+        elif return_expression == 'approx':
+            metamodel_function = metamodel.approx_expression
+            #print(metamodel_function)
+
+        if return_error:
+            random_lambda_input_data_preds_metamodel = metamodel.evaluate(random_lambda_input_data)
+            random_lambda_input_data_preds_lambda_net = model.predict(random_lambda_input_data)
+
+            error = mean_absolute_error(random_lambda_input_data_preds_lambda_net, random_lambda_input_data_preds_metamodel)        
+
+            return error, metamodel_function
+    
+    return metamodel_function
+
+
 
 
 

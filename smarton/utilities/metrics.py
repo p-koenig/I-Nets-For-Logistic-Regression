@@ -767,73 +767,73 @@ def relative_maximum_average_error(y_true, y_pred):
 
 
 
-def evaluate_interpretation_net(y_data_real, 
-                                y_data_pred, 
-                                polynomial_true_fv, 
-                                polynomial_pred_inet_fv):
+def evaluate_interpretation_net(function_1_coefficients, 
+                                function_2_coefficients, 
+                                function_1_fv, 
+                                function_2_fv):
     
-    if type(y_data_real) != type(None) and type(y_data_pred) != type(None):
-        y_data_real = return_numpy_representation(y_data_real)
-        y_data_pred = return_numpy_representation(y_data_pred)     
+    if type(function_1_coefficients) != type(None) and type(function_2_coefficients) != type(None):
+        function_1_coefficients = return_numpy_representation(function_1_coefficients)
+        function_2_coefficients = return_numpy_representation(function_2_coefficients)     
         
-        assert y_data_real.shape[1] == sparsity or y_data_real.shape[1] == interpretation_net_output_shape, 'Polynomial Real not in shape ' + str(y_data_real.shape)
-        assert y_data_pred.shape[1] == sparsity or y_data_pred.shape[1] == interpretation_net_output_shape, 'Polynomial Pred not in shape ' + str(y_data_pred.shape)
+        assert function_1_coefficients.shape[1] == sparsity or function_1_coefficients.shape[1] == interpretation_net_output_shape, 'Coefficients Function 1 not in shape ' + str(function_1_coefficients.shape)
+        assert function_2_coefficients.shape[1] == sparsity or function_2_coefficients.shape[1] == interpretation_net_output_shape, 'Coefficients Function 2 not in shape ' + str(function_2_coefficients.shape)
        
         
-        if y_data_real.shape[1] != y_data_pred.shape[1]:
+        if function_1_coefficients.shape[1] != function_2_coefficients.shape[1]:
             
-            if y_data_real.shape[1] == interpretation_net_output_shape:
+            if function_1_coefficients.shape[1] == interpretation_net_output_shape:
             
-                coefficient_indices_array = y_data_real[:,interpretation_net_output_monomials:]
-                y_data_real_reduced = y_data_real[:,:interpretation_net_output_monomials]
+                coefficient_indices_array = function_1_coefficients[:,interpretation_net_output_monomials:]
+                function_1_coefficients_reduced = function_1_coefficients[:,:interpretation_net_output_monomials]
 
                 assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
 
                 coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
 
-                assert len(coefficient_indices_list) == y_data_real_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+                assert len(coefficient_indices_list) == function_1_coefficients_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
 
                 coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
 
-                y_data_pred_reduced = []
-                for y_data_pred_entry, coefficient_indices_entry in zip(y_data_pred, coefficient_indices):
-                    y_data_pred_reduced.append(y_data_pred_entry[[coefficient_indices_entry]])
-                y_data_pred_reduced = np.array(y_data_pred_reduced)
+                function_2_coefficients_reduced = []
+                for function_2_coefficients_entry, coefficient_indices_entry in zip(function_2_coefficients, coefficient_indices):
+                    function_2_coefficients_reduced.append(function_2_coefficients_entry[[coefficient_indices_entry]])
+                function_2_coefficients_reduced = np.array(function_2_coefficients_reduced)
 
-                y_data_real = y_data_real_reduced
-                y_data_pred = y_data_pred_reduced
+                function_1_coefficients = function_1_coefficients_reduced
+                function_2_coefficients = function_2_coefficients_reduced
             
-            elif y_data_pred.shape[1] == interpretation_net_output_shape:
+            elif function_2_coefficients.shape[1] == interpretation_net_output_shape:
                 
-                coefficient_indices_array = y_data_pred[:,interpretation_net_output_monomials:]
-                y_data_pred_reduced = y_data_pred[:,:interpretation_net_output_monomials]
+                coefficient_indices_array = function_2_coefficients[:,interpretation_net_output_monomials:]
+                function_2_coefficients_reduced = function_2_coefficients[:,:interpretation_net_output_monomials]
 
                 assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
 
                 coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
 
-                assert len(coefficient_indices_list) == y_data_pred_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+                assert len(coefficient_indices_list) == function_2_coefficients_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
 
                 coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
 
-                y_data_real_reduced = []
-                for y_data_real_entry, coefficient_indices_entry in zip(y_data_real, coefficient_indices):
-                    y_data_real_reduced.append(y_data_real_entry[[coefficient_indices_entry]])
-                y_data_real_reduced = np.array(y_data_real_reduced)
+                function_1_coefficients_reduced = []
+                for function_1_coefficients_entry, coefficient_indices_entry in zip(function_1_coefficients, coefficient_indices):
+                    function_1_coefficients_reduced.append(function_1_coefficients_entry[[coefficient_indices_entry]])
+                function_1_coefficients_reduced = np.array(function_1_coefficients_reduced)
 
-                y_data_pred = y_data_pred_reduced
-                y_data_real = y_data_real_reduced            
+                function_2_coefficients = function_2_coefficients_reduced
+                function_1_coefficients = function_1_coefficients_reduced            
             
             else:
                 raise SystemExit('Shapes Inconsistent') 
                 
                 
         
-        mae_coeff = np.round(mean_absolute_error(y_data_real, y_data_pred), 4)
-        rmse_coeff = np.round(root_mean_squared_error(y_data_real, y_data_pred), 4)
-        mape_coeff = np.round(mean_absolute_percentage_error_keras(y_data_real, y_data_pred), 4)
-        accuracy_coeff = np.round(accuracy_single(y_data_real, y_data_pred), 4)
-        accuracy_multi_coeff = np.round(accuracy_multilabel(y_data_real, y_data_pred), 4)
+        mae_coeff = np.round(mean_absolute_error(function_1_coefficients, function_2_coefficients), 4)
+        rmse_coeff = np.round(root_mean_squared_error(function_1_coefficients, function_2_coefficients), 4)
+        mape_coeff = np.round(mean_absolute_percentage_error_keras(function_1_coefficients, function_2_coefficients), 4)
+        accuracy_coeff = np.round(accuracy_single(function_1_coefficients, function_2_coefficients), 4)
+        accuracy_multi_coeff = np.round(accuracy_multilabel(function_1_coefficients, function_2_coefficients), 4)
     else:
         mae_coeff = np.nan
         rmse_coeff = np.nan
@@ -841,26 +841,26 @@ def evaluate_interpretation_net(y_data_real,
         accuracy_coeff = np.nan
         accuracy_multi_coeff = np.nan
         
-    polynomial_true_fv = return_numpy_representation(polynomial_true_fv)
-    polynomial_pred_inet_fv = return_numpy_representation(polynomial_pred_inet_fv)
+    function_1_fv = return_numpy_representation(function_1_fv)
+    function_2_fv = return_numpy_representation(function_2_fv)
     
-    assert polynomial_true_fv.shape == polynomial_pred_inet_fv.shape, 'Shape of True Polynomial FVs: ' + str(polynomial_true_fv.shape) 
+    assert function_1_fv.shape == function_2_fv.shape, 'Shape of Function 1 FVs: ' + str(function_1_fv.shape) + str(function_1_fv[:10])  + 'Shape of Functio 2 FVs' + str(function_2_fv.shape) + str(function_2_fv[:10])
         
-    mae_fv = np.round(mean_absolute_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
-    rmse_fv = np.round(root_mean_squared_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
-    mape_fv = np.round(mean_absolute_percentage_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
-    r2_fv = np.round(r2_score_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
-    raae_fv = np.round(relative_absolute_average_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4)
-    rmae_fv = np.round(relative_maximum_average_error_function_values(polynomial_true_fv, polynomial_pred_inet_fv), 4) 
+    mae_fv = np.round(mean_absolute_error_function_values(function_1_fv, function_2_fv), 4)
+    rmse_fv = np.round(root_mean_squared_error_function_values(function_1_fv, function_2_fv), 4)
+    mape_fv = np.round(mean_absolute_percentage_error_function_values(function_1_fv, function_2_fv), 4)
+    r2_fv = np.round(r2_score_function_values(function_1_fv, function_2_fv), 4)
+    raae_fv = np.round(relative_absolute_average_error_function_values(function_1_fv, function_2_fv), 4)
+    rmae_fv = np.round(relative_maximum_average_error_function_values(function_1_fv, function_2_fv), 4) 
     
-    std_fv_diff = np.round(mean_std_function_values_difference(polynomial_true_fv, polynomial_pred_inet_fv), 4)
-    mean_fv_1 = np.mean(polynomial_true_fv)
-    mean_fv_2 = np.mean(polynomial_pred_inet_fv)
-    std_fv_1 = np.std(polynomial_true_fv)
-    std_fv_2 = np.std(polynomial_pred_inet_fv)
+    std_fv_diff = np.round(mean_std_function_values_difference(function_1_fv, function_2_fv), 4)
+    mean_fv_1 = np.mean(function_1_fv)
+    mean_fv_2 = np.mean(function_2_fv)
+    std_fv_1 = np.std(function_1_fv)
+    std_fv_2 = np.std(function_2_fv)
 
-    mae_distribution = mean_absolute_error_function_values_return_multi_values(polynomial_true_fv, polynomial_pred_inet_fv)
-    r2_distribution = r2_score_function_values_return_multi_values(polynomial_true_fv, polynomial_pred_inet_fv)
+    mae_distribution = mean_absolute_error_function_values_return_multi_values(function_1_fv, function_2_fv)
+    r2_distribution = r2_score_function_values_return_multi_values(function_1_fv, function_2_fv)
 
     return pd.Series(data=[mae_coeff,
                           rmse_coeff,
@@ -899,6 +899,6 @@ def evaluate_interpretation_net(y_data_real,
                            'MEAN FV2',
                            'STD FV1',
                            'STD FV2']), {'MAE': pd.Series(data=mae_distribution, 
-                                                  index=['L-' + str(i) for i in range(polynomial_true_fv.shape[0])]),
+                                                  index=['L-' + str(i) for i in range(function_1_fv.shape[0])]),
                                         'R2': pd.Series(data=r2_distribution, 
-                                                  index=['L-' + str(i) for i in range(polynomial_true_fv.shape[0])])}
+                                                  index=['L-' + str(i) for i in range(function_1_fv.shape[0])])}

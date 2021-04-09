@@ -58,7 +58,7 @@ def basis(a, b, c, x, hyper_order=[1, 2, 2, 2], approximation_order=3):
         
     epsilon = 0.001
     
-    #print('a, b, c', a, b, c)
+    print('a, b, c', a, b, c)
     
     func_   = MeijerG(theta=[a, a, a, b, c], order=hyper_order, approximation_order=approximation_order)
     
@@ -75,6 +75,15 @@ def basis_expression(a, b, c, hyper_order=[1, 2, 2, 2], approximation_order=3):
 
 def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
     
+    if c <= 0: #if c <= 0, log or div cant be calculated ans thus return nan 
+        grad_a = np.empty(x.shape)
+        grad_a[:] = np.nan
+        grad_b = np.empty(x.shape)
+        grad_b[:] = np.nan
+        grad_c = np.empty(x.shape)
+        grad_c[:] = np.nan        
+        return grad_a, grad_b, grad_c
+    
     #print('abc', a, b, c)
     
     K1     = sc.special.digamma(a - b + 1)
@@ -90,41 +99,39 @@ def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
     G4     = sc.special.gamma(a - b + 4)
     
     #print('G', G1, G2, G3, G4)
-    
-    #print('np.min(c * x)', np.min(c * x))
-    
+        
     nema1  = 6 * ((c * x)**3) * (K4 - np.log(c * x))
     nema2  = 2 * ((c * x)**2) * (-K3 + np.log(c * x))
     nema3  = (c * x) * (K2 - np.log(c * x))
     nema4  = -1 * (K1 - np.log(c * x))
     
-    #print('nema', nema1, nema2, nema3, nema4)
+    #print('nema', nema1[:5], nema2[:5], nema3[:5], nema4[:5])
     
     nemb1  = -1 * 6 * ((c * x)**3) * K4 
     nemb2  = 2 * ((c * x)**2) * K3 
     nemb3  = -1 * (c * x) * K2 
     nemb4  = K1 
-    
-    #print('nemb', nemb1, nemb2, nemb3, nemb4)
+
+    #print('nemb', nemb1[:5], nemb2[:5], nemb3[:5], nemb4)
     
     nemc1  = -1 * (c**2) * (x**3) * (6 * a + 18)
     nemc2  = (c * (x**2)) * (4 + 2 * a) 
     nemc3  = -1 * x * (1 + a)
     nemc4  = a / c
     
-    #print('nemc', nemc1, nemc2, nemc3, nemc4)
+    #print('nemc', nemc1[:5], nemc2[:5], nemc3[:5], nemc4)
     
     grad_a = ((c * x) ** a) * (nema1/G4 + nema2/G3 + nema3/G2 + nema4/G1) 
     grad_b = ((c * x) ** a) * (nemb1/G4 + nemb2/G3 + nemb3/G2 + nemb4/G1) 
     grad_c = ((c * x) ** a) * (nemc1/G4 + nemc2/G3 + nemc3/G2 + nemc4/G1) 
 
-    #print('grad', grad_a, grad_b, grad_c)
+    #print('grad', grad_a[:5], grad_b[:5], grad_c[:5])
     
     return grad_a, grad_b, grad_c
 
 
 
-def tune_single_dim(lr, n_iter, x, y, verbosity=False, approximation_order=3):
+def tune_single_dim(lr, n_iter, x, y, verbosity=False, approximation_order=3, max_param_value=100):
     
     
     epsilon   = 0.001
@@ -154,27 +161,37 @@ def tune_single_dim(lr, n_iter, x, y, verbosity=False, approximation_order=3):
         #print('grads', new_grads)
         #print('func', func_true)
         
-        if True:
-            grads_a   = np.nan_to_num(np.mean(2 * new_grads[0] * (func_true - y[batch_index])))
-            grads_b   = np.nan_to_num(np.mean(2 * new_grads[1] * (func_true - y[batch_index])))
-            grads_c   = np.nan_to_num(np.mean(2 * new_grads[2] * (func_true - y[batch_index])))
-        else:
-            grads_a   = np.mean(2 * new_grads[0] * (func_true - y[batch_index]))
-            grads_b   = np.mean(2 * new_grads[1] * (func_true - y[batch_index]))
-            grads_c   = np.mean(2 * new_grads[2] * (func_true - y[batch_index]))
+        grads_a   = np.mean(2 * new_grads[0] * (func_true - y[batch_index]))
+        grads_b   = np.mean(2 * new_grads[1] * (func_true - y[batch_index]))
+        grads_c   = np.mean(2 * new_grads[2] * (func_true - y[batch_index]))
+                
             
+        a_new = a - lr * grads_a
+        b_new = b - lr * grads_b
+        c_new = c - lr * grads_c
+        if np.isnan([a_new, b_new, c_new]).any() or (np.abs(np.array([c_new, b_new, c_new])) > max_param_value).any() or c_new <= 0:
+            break
+        a = a_new
+        b = b_new
+        c = c_new          
+
+                
+        #grads_a   = np.nan_to_num(np.mean(2 * new_grads[0] * (func_true - y[batch_index])).astype(np.float32))
+        #grads_b   = np.nan_to_num(np.mean(2 * new_grads[1] * (func_true - y[batch_index])).astype(np.float32))
+        #grads_c   = np.nan_to_num(np.mean(2 * new_grads[2] * (func_true - y[batch_index])).astype(np.float32))
+        
+        
         #(grads_a, grads_b, grads_c) = Normalizer().fit_transform([np.nan_to_num([grads_a, grads_b, grads_c])])[0]
         
-        a         = a - lr * grads_a#np.nan_to_num(a - lr * grads_a, nan=epsilon) #max(epsilon, a - lr * grads_a)
-        b         = b - lr * grads_b#np.nan_to_num(b - lr * grads_b, nan=epsilon) #max(epsilon, b - lr * grads_b)
-        c         = c - lr * grads_c#np.nan_to_num(c - lr * grads_c, nan=epsilon) #max(epsilon, c - lr * grads_c)
+        #print('tune_single_dim abc', a, b, c)
         
-        #print('return abc', a, b, c)
-        
+    print('return abc', a, b, c)
     return a, b, c 
 
 
 def compose_features(params, X, approximation_order=3):
+    
+    #print(params)
     
     X_out = [basis(a=float(params[k, 0]), b=float(params[k, 1]), c=float(params[k, 2]), 
                    x=X[:, k], hyper_order=[1, 2, 2, 2], approximation_order=approximation_order) for k in range(X.shape[1])] 
@@ -184,14 +201,17 @@ def compose_features(params, X, approximation_order=3):
 
 class symbolic_metamodel:
     
-    def __init__(self, model, X, mode="classification", approximation_order=3):
+    def __init__(self, model, X, mode="classification", approximation_order=3, force_polynomial=False):
         
         self.feature_expander = PolynomialFeatures(2, include_bias=False, interaction_only=True)
         self.X                = X
         self.X_new            = self.feature_expander.fit_transform(X) 
         self.X_names          = self.feature_expander.get_feature_names()
         
+        self.max_param_value = 100
+        
         self.approximation_order = approximation_order
+        self.force_polynomial = force_polynomial
                 
         if mode == "classification": 
         
@@ -224,9 +244,11 @@ class symbolic_metamodel:
     
     def set_equation(self, reset_init_model=False):
          
-        #print(self.params, self.X_new, self.approximation_order)
+        #print(self.params, self.X_new[:10], self.approximation_order)
             
         self.X_init           = compose_features(self.params, self.X_new, approximation_order=self.approximation_order)
+        
+        #print('self.X_init', self.X_init[:10])
         
         if reset_init_model:
             
@@ -291,7 +313,7 @@ class symbolic_metamodel:
         
         for u in self.tqdm_mode(range(self.X.shape[1])):
             
-            self.params[u, :] = tune_single_dim(lr=0.1, n_iter=500, x=self.X_new[:, u], y=self.Y_r, approximation_order=self.approximation_order)
+            self.params[u, :] = tune_single_dim(lr=0.1, n_iter=500, x=self.X_new[:, u], y=self.Y_r, approximation_order=self.approximation_order, max_param_value=self.max_param_value)
             
         self.set_equation(reset_init_model=True)
 
@@ -299,59 +321,110 @@ class symbolic_metamodel:
         
         print("----  Optimizing the metamodel  ----")
         
-        #print(num_iter)
+        #print(num_iter) 
+        
+        #print('self.params', self.params)
         
         for _ in self.tqdm_mode(range(num_iter)):
                         
             batch_index = np.random.choice(list(range(self.X_new.shape[0])), size=batch_size)
             
             #print('batch_index', batch_index[:10])
-            
-            curr_func   = self.init_model.predict(self.X_init[batch_index, :])
+                        
+            if np.isnan(self.X_init[batch_index, :]).any() or np.isinf(self.X_init[batch_index, :]).any():
+                print('\n\nBREAK 1')
+                print('self.X_init[batch_index, :]', self.X_init[batch_index, :])
+                
+                print('self.params', self.params)
+                print('self.init_model.coef_', self.init_model.coef_)
+                
+                print('self.exact_expression', self.exact_expression)
+                print('self.approx_expression', self.approx_expression)
+                
+                break                
+                
+            curr_func   = self.init_model.predict(np.nan_to_num(self.X_init[batch_index, :]))
             
             #print('curr_func', curr_func[:10])
-            
-            self.metamodel_loss.append(self.loss(self.Y_r[batch_index], curr_func))
-            
+                        
             #print('self.loss(self.Y_r[batch_index], curr_func)', self.loss(self.Y_r[batch_index], curr_func))
             
             #print('self.Y_r[batch_index]', self.Y_r[batch_index])
-            if True:
-                param_grads  = np.nan_to_num(self.get_gradients(self.Y_r[batch_index], curr_func, batch_index))
-            else:
-                param_grads  = self.get_gradients(self.Y_r[batch_index], curr_func, batch_index)
             
-            #print(param_grads)
+            if np.isnan(curr_func).any() or np.isinf(curr_func).any():
+                print('\n\nBREAK 2')
+                print('curr_func', curr_func)
+                
+                print('self.params', self.params)
+                print('self.init_model.coef_', self.init_model.coef_)
+                
+                print('self.exact_expression', self.exact_expression)
+                print('self.approx_expression', self.approx_expression)
+                
+                break
+            
+            #param_grads  = np.nan_to_num(self.get_gradients(self.Y_r[batch_index], curr_func, batch_index).astype(np.float32))
+            param_grads  = self.get_gradients(self.Y_r[batch_index], curr_func, batch_index)
+            
+            params = self.params - learning_rate * param_grads #np.nan_to_num(self.params - learning_rate * param_grads, nan=0.001)
+
             
             
-            self.params  = self.params - learning_rate * param_grads #np.nan_to_num(self.params - learning_rate * param_grads, nan=0.001)
+            
             
             #print('param_grads', param_grads[:10])
             #print('self.params', self.params[:10])
             
+            #coef_grads            = np.nan_to_num(np.array([self.loss_grad_coeff(self.Y_r[batch_index], curr_func, self.X_init[batch_index, k]) for k in range(self.X_init.shape[1])]).astype(np.float32)) 
+            
             coef_grads            = [self.loss_grad_coeff(self.Y_r[batch_index], curr_func, self.X_init[batch_index, k]) for k in range(self.X_init.shape[1])]
-            self.init_model.coef_ = self.init_model.coef_ - learning_rate * np.array(coef_grads)
+            
+            coef_ = self.init_model.coef_ - learning_rate * np.array(coef_grads)
+
              
             #print('coef_grads', coef_grads[:10])
+            #print('self.init_model.coef_', self.init_model.coef_[:10])
             
-            #print(coef_grads)
-            
+                        
             #print('self.init_model.coef_', self.init_model.coef_[:10])  
             
-            self.set_equation()  
+            if np.isnan(params).any() or (np.abs(np.array(params)) > self.max_param_value).any() or (params[:, 2] <= 0).any() or np.isnan(coef_).any() or np.abs((np.array(coef_) > self.max_param_value)).any():
+                #self.set_equation()  
+                #self.exact_expression, self.approx_expression = self.symbolic_expression()
+                print('\n\nBREAK 3')
+                print('curr_func', curr_func)
+                
+                print('param_grads', param_grads)
+                print('params', params)
+                print('self.params', self.params)
+                print('coef_grads', coef_grads)
+                print('coef_', coef_)
+                print('self.init_model.coef_', self.init_model.coef_)
+                
+                print('self.exact_expression', self.exact_expression)
+                print('self.approx_expression', self.approx_expression)
             
-            #print('self.set_equation()')
+                break
+            else:
+                self.metamodel_loss.append(self.loss(self.Y_r[batch_index], curr_func))
+                self.params  = params
+                self.init_model.coef_ = coef_
+                
+                self.set_equation()  
+                self.exact_expression, self.approx_expression = self.symbolic_expression()            
             
-            self.exact_expression, self.approx_expression = self.symbolic_expression()
-            
-            #print('self.exact_expression', self.exact_expression)
-            #print('self.approx_expression', self.approx_expression)
+                print('self.exact_expression', self.exact_expression)
+                print('self.approx_expression', self.approx_expression)
             
     def evaluate(self, X):
         
         X_modified  = self.feature_expander.fit_transform(X)
         X_modified_ = compose_features(self.params, X_modified, approximation_order=self.approximation_order)
         Y_pred_r    = self.init_model.predict(X_modified_)
+        
+        if self.force_polynomial:
+            return Y_pred_r
+
         Y_pred      = 1 / (1 + np.exp(-1 * Y_pred_r))
         
         return Y_pred 
@@ -401,6 +474,9 @@ class symbolic_metamodel:
             
             sym_approx += sympify(str(self.init_model.coef_[v] * re(f_curr.approx_expression()))).subs(x, dims_[v])    
         
+        if self.force_polynomial:
+            return sym_exact, sym_approx
+            
         return 1/(1 + exp(-1*sym_exact)), 1/(1 + exp(-1*sym_approx))   
     
     
