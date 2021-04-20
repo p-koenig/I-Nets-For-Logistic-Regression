@@ -72,19 +72,23 @@ def initialize_LambdaNet_config_from_curent_notebook(config):
         tf.set_random_seed(RANDOM_SEED)
         
     global list_of_monomial_identifiers
-        
+    from utilities.utility_functions import flatten, rec_gen
+                
     list_of_monomial_identifiers_extended = []
-    for i in range((d+1)**n):    
-        monomial_identifier = dec_to_base(i, base = (d+1)).zfill(n) 
-        list_of_monomial_identifiers_extended.append(monomial_identifier)
 
-
+    if laurent:
+        variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+    else:
+        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
+        
     list_of_monomial_identifiers = []
     for monomial_identifier in list_of_monomial_identifiers_extended:
-        monomial_identifier_values = list(map(int, list(monomial_identifier)))
-        if sum(monomial_identifier_values) <= d:
-            list_of_monomial_identifiers.append(monomial_identifier)
-                
+        if np.sum(monomial_identifier) <= d:
+            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                list_of_monomial_identifiers.append(monomial_identifier)
+                                
 #######################################################################################################################################################
 ##################################################################Lambda Net Wrapper###################################################################
 #######################################################################################################################################################
@@ -154,40 +158,53 @@ class LambdaNetDataset():
         return np.array(lambda_network_preds_list)
                 
         
-    def return_target_poly_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
+    def return_target_poly_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):       
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'  
         target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(target_poly_fvs_list)
     
-    def return_target_poly_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):        
+    def return_target_poly_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):          
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         target_poly_fvs_list = parallel_fv_calculation_from_polynomial(self.target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
         
         return np.array(target_poly_fvs_list)
     
     def return_lstsq_lambda_pred_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
         lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_lambda_pred_polynomial_fvs_list)
     
     def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         lstsq_lambda_pred_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_lambda_pred_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_lambda_pred_polynomial_fvs_list)
     
     def return_lstsq_target_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
         lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, [evaluation_dataset for _ in range(len(self.target_polynomial_list))], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_target_polynomial_fvs_list)
     
     def return_lstsq_target_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         lstsq_target_polynomial_fvs_list = parallel_fv_calculation_from_polynomial(self.lstsq_target_polynomial_list, self.X_test_data_list, force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
             
         return np.array(lstsq_target_polynomial_fvs_list)
     
     def as_pandas(self):  
+                
         lambda_dataframe = pd.DataFrame(data=[lambda_net.as_array() for lambda_net in self.lambda_net_list], 
                                 columns=self.lambda_net_list[0].return_column_names(), 
                                 index=[lambda_net.index for lambda_net in self.lambda_net_list])
@@ -258,14 +275,14 @@ class LambdaNet():
         except ValueError:
             self.train_settings = {'seed': -1}
             
-        self.target_polynomial = line_weights[range(2, nCr(n+d, d)+2)].astype(float)
-        self.lstsq_lambda_pred_polynomial = line_weights[range(nCr(n+d, d)+2, nCr(n+d, d)*2+2)].astype(float)
-        self.lstsq_target_polynomial = line_weights[range(nCr(n+d, d)*2+2, nCr(n+d, d)*3+2)].astype(float)
+        self.target_polynomial = line_weights[range(2, sparsity+2)].astype(float)
+        self.lstsq_lambda_pred_polynomial = line_weights[range(sparsity+2, sparsity*2+2)].astype(float)
+        self.lstsq_target_polynomial = line_weights[range(sparsity*2+2, sparsity*3+2)].astype(float)
         assert self.target_polynomial.shape[0] == sparsity, 'target polynomial has incorrect shape ' + str(self.target_polynomial.shape[0]) + ' but should be ' + str(sparsity)
         assert self.lstsq_lambda_pred_polynomial.shape[0] == sparsity, 'lstsq lambda pred polynomial has incorrect shape ' + str(self.lstsq_lambda_pred_polynomial.shape[0]) + ' but should be ' + str(sparsity)
         assert self.lstsq_target_polynomial.shape[0] == sparsity, 'lstsq target polynomial has incorrect shape ' + str(self.lstsq_target_polynomial.shape[0]) + ' but should be ' + str(sparsity)
         
-        self.weights = line_weights[nCr(n+d, d)*3+2:].astype(float)
+        self.weights = line_weights[sparsity*3+2:].astype(float)
         
         assert self.weights.shape[0] == number_of_lambda_weights, 'weights have incorrect shape ' + str(self.weights.shape[0]) + ' but should be ' + str(number_of_lambda_weights)
         
@@ -291,12 +308,16 @@ class LambdaNet():
         return lambda_network_preds               
         
     def return_target_poly_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
         target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [evaluation_dataset], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return target_poly_fvs
     
     def return_target_poly_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         target_poly_fvs = parallel_fv_calculation_from_polynomial([self.target_polynomial], [self.X_test_data], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return target_poly_fvs    
@@ -304,23 +325,31 @@ class LambdaNet():
     
     
     def return_lstsq_lambda_pred_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
         lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [evaluation_dataset], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_lambda_pred_polynomial_fvs
     
     def return_lstsq_lambda_pred_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         lstsq_lambda_pred_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_lambda_pred_polynomial], [self.X_test_data], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_lambda_pred_polynomial_fvs     
     
     def return_lstsq_target_polynomial_fvs_on_dataset(self, evaluation_dataset, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         assert evaluation_dataset.shape[1] == n, 'evaluation dataset has wrong shape ' + str(evaluation_dataset.shape) + ' but required (x, ' + str(n) + ')'
         lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [evaluation_dataset], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_target_polynomial_fvs
     
     def return_lstsq_target_polynomial_fvs_on_test_data(self, n_jobs_parallel_fv=10, backend='threading'):
+        from utilities.utility_functions import parallel_fv_calculation_from_polynomial
+        
         lstsq_target_polynomial_fvs = parallel_fv_calculation_from_polynomial([self.lstsq_target_polynomial], [self.X_test_data], force_complete_poly_representation=True, n_jobs_parallel_fv=10, backend='threading')
     
         return lstsq_target_polynomial_fvs  
@@ -338,10 +367,15 @@ class LambdaNet():
         data = np.hstack([self.train_settings['seed'], self.target_polynomial, self.lstsq_lambda_pred_polynomial, self.lstsq_target_polynomial, self.weights])
         return data
     
-    def return_column_names(self):        
-        target_polynomial_identifiers = [monomial_identifiers + str('-target') for monomial_identifiers in list_of_monomial_identifiers]
-        lstsq_lambda_pred_polynomial_identifiers = [monomial_identifiers + str('-lstsq_lambda') for monomial_identifiers in list_of_monomial_identifiers]
-        lstsq_target_polynomial_identifiers = [monomial_identifiers + str('-lstsq_target') for monomial_identifiers in list_of_monomial_identifiers]
+    def return_column_names(self):  
+        
+        from utilities.utility_functions import flatten
+        
+        list_of_monomial_identifiers_string = [''.join(str(e) for e in monomial_identifier) for monomial_identifier in list_of_monomial_identifiers] if n > 1 else [str(monomial_identifier[0]) for monomial_identifier in list_of_monomial_identifiers]
+        
+        target_polynomial_identifiers = [monomial_identifiers + str('-target') for monomial_identifiers in list_of_monomial_identifiers_string]
+        lstsq_lambda_pred_polynomial_identifiers = [monomial_identifiers + str('-lstsq_lambda') for monomial_identifiers in list_of_monomial_identifiers_string]
+        lstsq_target_polynomial_identifiers = [monomial_identifiers + str('-lstsq_target') for monomial_identifiers in list_of_monomial_identifiers_string]
 
         weight_identifiers = ['wb_' + str(i) for i in range(self.weights.shape[0])]
         
@@ -474,9 +508,16 @@ def train_nn(lambda_index,
              printing=False, 
              return_model=False):
     
-    global loss_lambda
     
-    paths_dict = generate_paths(path_type = 'lambda_net')
+    from utilities.utility_functions import generate_paths, calculate_function_values_from_polynomial, pairwise
+    
+    global loss_lambda
+    global list_of_monomial_identifiers
+        
+    if polynomial is not None:
+        paths_dict = generate_paths(path_type = 'lambda_net')
+    else: 
+        paths_dict = generate_paths(path_type = 'interpretation_net')
     
     current_seed = None
     if fixed_seed_lambda_training or fixed_initialization_lambda_training:
@@ -536,12 +577,12 @@ def train_nn(lambda_index,
             loss_lambda = r2_keras_loss
         else:
             print(error_message)
-    
+        
     model.compile(optimizer=optimizer_lambda,
                   loss=loss_lambda,
-                  metrics=[r2_keras_loss, 'mae', root_mean_squared_error]
+                  metrics=[r2_keras_loss, 'mae', tf.keras.metrics.RootMeanSquaredError()]
                  )
-    
+        
     if early_stopping_lambda:
         if callbacks == None:
             callbacks = []
@@ -553,11 +594,13 @@ def train_nn(lambda_index,
     polynomial_lstsq_true_list = []
 
     lstsq_data = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n)) #y_train_pred_lambda.ravel()
-    terms_matrix = generate_term_matric_for_lstsq(lstsq_data, list(polynomial.index))
+    terms_matrix = generate_term_matric_for_lstsq(lstsq_data, list_of_monomial_identifiers)
 
-    terms_matrix_train = generate_term_matric_for_lstsq(X_train_lambda, list(polynomial.index))
+    
+    terms_matrix_train = generate_term_matric_for_lstsq(X_train_lambda, list_of_monomial_identifiers)
         
-    if each_epochs_save == None or each_epochs_save==epochs_lambda:   
+    if each_epochs_save == None or each_epochs_save==epochs_lambda:
+        
         model_history = model.fit(X_train_lambda,
                       y_train_real_lambda, 
                       epochs=epochs_lambda, 
@@ -566,6 +609,7 @@ def train_nn(lambda_index,
                       validation_data=(X_valid_lambda, y_valid_real_lambda),
                       verbose=0,
                       workers=0)
+        
         weights.append(model.get_weights())
         
         history = model_history.history
@@ -582,30 +626,31 @@ def train_nn(lambda_index,
         polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
         polynomial_lstsq_true_list.append(polynomial_lstsq_true)
         
-        y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda)
-        y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda)
-        y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda)
-        y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda)    
-        y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda)
-        y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda)  
+        y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True)
+        y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True)
+        y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True)
+        y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda, force_complete_poly_representation=True)    
+        y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda, force_complete_poly_representation=True)
+        y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda, force_complete_poly_representation=True)  
         
-        pred_list = (lambda_index,
-                     y_train_real_lambda, 
-                     y_train_pred_lambda, 
-                     y_train_pred_lambda_poly_lstsq,
-                     #y_train_real_lambda_poly_lstsq,
-                     X_train_lambda, 
-                     y_valid_real_lambda,
-                     y_valid_pred_lambda, 
-                     y_valid_pred_lambda_poly_lstsq,
-                     #y_valid_real_lambda_poly_lstsq,
-                     X_valid_lambda, 
-                     y_test_real_lambda, 
-                     y_test_pred_lambda, 
-                     y_test_pred_lambda_poly_lstsq, 
-                     #y_test_real_lambda_poly_lstsq,
-                     X_test_lambda)
-
+        
+        pred_list = {'lambda_index': lambda_index,
+                          'y_train_real_lambda': y_train_real_lambda, 
+                          'y_train_pred_lambda': y_train_pred_lambda, 
+                          'y_train_pred_lambda_poly_lstsq': y_train_pred_lambda_poly_lstsq,
+                          #y_train_real_lambda_poly_lstsq,
+                          'X_train_lambda': X_train_lambda, 
+                          'y_valid_real_lambda': y_valid_real_lambda,
+                          'y_valid_pred_lambda': y_valid_pred_lambda, 
+                          'y_valid_pred_lambda_poly_lstsq': y_valid_pred_lambda_poly_lstsq,
+                          #y_valid_real_lambda_poly_lstsq,
+                          'X_valid_lambda': X_valid_lambda, 
+                          'y_test_real_lambda': y_test_real_lambda, 
+                          'y_test_pred_lambda': y_test_pred_lambda, 
+                          'y_test_pred_lambda_poly_lstsq': y_test_pred_lambda_poly_lstsq, 
+                          #y_test_real_lambda_poly_lstsq,
+                          'X_test_lambda': X_test_lambda}      
+        
         scores_train, std_train, mean_train = evaluate_lambda_net('TRAIN', X_train_lambda, y_train_real_lambda, y_train_pred_lambda, y_train_pred_lambda_poly_lstsq, y_train_real_lambda_poly_lstsq)
         scores_valid, std_valid, mean_valid = evaluate_lambda_net('VALID', X_valid_lambda, y_valid_real_lambda, y_valid_pred_lambda, y_valid_pred_lambda_poly_lstsq, y_valid_real_lambda_poly_lstsq)
         scores_test, std_test, mean_test = evaluate_lambda_net('TEST', X_test_lambda, y_test_real_lambda, y_test_pred_lambda, y_test_pred_lambda_poly_lstsq, y_test_real_lambda_poly_lstsq)
@@ -659,32 +704,34 @@ def train_nn(lambda_index,
             if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
                 polynomial_lstsq_true, _, _, _ = np.linalg.lstsq(terms_matrix_train, y_train_real_lambda.ravel(), rcond=-1)#[::-1] 
             polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
-            polynomial_lstsq_true_list.append(polynomial_lstsq_true)            
+            polynomial_lstsq_true_list.append(polynomial_lstsq_true)       
             
-            y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda)
-            y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda)
-            y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda)           
+
+            
+            y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True)
+            y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True)
+            y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda, force_complete_poly_representation=True)           
             if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
-                y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda)
-                y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda)  
-                y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda)                    
+                y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True)
+                y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda, force_complete_poly_representation=True)  
+                y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda, force_complete_poly_representation=True)                    
                 
-            pred_list.append((lambda_index,
-                              y_train_real_lambda, 
-                              y_train_pred_lambda, 
-                              y_train_pred_lambda_poly_lstsq,
+            pred_list.append({'lambda_index': lambda_index,
+                              'y_train_real_lambda': y_train_real_lambda, 
+                              'y_train_pred_lambda': y_train_pred_lambda, 
+                              'y_train_pred_lambda_poly_lstsq': y_train_pred_lambda_poly_lstsq,
                               #y_train_real_lambda_poly_lstsq,
-                              X_train_lambda, 
-                              y_valid_real_lambda,
-                              y_valid_pred_lambda, 
-                              y_valid_pred_lambda_poly_lstsq,
+                              'X_train_lambda': X_train_lambda, 
+                              'y_valid_real_lambda': y_valid_real_lambda,
+                              'y_valid_pred_lambda': y_valid_pred_lambda, 
+                              'y_valid_pred_lambda_poly_lstsq': y_valid_pred_lambda_poly_lstsq,
                               #y_valid_real_lambda_poly_lstsq,
-                              X_valid_lambda, 
-                              y_test_real_lambda, 
-                              y_test_pred_lambda, 
-                              y_test_pred_lambda_poly_lstsq, 
+                              'X_valid_lambda': X_valid_lambda, 
+                              'y_test_real_lambda': y_test_real_lambda, 
+                              'y_test_pred_lambda': y_test_pred_lambda, 
+                              'y_test_pred_lambda_poly_lstsq': y_test_pred_lambda_poly_lstsq, 
                               #y_test_real_lambda_poly_lstsq,
-                              X_test_lambda))
+                              'X_test_lambda': X_test_lambda})
     
             scores_train, std_train, mean_train = evaluate_lambda_net('TRAIN', X_train_lambda, y_train_real_lambda, y_train_pred_lambda, y_train_pred_lambda_poly_lstsq, y_train_real_lambda_poly_lstsq)
             scores_valid, std_valid, mean_valid = evaluate_lambda_net('VALID', X_valid_lambda, y_valid_real_lambda, y_valid_pred_lambda, y_valid_pred_lambda_poly_lstsq, y_valid_real_lambda_poly_lstsq)
@@ -708,7 +755,7 @@ def train_nn(lambda_index,
        
 
         
-    if printing:        
+    if printing and polynomial is not None:        
         for i, (weights_for_epoch, polynomial_lstsq_pred_for_epoch, polynomial_lstsq_true_for_epoch) in enumerate(zip(weights, polynomial_lstsq_pred_list, polynomial_lstsq_true_list)):
             
             directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'] + '/'

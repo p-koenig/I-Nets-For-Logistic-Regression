@@ -326,6 +326,9 @@ def r2_keras_loss(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):
 
 
 def root_mean_squared_error(y_true, y_pred):   
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
         
@@ -335,6 +338,9 @@ def root_mean_squared_error(y_true, y_pred):
     return tf.math.sqrt(tf.keras.backend.mean(tf.keras.backend.square(y_pred - y_true))) 
 
 def accuracy_multilabel(y_true, y_pred, a_step=0.1):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -348,6 +354,9 @@ def accuracy_multilabel(y_true, y_pred, a_step=0.1):
     return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.reduce_all(tf.keras.backend.equal(y_true, y_pred), axis=1), tf.int32), tf.float32))        
 
 def accuracy_single(y_true, y_pred, a_step=0.1):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -362,6 +371,9 @@ def accuracy_single(y_true, y_pred, a_step=0.1):
     return tf.keras.backend.mean(tf.dtypes.cast(tf.dtypes.cast(tf.keras.backend.equal(y_true, y_pred), tf.int32), tf.float32))
 
 def mean_absolute_percentage_error_keras(y_true, y_pred, epsilon=10e-3): 
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -382,6 +394,9 @@ def huber_loss_delta_set(y_true, y_pred):
 
 
 def mean_absolute_error_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)      
     
@@ -392,6 +407,9 @@ def mean_absolute_error_function_values(y_true, y_pred):
     return np.mean(np.array(result_list))  
 
 def mean_absolute_error_function_values_return_multi_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)      
     
@@ -402,6 +420,9 @@ def mean_absolute_error_function_values_return_multi_values(y_true, y_pred):
     return np.array(result_list) 
 
 def mean_std_function_values_difference(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)      
     
@@ -412,6 +433,9 @@ def mean_std_function_values_difference(y_true, y_pred):
     return np.mean(np.array(result_list))  
 
 def root_mean_squared_error_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)         
     
@@ -422,6 +446,9 @@ def root_mean_squared_error_function_values(y_true, y_pred):
     return np.mean(np.array(result_list)) 
 
 def mean_absolute_percentage_error_function_values(y_true, y_pred, epsilon=10e-3):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred) 
     
@@ -432,6 +459,9 @@ def mean_absolute_percentage_error_function_values(y_true, y_pred, epsilon=10e-3
     return np.mean(np.array(result_list))
 
 def r2_score_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -442,6 +472,9 @@ def r2_score_function_values(y_true, y_pred):
     return np.mean(np.array(result_list))
 
 def r2_score_function_values_return_multi_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -452,6 +485,9 @@ def r2_score_function_values_return_multi_values(y_true, y_pred):
     return np.array(result_list)
 
 def relative_absolute_average_error_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -463,6 +499,9 @@ def relative_absolute_average_error_function_values(y_true, y_pred):
     return np.mean(np.array(result_list))
 
 def relative_maximum_average_error_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -473,6 +512,9 @@ def relative_maximum_average_error_function_values(y_true, y_pred):
     return np.mean(np.array(result_list))
 
 def mean_area_between_two_curves_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
       
@@ -485,6 +527,9 @@ def mean_area_between_two_curves_function_values(y_true, y_pred):
     return np.mean(np.array(result_list))
 
 def mean_dtw_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
 
@@ -499,6 +544,9 @@ def mean_dtw_function_values(y_true, y_pred):
     return np.mean(np.array(result_list_single)), np.mean(np.array(result_list_array), axis=1)
 
 def mean_frechet_dist_function_values(y_true, y_pred):
+    
+    from utilities.utility_functions import return_numpy_representation
+    
     y_true = return_numpy_representation(y_true)
     y_pred = return_numpy_representation(y_pred)
     
@@ -519,6 +567,12 @@ def evaluate_lambda_net(identifier,
                         y_data_pred_lambda, 
                         y_data_pred_lambda_poly_lstsq, 
                         y_data_real_lambda_poly_lstsq):
+        
+    X_data_real_lambda = np.nan_to_num(X_data_real_lambda)
+    y_data_real_lambda = np.nan_to_num(y_data_real_lambda)
+    y_data_pred_lambda = np.nan_to_num(y_data_pred_lambda)
+    y_data_pred_lambda_poly_lstsq = np.nan_to_num(y_data_pred_lambda_poly_lstsq) 
+    y_data_real_lambda_poly_lstsq = np.nan_to_num(y_data_real_lambda_poly_lstsq)  
     
     mae_real_VS_predLambda = np.round(mean_absolute_error(y_data_real_lambda, y_data_pred_lambda), 4)
     mae_real_VS_predPolyLstsq = np.round(mean_absolute_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
@@ -612,7 +666,7 @@ def calcualate_function_value_with_X_data_entry(coefficient_list, X_data_entry):
      
     result = 0    
     for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
-        partial_results = [X_data_value**int(coefficient_multiplier) for coefficient_multiplier, X_data_value in zip(coefficient_multipliers, X_data_entry)]
+        partial_results = [X_data_value**coefficient_multiplier for coefficient_multiplier, X_data_value in zip(coefficient_multipliers, X_data_entry)]
         
         result += coefficient_value * reduce(lambda x, y: x*y, partial_results)
         
@@ -629,6 +683,10 @@ def calculate_function_values_from_polynomial(X_data, polynomial):
     return function_value_array
 
 def generate_term_matric_for_lstsq(X_data, polynomial_indices):
+    
+    def prod(iterable):
+        return reduce(operator.mul, iterable, 1)    
+    
     term_list_all = []
     y = 0
     for term in list(polynomial_indices):
@@ -771,6 +829,8 @@ def evaluate_interpretation_net(function_1_coefficients,
                                 function_2_coefficients, 
                                 function_1_fv, 
                                 function_2_fv):
+    
+    from utilities.utility_functions import return_numpy_representation
     
     if type(function_1_coefficients) != type(None) and type(function_2_coefficients) != type(None):
         function_1_coefficients = return_numpy_representation(function_1_coefficients)

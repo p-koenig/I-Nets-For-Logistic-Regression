@@ -92,18 +92,22 @@ def initialize_InterpretationNet_config_from_curent_notebook(config):
         tf.set_random_seed(RANDOM_SEED)
         
     global list_of_monomial_identifiers
+    from utilities.utility_functions import flatten, rec_gen
         
     list_of_monomial_identifiers_extended = []
-    for i in range((d+1)**n):    
-        monomial_identifier = dec_to_base(i, base = (d+1)).zfill(n) 
-        list_of_monomial_identifiers_extended.append(monomial_identifier)
 
-
+    if laurent:
+        variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+    else:
+        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
+        
     list_of_monomial_identifiers = []
     for monomial_identifier in list_of_monomial_identifiers_extended:
-        monomial_identifier_values = list(map(int, list(monomial_identifier)))
-        if sum(monomial_identifier_values) <= d:
-            list_of_monomial_identifiers.append(monomial_identifier)
+        if np.sum(monomial_identifier) <= d:
+            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                list_of_monomial_identifiers.append(monomial_identifier)
             
             
 #######################################################################################################################################################
@@ -369,7 +373,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Metamodel Function Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
         print('---------------------------------------------------------------------------------------------------------------------------') 
-    if False:
+    if True:
         print('----------------------------------------- CALCULATE SYMBOLIC REGRESSION FUNCTION ------------------------------------------')
 
         start = time.time() 
@@ -384,7 +388,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Symbolic Regression Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
         print('---------------------------------------------------------------------------------------------------------------------------')          
-    if False:
+    if True:
         print('------------------------------------------------ CALCULATE PER NETWORK POLY -----------------------------------------------')
 
         start = time.time() 
@@ -535,7 +539,6 @@ def train_inet(lambda_net_train_dataset,
         
     base_model = generate_base_model()
     random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
-    list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)
             
     weights_structure = base_model.get_weights()
     dims = [np_arrays.shape for np_arrays in weights_structure]        
@@ -554,7 +557,7 @@ def train_inet(lambda_net_train_dataset,
             
             metrics = ['mean_absolute_error', r2_keras_loss]
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers))
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers))
             
             valid_data = (X_valid, y_valid)
             y_train_model = y_train
@@ -564,7 +567,7 @@ def train_inet(lambda_net_train_dataset,
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model))            
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model))            
             
             if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
@@ -575,24 +578,24 @@ def train_inet(lambda_net_train_dataset,
     else: #fv-based evaluation
         if evaluate_with_real_function: #based on in-loss fv calculation of real and predicted polynomial
             
-            loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers)
+            loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers)
             
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers))    
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers))    
              
             valid_data = (X_valid, y_valid)
             y_train_model = y_train
         else: #in-loss prediction of lambda-nets
             
-            #loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)
-            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, weights_structure, dims)
+            #loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, base_model)
+            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, base_model, weights_structure, dims)
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
-                #metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model)) 
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers_numbers, base_model, weights_structure, dims)) 
+                #metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model)) 
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model, weights_structure, dims)) 
             
             if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
@@ -606,7 +609,21 @@ def train_inet(lambda_net_train_dataset,
     
     if nas:
         from tensorflow.keras.utils import CustomObjectScope
-        with CustomObjectScope({'custom_loss': loss_function}):
+        
+        custom_object_dict = {}
+        loss_function_name = loss_function.__name__
+        custom_object_dict[loss_function_name] = loss_function
+        metric_names = []
+        for metric in  metrics:
+            metric_name = metric.__name__
+            metric_names.append(metric_name)
+            custom_object_dict[metric_name] = metric  
+        
+        #print(custom_object_dict)    
+        #print(metric_names)
+        #print(loss_function_name)
+        
+        with CustomObjectScope(custom_object_dict):
             if nas_type == 'SEQUENTIAL':
                 input_node = ak.Input()
                 hidden_node = ak.DenseBlock()(input_node)
@@ -705,17 +722,17 @@ def train_inet(lambda_net_train_dataset,
 
             auto_model = ak.AutoModel(inputs=input_node, 
                                 outputs=output_node,
-                                loss='custom_loss',
-                                metrics=metrics,
+                                loss=loss_function_name,
+                                metrics=metric_names,
                                 objective='val_loss',
                                 overwrite=True,
-                                tuner='hyperband',#"greedy",
+                                #tuner='hyperband',#"greedy",
                                 max_trials=nas_trials,
                                 directory=directory,
                                 seed=RANDOM_SEED+1)
 
             ############################## PREDICTION ###############################
-            
+                        
             auto_model.fit(
                 x=X_train,
                 y=y_train_model,
@@ -789,7 +806,7 @@ def train_inet(lambda_net_train_dataset,
         model.save('./data/saved_models/' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
         
         
-        return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics) 
+    return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics) 
      
 def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
     
@@ -925,8 +942,6 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
             'per_network_dataset_size': 5000,
         }
 
-        list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
-
         printing = True if n_jobs == 1 else False
 
         lambda_network_weights_list = np.array(lambda_net_dataset.weight_list)
@@ -951,7 +966,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
 
         per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_hyperparams['per_network_dataset_size'], 
                                                                                                               lambda_network_weights, 
-                                                                                                              list_of_monomial_identifiers_numbers, 
+                                                                                                              list_of_monomial_identifiers, 
                                                                                                               config,
                                                                                                               optimizer = per_network_hyperparams['optimizer'],
                                                                                                               lr = per_network_hyperparams['lr'], 
@@ -972,9 +987,6 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
             'restarts': 3,
             'per_network_dataset_size': 500,
         }
-
-        list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
-
 
         printing = True if n_jobs == 1 else False
 
@@ -1000,7 +1012,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
 
         result_list_per_network = parallel_per_network(delayed(per_network_poly_optimization_scipy)(per_network_hyperparams['per_network_dataset_size'], 
                                                                                                                   lambda_network_weights, 
-                                                                                                                  list_of_monomial_identifiers_numbers, 
+                                                                                                                  list_of_monomial_identifiers, 
                                                                                                                   config,
                                                                                                                   optimizer = per_network_hyperparams['optimizer'],
                                                                                                                   jac = per_network_hyperparams['jac'],

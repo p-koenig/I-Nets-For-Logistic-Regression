@@ -48,6 +48,10 @@ from scipy import optimize
 import sympy as sym
 from sympy import Symbol, sympify, lambdify, abc
 
+# Function Generation 0 1 import
+from sympy.sets.sets import Union
+import math
+
 
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
@@ -88,18 +92,22 @@ def initialize_utility_functions_config_from_curent_notebook(config):
         tf.set_random_seed(RANDOM_SEED)
         
     global list_of_monomial_identifiers
+    from utilities.utility_functions import flatten, rec_gen
         
     list_of_monomial_identifiers_extended = []
-    for i in range((d+1)**n):    
-        monomial_identifier = dec_to_base(i, base = (d+1)).zfill(n) 
-        list_of_monomial_identifiers_extended.append(monomial_identifier)
 
-
+    if laurent:
+        variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+    else:
+        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
+        
     list_of_monomial_identifiers = []
     for monomial_identifier in list_of_monomial_identifiers_extended:
-        monomial_identifier_values = list(map(int, list(monomial_identifier)))
-        if sum(monomial_identifier_values) <= d:
-            list_of_monomial_identifiers.append(monomial_identifier)
+        if np.sum(monomial_identifier) <= d:
+            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                list_of_monomial_identifiers.append(monomial_identifier)
                                     
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
@@ -109,20 +117,17 @@ def nCr(n,r):
     f = math.factorial
     return f(n) // f(r) // f(n-r)
 
-ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-def encode (n):
-    try:
-        return ALPHABET [n]
-    except IndexError:
-        raise Exception ("cannot encode: %s" % n)
-        
-def dec_to_base (dec = 0, base = 16):
-    if dec < base:
-        return encode (dec)
-    else:
-        return dec_to_base (dec // base, base) + encode (dec % base)
+def rec_gen(x):                                                                    
+    if len(x) == 1:                                                                 
+        return [[item] for item in x[0]]                                           
+    appended = []                                                                  
+    for s_el in x[0]:                                                              
+        for next_s in rec_gen(x[1:]):                                              
+            appended.append([s_el] + next_s)                                       
+    return appended                                                                
 
+    
 def pairwise(iterable):
     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
     a = iter(iterable)
@@ -291,7 +296,7 @@ def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_re
             else:
                 subfunction = monomial_coefficient        
             for i, monomial_exponent in enumerate(monomial_identifier):
-                subfunction *= variable_list[i]**float(monomial_exponent)
+                subfunction *= variable_list[i]**monomial_exponent
             f += subfunction
     else:
         f = 0
@@ -315,7 +320,7 @@ def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_re
                 subfunction = monomial_coefficient
                 #REPLACE NAN
             for i, monomial_exponent in enumerate(list_of_monomial_identifiers[monomial_index]):
-                subfunction *= variable_list[i]**float(monomial_exponent)
+                subfunction *= variable_list[i]**monomial_exponent
             f += subfunction    
     
     return f
@@ -358,6 +363,157 @@ def get_critical_points_from_polynomial(coefficient_array, force_complete_poly_r
 
 
 
+#######################################################################################################################################################
+########################################################################JUSTUS CODE####################################################################
+#######################################################################################################################################################
+# Method to shift a function(func) by a given distance(distance) for a given variable(variable)
+def shift(func, distance, variable):
+    a = variable
+    f = func
+    # substitude a by a-distance (shifting)
+    f = f.subs(a, (a-distance))
+    # expand function returns polynomial funtion as sum of monomials
+    f = sym.expand(f)
+    return f
+
+# Method to bulge a function(func) by a given factor(factor) for a given variable(variable)
+def bulge(func, factor, variable):
+    a = variable
+    f = func
+    #substitude a by a*factor (bulging)
+    f = f.subs(a, (factor*a))
+    #expand function returns polynomial funtion as sum of monomials
+    f = sym.expand(f)
+    return f
+
+# method to adjust the function to fit in the intervall between 0 and 1
+def adjust_maj(func, border, variable):
+    # variable(for example x or a) given after sym.Symbol('a') argument
+    a = variable
+    # border
+    border = border
+    # width of corridor
+    width = 1 - 2*border
+    # Derivative
+    f = func
+    g = sym.diff(func, a)
+    #find extremums ()
+    ext = sym.solveset(g, domain=sym.Reals)
+    #find inflection points
+    inflec = sym.calculus.util.stationary_points(g, a, domain=sym.Reals)
+    #critical points (joint extremums and inflection points)
+    critical_points = Union(ext, inflec)
+    # Test, if there are any critical points (Only case where a polynomial function has no critical point is a straight, which causes no problem)
+    if not critical_points.is_empty: 
+        # find infimum and supremum of set:
+        left_critical_point = critical_points.inf
+        right_critical_point = critical_points.sup
+        # calculate distance between points:
+        distance = right_critical_point - left_critical_point
+        # only one critical point
+        if distance == 0:
+            # shift function so that the critical point is between border and 1-border
+            f = shift(f, -left_critical_point+random.uniform(border, 1-border), a)
+            pass
+        # check if function needs to be bulged 
+        elif distance <= width:
+            # shift function so that the critical points are between border and 1-border
+            f = shift(f, -left_critical_point+border+random.uniform(0, width-distance), a)
+            pass
+        else:
+            #check if left and right critical points are extremums or inflection points (to reduce later calculations)
+            left_extreme = False
+            right_extreme = False
+            if ext.contains(left_critical_point):
+                left_extreme = True
+            else:
+                if ext.contains(right_critical_point):
+                    right_extreme = True
+            # bulge the function
+            f = bulge(f, distance/width, a)
+            # calculate the new position of the necessary critical points and shift the function accordingly
+            if left_extreme:
+                left_shift = sym.calculus.util.stationary_points(f, a, domain=sym.Reals).inf
+                f = shift(f, -left_shift+border, a)
+            elif right_extreme:
+                right_shift = sym.calculus.util.stationary_points(f, a, domain=sym.Reals).sup
+                f = shift(f, -right_shift+(1-border), a)
+            else:
+                left_shift = sym.calculus.util.stationary_points(sym.diff(f, a), a, domain=sym.Reals).inf
+                f = shift(f, -left_shift+border, a)
+    return f
+
+
+# method to prep the function for the use with the sympy Library and convert final function to the used style
+def adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob):
+    a = sym.Symbol('a')
+    border = border
+    function = values[0]
+    for i in range(degree):
+        function += values[i+1] * a ** (i+1)
+    function_adjusted = adjust_maj(function, border, a)
+    coeff_dict = function_adjusted.as_coefficients_dict()
+    coeff_list = [coeff_dict[1]]
+    for i in range(degree):
+        coeff_list.append(coeff_dict[a**(i+1)])
+    # possible divisor for the case that coefficient values are to high. Divisor is random, to prohibit that a_abs_max is the highest coefficient value for most functions
+    div = abs(max(coeff_list, key=abs) / random.uniform(a_abs_max/2, a_abs_max))
+    if div>1:
+        coeff_list = [x / div for x in coeff_list]
+    # NaN can happen if one coefficient has value of infinity after bulging and shifting
+    for n in range(len(coeff_list)):
+        if math.isnan(coeff_list[n]):
+            values=generate_rand_values(a_zero_prob, degree)
+            return adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob)
+    return coeff_list
+
+def generate_rand_values(a_zero_prob, degree):
+    values=[]
+    # initialise random coefficient values
+    for _ in range(degree+1):
+        values.extend(random.choices([random.uniform(-0.3, 0.3), 0],[1-a_zero_prob, a_zero_prob]))
+    # protect against the unlikely case that all values are initialized as 0
+    while all(m==0 for m in values):
+        values = []
+        for _ in range(degree+1):
+            values.extend(random.choices([random.uniform(-0.3, 0.3), 0],[1-a_zero_prob, a_zero_prob]))
+    return values
+
+
+
+# border = space between the intervall boundary and the outmost significant point
+# a_abs_max = absolute maximum value of the coefficient(has to be the same positive and negative)
+# a_zero_prob = probability that a is initialized as zero
+def get_polynomial(border_min, border_max, a_abs_max, a_zero_prob, degree, a_random_prob, lower_degree_prob, change=0):
+    if(random.random()<a_random_prob):
+        coeff_list = [random.uniform(-1, 1) for _ in range(degree+1)]
+        for i in range(degree):
+            if(random.random() < (lower_degree_prob + i*change)):
+                coeff_list[len(coeff_list)-i - 1] = 0
+            else:
+                for g in range(degree - i):
+                    if(random.random() < a_zero_prob):
+                        coeff_list[g] = 0
+                break
+    else:
+        #values = generate_rand_values(a_zero_prob, degree)
+        values = [random.uniform(-1, 1) for _ in range(degree+1)]
+        for i in range(degree):
+            if(random.random() < (lower_degree_prob+ i*change)):
+                values[len(values)-i - 1] = 0
+                if(i == degree - 1):
+                    return values
+            else:
+                for g in range(degree - i):
+                    if(random.random() < a_zero_prob):
+                        values[g] = 0
+                break
+        border = random.uniform(border_min, border_max)
+        coeff_list = adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob)
+    return coeff_list 
+
+
+
 
 #######################################################################################################################################################
 ###########################Manual calculations for comparison of polynomials based on function values (no TF!)#########################################
@@ -378,14 +534,18 @@ def calcualate_function_value(coefficient_list, lambda_input_entry, force_comple
         
     if interpretation_net_output_monomials == None or force_complete_poly_representation:
         
+        #print('coefficient_list', coefficient_list)
+        
         #print(force_complete_poly_representation)
         #print(interpretation_net_output_monomials)
     
-        assert coefficient_list.shape[0] == sparsity, 'Shape of Coefficient List: ' + str(coefficient_list.shape) + str(interpretation_net_output_monomials)
+        assert coefficient_list.shape[0] == sparsity, 'Shape of Coefficient List: ' + str(coefficient_list.shape) + str(interpretation_net_output_monomials) + str(coefficient_list)
         
         for coefficient_value, coefficient_multipliers in zip(coefficient_list, list_of_monomial_identifiers):
-            value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
-
+            #print('coefficient_value', coefficient_value)
+            #print('coefficient_multipliers', coefficient_multipliers)
+            value_without_coefficient = [lambda_input_value**coefficient_multiplier for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
+            #print('value_without_coefficient', value_without_coefficient)
             try:
                 result += coefficient_value * reduce(lambda x, y: x*y, value_without_coefficient)
             except TypeError:
@@ -412,7 +572,7 @@ def calcualate_function_value(coefficient_list, lambda_input_entry, force_comple
         # Calculate monomial values without coefficient
         value_without_coefficient_list = []
         for coefficient_multipliers in list_of_monomial_identifiers:
-            value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
+            value_without_coefficient = [lambda_input_value**coefficient_multiplier for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
             value_without_coefficient_list.append(reduce(lambda x, y: x*y, value_without_coefficient))
         value_without_coefficient_by_indices = np.array(value_without_coefficient_list)[[indices]]
 
@@ -421,6 +581,7 @@ def calcualate_function_value(coefficient_list, lambda_input_entry, force_comple
             #TODOOOOO
             result += coefficient * value_without_coefficient_list[monomial_index]
         
+    #print('result', result)
     return result
 
 def calculate_function_values_from_polynomial(polynomial, lambda_input_data, force_complete_poly_representation=False):        
@@ -430,7 +591,7 @@ def calculate_function_values_from_polynomial(polynomial, lambda_input_data, for
         function_value = calcualate_function_value(polynomial, lambda_input_entry, force_complete_poly_representation=force_complete_poly_representation)
         function_value_list.append(function_value)
         
-    return np.array(function_value_list)
+    return np.nan_to_num(np.array(function_value_list))
 
 
 
@@ -510,27 +671,42 @@ def generate_paths(path_type='interpretation_net'):
     
     paths_dict = {}
     
-    
-      
-    if same_training_all_lambda_nets:
-        training_string = '_sameX'
-    else:
-        training_string = '_diffX'
+        
+    training_string = '_sameX' if same_training_all_lambda_nets else '_diffX'
+        
+    laurent_str = '_laurent' if laurent else ''
+    monomial_vars_str = '_monvars_' + str(monomial_vars) if monomial_vars != None else ''
+    neg_d_str = '_negd_' + str(neg_d) if neg_d != None else ''
+
+        
+    dataset_description_string = ('_var_' + str(n) + 
+                                  '_d_' + str(d) + 
+                                   laurent_str + 
+                                   monomial_vars_str + 
+                                   neg_d_str + 
+                                   '_spars_' + str(sample_sparsity) + 
+                                   '_amin_' + str(a_min) + 
+                                   '_amax_' + str(a_max) + 
+                                   #'_xmin_' + str(x_min) + 
+                                   #'_xmax_' + str(x_max) + 
+                                   '_xdist_' + str(x_distrib) + 
+                                   '_noise_' + str(noise_distrib) + '_' + str(noise))
+        
+        
+    adjusted_dataset_string = ('bmin' + str(border_min) +
+                                'bmax' + str(border_max) +
+                                'lowd' + str(lower_degree_prob) +
+                                'azero' + str(a_zero_prob) +
+                                'arand' + str(a_random_prob))
+        
         
 
     if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
   
-        path_identifier_polynomial_data = ('polynomials_' + str(polynomial_data_size) + 
+        path_identifier_polynomial_data = ('poly_' + str(polynomial_data_size) + 
                                            '_train_' + str(lambda_dataset_size) + 
-                                           '_variables_' + str(n) + 
-                                           '_degree_' + str(d) + 
-                                           '_sparsity_' + str(sample_sparsity) + 
-                                           '_amin_' + str(a_min) + 
-                                           '_amax_' + str(a_max) + 
-                                           '_xmin_' + str(x_min) + 
-                                           '_xmax_' + str(x_max) + 
-                                           '_xdistrib_' + str(x_distrib) + 
-                                           '_noise_' + str(noise_distrib) + '_' + str(noise) + 
+                                           dataset_description_string + 
+                                           adjusted_dataset_string +
                                            training_string)            
 
         paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
@@ -545,10 +721,8 @@ def generate_paths(path_type='interpretation_net'):
         elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
             seed_init_string = '_NoFixSeedInit'
 
-        early_stopping_string = ''
-        if early_stopping_lambda:
-            early_stopping_string = '_ES' + str(early_stopping_min_delta_lambda) + '_'
-
+            
+        early_stopping_string = '_ES' + str(early_stopping_min_delta_lambda) + '_' if early_stopping_lambda else ''
             
         lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
         lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + early_stopping_string + str(batch_lambda) + 'b' + '_' + optimizer_lambda + '_' + loss_lambda
@@ -558,15 +732,9 @@ def generate_paths(path_type='interpretation_net'):
                                            '_train_' + str(lambda_dataset_size) + 
                                            training_string + 
                                            seed_init_string + '_' + str(RANDOM_SEED) +
-                                           '/var_' + str(n) + 
-                                           '_d_' + str(d) + 
-                                           '_sparsity_' + str(sample_sparsity) + 
-                                           '_amin_' + str(a_min) + 
-                                           '_amax_' + str(a_max) + 
-                                           '_xmin_' + str(x_min) + 
-                                           '_xmax_' + str(x_max) + 
-                                           '_xdist_' + str(x_distrib) + 
-                                           '_noise_' + str(noise_distrib) + '_' + str(noise))        
+                                           '/' +
+                                           dataset_description_string[1:] + 
+                                           adjusted_dataset_string)        
 
         paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
     
@@ -588,15 +756,9 @@ def generate_paths(path_type='interpretation_net'):
                                                    '_train_' + str(lambda_dataset_size) + 
                                                    training_string + 
                                                    seed_init_string + '_' + str(RANDOM_SEED) +
-                                                   '/var_' + str(n) + 
-                                                   '_d_' + str(d) + 
-                                                   '_sparsity_' + str(sample_sparsity) + 
-                                                   '_amin_' + str(a_min) + 
-                                                   '_amax_' + str(a_max) + 
-                                                   #'_xmin_' + str(x_min) + 
-                                                   #'_xmax_' + str(x_max) + 
-                                                   '_xdist_' + str(x_distrib) + 
-                                                   '_noise_' + str(noise_distrib) + '_' + str(noise))       
+                                                   '/' +
+                                                   dataset_description_string[1:] + 
+                                                   adjusted_dataset_string)       
         
         
         paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
@@ -762,9 +924,9 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise
     eval_results=eval_results.reshape(n_samples,1)
     
     if noise_dist=='normal':
-        noise_sample=noise*np.random.normal(loc=0, scale=1.0,size=n_samples)
+        noise_sample=noise*np.random.normal(loc=0, scale=np.mean(np.abs(eval_dataset)),size=n_samples)
     elif noise_dist=='uniform':
-        noise_sample=noise*np.random.uniform(low=0, high=1.0,size=n_samples)
+        noise_sample=noise*np.random.uniform(low=-np.mean(np.abs(eval_dataset))/2, high=np.mean(np.abs(eval_dataset))/2,size=n_samples)
         
     noise_sample=noise_sample.reshape(n_samples,1)
     
@@ -812,7 +974,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
     
     
     from utilities.metrics import calculate_poly_fv_tf_wrapper
-
+    from utilities.metrics import r2_keras_loss
 
     ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
             
@@ -1113,13 +1275,16 @@ def symbolic_regression(lambda_net,
                           #printing = True,
                           return_error = False):
 
-    from pysymbolic.algorithms.symbolic_expressions import symbolic_regressor
+    from pysymbolic_adjusted.algorithms.symbolic_expressions import symbolic_regressor
     
     globals().update(config) 
     
     global x_min
     
-    model = lambda_net.return_model(config=config)
+    if isinstance(lambda_net, keras.models.Sequential):
+        model = lambda_net
+    else:
+        model = lambda_net.return_model(config=config)
     
     if x_min == 0:
         x_min = 1e-5    
@@ -1131,19 +1296,20 @@ def symbolic_regression(lambda_net,
     
     return symbolic_reg
         
+    
 def symbolic_metamodeling(lambda_net, 
                           config,
                           metamodeling_hyperparams,
                           #printing = True,
                           return_error = False,
                           return_expression = 'approx', #'approx', #'exact',
-                          function_metamodeling = True,
+                          function_metamodeling = False,
                           force_polynomial=False):
     
     
     
-    from pysymbolic.algorithms.symbolic_metamodeling import symbolic_metamodel
-    from pysymbolic.algorithms.symbolic_expressions import get_symbolic_model
+    from pysymbolic_adjusted.algorithms.symbolic_metamodeling import symbolic_metamodel
+    from pysymbolic_adjusted.algorithms.symbolic_expressions import get_symbolic_model
     
     
     ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
@@ -1152,7 +1318,10 @@ def symbolic_metamodeling(lambda_net,
     
     global x_min
     
-    model = lambda_net.return_model(config=config)
+    if isinstance(lambda_net, keras.models.Sequential):
+        model = lambda_net
+    else:
+        model = lambda_net.return_model(config=config)
     
     if x_min == 0:
         x_min = 1e-5
@@ -1203,6 +1372,80 @@ def symbolic_metamodeling(lambda_net,
 
 
 
+def symbolic_metamodeling_original(lambda_net, 
+                          config,
+                          metamodeling_hyperparams,
+                          #printing = True,
+                          return_error = False,
+                          return_expression = 'approx', #'approx', #'exact',
+                          function_metamodeling = False,
+                          force_polynomial=False):
+    
+    
+    
+    from pysymbolic_original.algorithms.symbolic_metamodeling import symbolic_metamodel
+    from pysymbolic_original.algorithms.symbolic_expressions import get_symbolic_model
+    
+    
+    ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
+            
+    globals().update(config) 
+    
+    global x_min
+    
+    if isinstance(lambda_net, keras.models.Sequential):
+        model = lambda_net
+    else:
+        model = lambda_net.return_model(config=config)
+    
+    if x_min == 0:
+        x_min = 1e-5
+    
+    
+    ########################################### OPTIMIZATION ########################################################
+    
+    if function_metamodeling:    
+        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+        symbolic_model.approximation_order = d
+        
+        if return_expression == 'exact':
+            metamodel_function = symbolic_model.exact_expression()
+            #print(metamodel_function)
+        elif return_expression == 'approx':
+            metamodel_function = symbolic_model.approx_expression()       
+            
+        if return_error:
+            return r2_score, metamodel_function
+            
+    else:   
+        random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(metamodeling_hyperparams['dataset_size'], max(1, n)))
+        
+        if metamodeling_hyperparams['batch_size'] == None:
+            metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
+
+        metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression")
+        metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
+
+
+        if return_expression == 'exact':
+            metamodel_function = metamodel.exact_expression
+            #print(metamodel_function)
+        elif return_expression == 'approx':
+            metamodel_function = metamodel.approx_expression
+            #print(metamodel_function)
+
+        if return_error:
+            random_lambda_input_data_preds_metamodel = metamodel.evaluate(random_lambda_input_data)
+            random_lambda_input_data_preds_lambda_net = model.predict(random_lambda_input_data)
+
+            error = mean_absolute_error(random_lambda_input_data_preds_lambda_net, random_lambda_input_data_preds_metamodel)        
+
+            return error, metamodel_function
+    
+    return metamodel_function
+
+
+
 
 def per_network_poly_optimization_slow(per_network_dataset_size, 
                                   lambda_network_weights, 
@@ -1238,7 +1481,7 @@ def per_network_poly_optimization_slow(per_network_dataset_size,
             
             value_without_coefficient_list = []
             for coefficient_multipliers in list_of_monomial_identifiers:
-                value_without_coefficient = [lambda_input_value**int(coefficient_multiplier) for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
+                value_without_coefficient = [lambda_input_value**coefficient_multiplier for coefficient_multiplier, lambda_input_value in zip(coefficient_multipliers, lambda_input_entry)]
                 value_without_coefficient_list.append(reduce(lambda x, y: x*y, value_without_coefficient))
             
             
