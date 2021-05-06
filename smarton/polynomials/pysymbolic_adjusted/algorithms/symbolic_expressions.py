@@ -23,6 +23,7 @@ from pysymbolic_adjusted.models.special_functions import MeijerG
 from pysymbolic_adjusted.utilities.performance import compute_Rsquared
 
 #from sympy.printing.theanocode import theano_function
+import sympy as sym
 from sympy.utilities.autowrap import ufuncify
 
 from gplearn.genetic import SymbolicRegressor
@@ -50,9 +51,16 @@ def Optimize(Loss, theta_0):
     return theta_opt, Loss_ 
 
 
-def symbolic_modeling(f, G_order, theta_0, npoints, xrange):
-    X         = np.linspace(xrange[0], xrange[1], npoints)
-
+def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None):
+        
+    if data is not None:
+        X = data
+    elif n_vars == 1:
+        X  = np.linspace(xrange[0], xrange[1], npoints).reshape((-1,1))
+    else:
+        X  = np.random.uniform(low=xrange[0], high=xrange[1], size=(npoints, n_vars))
+        
+        
     def Loss(theta):
         
         G     = MeijerG(theta=theta, order=G_order)
@@ -70,7 +78,7 @@ def symbolic_modeling(f, G_order, theta_0, npoints, xrange):
 
     return symbolic_model, Loss_ 
 
-def get_symbolic_model(f, npoints, xrange):
+def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
 
     hyperparameter_space = load_hyperparameter_config() 
     loss_threshold       = 10e-5
@@ -81,7 +89,7 @@ def get_symbolic_model(f, npoints, xrange):
     for k in range(len(hyperparameter_space)):
 
         symbolic_model, Loss_ = symbolic_modeling(f, hyperparameter_space['hyper_'+str(k+1)][1], 
-                                                  hyperparameter_space['hyper_'+str(k+1)][0], npoints, xrange)
+                                                  hyperparameter_space['hyper_'+str(k+1)][0], npoints, xrange, n_vars)
 
         symbol_exprs.append(symbolic_model)
         losses_.append(Loss_)
@@ -104,12 +112,24 @@ def get_symbolic_model(f, npoints, xrange):
     return symbol_exprs[best_model], R2_perf    
 
 
-def symbolic_regressor(f, npoints, xrange):
+def symbolic_regressor(f, npoints, xrange, n_vars=1, data=None):
 
-    X  = np.linspace(xrange[0], xrange[1], npoints).reshape((-1,1))
+    if data is not None:
+        X = data
+    elif n_vars == 1:
+        X  = np.linspace(xrange[0], xrange[1], npoints).reshape((-1,1))
+    else:
+        X  = np.random.uniform(low=xrange[0], high=xrange[1], size=(npoints, n_vars))
+
+    #print(f)
+    #print('X[0]', X[0])
+    #print('X.shape', X.shape)
+    
+    
     if type(f) is types.FunctionType:
         y  = f(X)
     else:
+        #print(f.summary())
         y  = f.predict(X)
 
     est_gp = SymbolicRegressor(population_size=5000,
@@ -132,13 +152,35 @@ def symbolic_regressor(f, npoints, xrange):
         'pow': lambda x, y : x**y
     }
 
-    x, X0   = symbols('x X0')
+    #x, X0   = symbols('x X0')
     sym_reg = simplify(sympify(sym_expr, locals=converter))
-    sym_reg = sym_reg.subs(X0,x)
+    #print('str(sym_reg)', str(sym_reg))
+    #sym_reg = sym_reg.subs(X0,x)
 
     Y_true  = y.reshape((-1,1))
-    Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
-
+    #print('SUBS str(sym_reg)', str(sym_reg))
+    
+    
+    function_vars = [sym.symbols('X' + str(i)) for i in range(n_vars)]
+    #lambda_function = lambdify([function_vars], sym_reg, modules=["scipy", "numpy"])
+    #if len(function_vars) >= 1:
+    #    Y_est = [lambda_function(data_point) for data_point in X]
+    #else:
+    #Y_est = [lambda_function() for i in range(X.shape[0])]    
+    function_values = []
+    for data_point in X:
+        function_value = sym_reg.evalf(subs={var: data_point[index] for index, var in enumerate(list(function_vars))})
+        try:
+            function_value = float(function_value)
+        except TypeError as te:
+            function_value = np.inf
+        function_values.append(function_value)
+    Y_est = np.nan_to_num(function_values).ravel()
+                
+    #Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
+    
+    
+    
     R2_perf = compute_Rsquared(Y_true, Y_est)
 
     return sym_reg, R2_perf

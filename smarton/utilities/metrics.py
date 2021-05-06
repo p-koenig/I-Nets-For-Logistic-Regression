@@ -70,6 +70,25 @@ def initialize_metrics_config_from_curent_notebook(config):
     else:
         tf.set_random_seed(RANDOM_SEED)
         
+    global list_of_monomial_identifiers
+    from utilities.utility_functions import flatten, rec_gen
+        
+    list_of_monomial_identifiers_extended = []
+
+    if laurent:
+        variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+    else:
+        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
+        
+    list_of_monomial_identifiers = []
+    for monomial_identifier in list_of_monomial_identifiers_extended:
+        if np.sum(monomial_identifier) <= d:
+            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                list_of_monomial_identifiers.append(monomial_identifier)
+                    
+        
 #######################################################################################################################################################
 ######################Manual TF Loss function for comparison with lambda-net prediction based (predictions made in loss function)######################
 #######################################################################################################################################################
@@ -831,29 +850,43 @@ def evaluate_interpretation_net(function_1_coefficients,
                                 function_2_fv):
     
     from utilities.utility_functions import return_numpy_representation
+    #global list_of_monomial_identifiers
     
     if type(function_1_coefficients) != type(None) and type(function_2_coefficients) != type(None):
         function_1_coefficients = return_numpy_representation(function_1_coefficients)
         function_2_coefficients = return_numpy_representation(function_2_coefficients)     
         
-        assert function_1_coefficients.shape[1] == sparsity or function_1_coefficients.shape[1] == interpretation_net_output_shape, 'Coefficients Function 1 not in shape ' + str(function_1_coefficients.shape)
-        assert function_2_coefficients.shape[1] == sparsity or function_2_coefficients.shape[1] == interpretation_net_output_shape, 'Coefficients Function 2 not in shape ' + str(function_2_coefficients.shape)
+        assert function_1_coefficients.shape[1] == sparsity or function_1_coefficients.shape[1] == interpretation_net_output_shape or function_1_coefficients.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers), 'Coefficients Function 1 not in shape ' + str(function_1_coefficients.shape)
+        assert function_2_coefficients.shape[1] == sparsity or function_2_coefficients.shape[1] == interpretation_net_output_shape or function_2_coefficients.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers), 'Coefficients Function 2 not in shape ' + str(function_2_coefficients.shape)
        
         
         if function_1_coefficients.shape[1] != function_2_coefficients.shape[1]:
-            
-            if function_1_coefficients.shape[1] == interpretation_net_output_shape:
-            
-                coefficient_indices_array = function_1_coefficients[:,interpretation_net_output_monomials:]
-                function_1_coefficients_reduced = function_1_coefficients[:,:interpretation_net_output_monomials]
+                
+                
+            if function_1_coefficients.shape[1] == interpretation_net_output_shape or function_1_coefficients.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers):
+                if function_1_coefficients.shape[1] == interpretation_net_output_shape:
+                    coefficient_indices_array = function_1_coefficients[:,interpretation_net_output_monomials:]
+                    function_1_coefficients_reduced = function_1_coefficients[:,:interpretation_net_output_monomials]
 
-                assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+                    assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
 
-                coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
+                    coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
 
-                assert len(coefficient_indices_list) == function_1_coefficients_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+                    assert len(coefficient_indices_list) == function_1_coefficients_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
 
-                coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
+                    coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
+                elif function_1_coefficients.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers):
+                    coefficient_indices_array = function_1_coefficients[:,interpretation_net_output_monomials+1:]
+                    function_1_coefficients_reduced = function_1_coefficients[:,:interpretation_net_output_monomials+1]
+
+                    assert coefficient_indices_array.shape[1] == (interpretation_net_output_monomials+1)*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+
+                    coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials+1, axis=1)
+
+                    assert len(coefficient_indices_list) == function_1_coefficients_reduced.shape[1] == interpretation_net_output_monomials+1, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+
+                    coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))         
+
 
                 function_2_coefficients_reduced = []
                 for function_2_coefficients_entry, coefficient_indices_entry in zip(function_2_coefficients, coefficient_indices):
@@ -863,18 +896,30 @@ def evaluate_interpretation_net(function_1_coefficients,
                 function_1_coefficients = function_1_coefficients_reduced
                 function_2_coefficients = function_2_coefficients_reduced
             
-            elif function_2_coefficients.shape[1] == interpretation_net_output_shape:
+            if function_2_coefficients.shape[1] == interpretation_net_output_shape or function_2_coefficients.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers):
+                if function_2_coefficients.shape[1] == interpretation_net_output_shape:
+                    coefficient_indices_array = function_2_coefficients[:,interpretation_net_output_monomials:]
+                    function_2_coefficients_reduced = function_2_coefficients[:,:interpretation_net_output_monomials]
+
+                    assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+
+                    coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
+
+                    assert len(coefficient_indices_list) == function_2_coefficients_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+
+                    coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
+                elif function_2_coefficients.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers):
+                    coefficient_indices_array = function_2_coefficients[:,interpretation_net_output_monomials+1:]
+                    function_2_coefficients_reduced = function_2_coefficients[:,:interpretation_net_output_monomials+1]
+
+                    assert coefficient_indices_array.shape[1] == (interpretation_net_output_monomials+1)*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
+
+                    coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials+1, axis=1)
+
+                    assert len(coefficient_indices_list) == function_2_coefficients_reduced.shape[1] == interpretation_net_output_monomials+1, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
+
+                    coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))                    
                 
-                coefficient_indices_array = function_2_coefficients[:,interpretation_net_output_monomials:]
-                function_2_coefficients_reduced = function_2_coefficients[:,:interpretation_net_output_monomials]
-
-                assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
-
-                coefficient_indices_list = np.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
-
-                assert len(coefficient_indices_list) == function_2_coefficients_reduced.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
-
-                coefficient_indices = np.transpose(np.argmax(coefficient_indices_list, axis=2))
 
                 function_1_coefficients_reduced = []
                 for function_1_coefficients_entry, coefficient_indices_entry in zip(function_1_coefficients, coefficient_indices):
@@ -882,10 +927,13 @@ def evaluate_interpretation_net(function_1_coefficients,
                 function_1_coefficients_reduced = np.array(function_1_coefficients_reduced)
 
                 function_2_coefficients = function_2_coefficients_reduced
-                function_1_coefficients = function_1_coefficients_reduced            
-            
-            else:
+                function_1_coefficients = function_1_coefficients_reduced   
+                
+            if not ((function_2_coefficients.shape[1] != interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers) or function_2_coefficients.shape[1] == interpretation_net_output_shape) and (function_1_coefficients.shape[1] != interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers) or function_1_coefficients.shape[1] == interpretation_net_output_shape)):
+                print(function_1_coefficients.shape)
+                print(function_2_coefficients.shape)
                 raise SystemExit('Shapes Inconsistent') 
+
                 
                 
         
@@ -901,14 +949,26 @@ def evaluate_interpretation_net(function_1_coefficients,
         accuracy_coeff = np.nan
         accuracy_multi_coeff = np.nan
         
-    function_1_fv = return_numpy_representation(function_1_fv)
-    function_2_fv = return_numpy_representation(function_2_fv)
+
+    try:    
+        function_1_fv = return_numpy_representation(function_1_fv)
+        function_2_fv = return_numpy_representation(function_2_fv)
+    except Exception as e:
+        
+        print(function_1_fv)
+        print(function_2_fv)   
+        
+        raise SystemExit(e)
+        
+    print(function_1_fv)
+    print(function_2_fv)    
     
     assert function_1_fv.shape == function_2_fv.shape, 'Shape of Function 1 FVs: ' + str(function_1_fv.shape) + str(function_1_fv[:10])  + 'Shape of Functio 2 FVs' + str(function_2_fv.shape) + str(function_2_fv[:10])
         
     mae_fv = np.round(mean_absolute_error_function_values(function_1_fv, function_2_fv), 4)
     rmse_fv = np.round(root_mean_squared_error_function_values(function_1_fv, function_2_fv), 4)
     mape_fv = np.round(mean_absolute_percentage_error_function_values(function_1_fv, function_2_fv), 4)
+
     r2_fv = np.round(r2_score_function_values(function_1_fv, function_2_fv), 4)
     raae_fv = np.round(relative_absolute_average_error_function_values(function_1_fv, function_2_fv), 4)
     rmae_fv = np.round(relative_maximum_average_error_function_values(function_1_fv, function_2_fv), 4) 

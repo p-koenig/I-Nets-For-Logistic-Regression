@@ -158,11 +158,21 @@ def return_float_tensor_representation(some_representation, dtype=tf.float32):
 def return_numpy_representation(some_representation):
     if isinstance(some_representation, pd.DataFrame):
         some_representation = some_representation.values
+        some_representation = np.float32(some_representation)
         
     if isinstance(some_representation, list):
-        some_representation = np.array(some_representation)
-    
-    if not isinstance(some_representation, np.ndarray):
+        some_representation = np.array(some_representation, dtype=np.float32)
+        
+    if isinstance(some_representation, np.ndarray):
+        #print(some_representation)
+        #print(type(some_representation))
+        #print(some_representation.dtype)
+        #print(some_representation[0])
+        #print(some_representation[0].dtype)
+        
+        
+        some_representation = np.float32(some_representation)
+    else:
         raise SystemExit('Given variable is no instance of ' + str(np.ndarray) + ':' + str(some_representation))
     
     return some_representation
@@ -190,10 +200,10 @@ def return_callbacks_from_string(callback_string_list):
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
     if 'reduce_lr_loss' in callback_string_list:
-        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=epochs/10, verbose=0, min_delta=0, mode='min') #epsilon
+        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=epochs//10, verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=20, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=epochs//10, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
@@ -242,19 +252,29 @@ def get_polynomial_string_from_coefficients(coefficients, force_complete_poly_re
             string += ' + '
     else:
         # Convert output array to monomial identifier index and corresponding coefficient
-        assert coefficient_array.shape[0] == interpretation_net_output_shape
+        assert coefficient_array.shape[0] == interpretation_net_output_shape or coefficient_array.shape[0] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers) 
         
-        coefficients = coefficient_array[:interpretation_net_output_monomials]
-        index_array = coefficient_array[interpretation_net_output_monomials:]
-        
-        
-        assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
-        index_list = np.split(index_array, interpretation_net_output_monomials)
-        
-        assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
-        indices = np.argmax(index_list, axis=1)        
-        
-        
+        if coefficient_array.shape[0] == interpretation_net_output_shape:
+            coefficients = coefficient_array[:interpretation_net_output_monomials]
+            index_array = coefficient_array[interpretation_net_output_monomials:]
+
+
+            assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
+            index_list = np.split(index_array, interpretation_net_output_monomials)
+
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
+            indices = np.argmax(index_list, axis=1)    
+        else:
+            coefficients = coefficient_array[:interpretation_net_output_monomials+1]
+            index_array = coefficient_array[interpretation_net_output_monomials+1:]
+
+
+            assert index_array.shape[0] == (interpretation_net_output_monomials+1)*sparsity
+            index_list = np.split(index_array, interpretation_net_output_monomials+1)
+
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials+1
+            indices = np.argmax(index_list, axis=1)   
+            
         for monomial_index, monomial_coefficient in zip(indices, coefficients):
             if round_digits != None:
                 string += str(np.round(monomial_coefficient, round_digits))
@@ -302,16 +322,27 @@ def get_sympy_string_from_coefficients(coefficient_array, force_complete_poly_re
         f = 0
         
         # Convert output array to monomial identifier index and corresponding coefficient
-        assert coefficient_array.shape[0] == interpretation_net_output_shape
+        assert coefficient_array.shape[0] == interpretation_net_output_shape or coefficient_array.shape[0] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers) 
         
-        coefficients = coefficient_array[:interpretation_net_output_monomials]
-        index_array = coefficient_array[interpretation_net_output_monomials:]
+        if coefficient_array.shape[0] == interpretation_net_output_shape:
+            coefficients = coefficient_array[:interpretation_net_output_monomials]
+            index_array = coefficient_array[interpretation_net_output_monomials:]
+
+            assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
+            index_list = np.split(index_array, interpretation_net_output_monomials)
+
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
+            indices = np.argmax(index_list, axis=1)
+        else:
+            coefficients = coefficient_array[:interpretation_net_output_monomials+1]
+            index_array = coefficient_array[interpretation_net_output_monomials+1:]
+
+            assert index_array.shape[0] == (interpretation_net_output_monomials+1)*sparsity
+            index_list = np.split(index_array, interpretation_net_output_monomials+1)
+
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials+1
+            indices = np.argmax(index_list, axis=1)
         
-        assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
-        index_list = np.split(index_array, interpretation_net_output_monomials)
-        
-        assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
-        indices = np.argmax(index_list, axis=1)
         
         for monomial_index, monomial_coefficient in zip(indices, coefficients):
             if round_digits != None:
@@ -445,16 +476,16 @@ def adjust_maj(func, border, variable):
 
 
 # method to prep the function for the use with the sympy Library and convert final function to the used style
-def adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob):
+def adjust_prep_postp(values, border, a_abs_max, a_zero_prob):
     a = sym.Symbol('a')
     border = border
     function = values[0]
-    for i in range(degree):
+    for i in range(sparsity-1):
         function += values[i+1] * a ** (i+1)
     function_adjusted = adjust_maj(function, border, a)
     coeff_dict = function_adjusted.as_coefficients_dict()
     coeff_list = [coeff_dict[1]]
-    for i in range(degree):
+    for i in range(sparsity-1):
         coeff_list.append(coeff_dict[a**(i+1)])
     # possible divisor for the case that coefficient values are to high. Divisor is random, to prohibit that a_abs_max is the highest coefficient value for most functions
     div = abs(max(coeff_list, key=abs) / random.uniform(a_abs_max/2, a_abs_max))
@@ -463,19 +494,19 @@ def adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob):
     # NaN can happen if one coefficient has value of infinity after bulging and shifting
     for n in range(len(coeff_list)):
         if math.isnan(coeff_list[n]):
-            values=generate_rand_values(a_zero_prob, degree)
-            return adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob)
+            values=generate_rand_values(a_zero_prob)
+            return adjust_prep_postp(values, border, a_abs_max, a_zero_prob)
     return coeff_list
 
-def generate_rand_values(a_zero_prob, degree):
+def generate_rand_values(a_zero_prob):
     values=[]
     # initialise random coefficient values
-    for _ in range(degree+1):
+    for _ in range(sparsity):
         values.extend(random.choices([random.uniform(-0.3, 0.3), 0],[1-a_zero_prob, a_zero_prob]))
     # protect against the unlikely case that all values are initialized as 0
     while all(m==0 for m in values):
         values = []
-        for _ in range(degree+1):
+        for _ in range(sparsity):
             values.extend(random.choices([random.uniform(-0.3, 0.3), 0],[1-a_zero_prob, a_zero_prob]))
     return values
 
@@ -484,32 +515,43 @@ def generate_rand_values(a_zero_prob, degree):
 # border = space between the intervall boundary and the outmost significant point
 # a_abs_max = absolute maximum value of the coefficient(has to be the same positive and negative)
 # a_zero_prob = probability that a is initialized as zero
-def get_polynomial(border_min, border_max, a_abs_max, a_zero_prob, degree, a_random_prob, lower_degree_prob, change=0):
+def get_polynomial(border_min, border_max, a_abs_max, a_zero_prob, a_random_prob, lower_degree_prob, change=0):
     if(random.random()<a_random_prob):
-        coeff_list = [random.uniform(-1, 1) for _ in range(degree+1)]
-        for i in range(degree):
+        coeff_list = [random.uniform(a_min, a_max) for _ in range(sparsity)]
+        
+        if(random.random() > neg_d_prob):
+            for monomial_index, monomial in enumerate(list_of_monomial_identifiers):
+                if min(monomial) < 0:
+                    coeff_list[monomial_index] = 0
+        
+        for i in range(sparsity-1):
             if(random.random() < (lower_degree_prob + i*change)):
                 coeff_list[len(coeff_list)-i - 1] = 0
             else:
-                for g in range(degree - i):
+                for g in range(sparsity -1 - i):
                     if(random.random() < a_zero_prob):
                         coeff_list[g] = 0
                 break
     else:
-        #values = generate_rand_values(a_zero_prob, degree)
-        values = [random.uniform(-1, 1) for _ in range(degree+1)]
-        for i in range(degree):
+        #values = generate_rand_values(a_zero_prob)
+        values = [random.uniform(a_min, a_max) for _ in range(sparsity)]
+        
+        if(random.random() > neg_d_prob):
+            for monomial_index, monomial in enumerate(list_of_monomial_identifiers):
+                if min(monomial) < 0:
+                    values[monomial_index] = 0        
+        for i in range(sparsity-1):
             if(random.random() < (lower_degree_prob+ i*change)):
                 values[len(values)-i - 1] = 0
-                if(i == degree - 1):
+                if(i == sparsity -1 - 1):
                     return values
             else:
-                for g in range(degree - i):
+                for g in range(sparsity - 1 - i):
                     if(random.random() < a_zero_prob):
                         values[g] = 0
                 break
         border = random.uniform(border_min, border_max)
-        coeff_list = adjust_prep_postp(values, border, a_abs_max, degree, a_zero_prob)
+        coeff_list = adjust_prep_postp(values, border, a_abs_max, a_zero_prob)
     return coeff_list 
 
 
@@ -558,16 +600,27 @@ def calcualate_function_value(coefficient_list, lambda_input_entry, force_comple
     else:
         
         # Convert output array to monomial identifier index and corresponding coefficient
-        assert coefficient_list.shape[0] == interpretation_net_output_shape
+        assert coefficient_list.shape[0] == interpretation_net_output_shape or coefficient_list.shape[0] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers) 
         
-        coefficients = coefficient_list[:interpretation_net_output_monomials]
-        index_array = coefficient_list[interpretation_net_output_monomials:]
         
-        assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
-        index_list = np.split(index_array, interpretation_net_output_monomials)
-        
-        assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
-        indices = np.argmax(index_list, axis=1)
+        if coefficient_list.shape[0] == interpretation_net_output_shape:
+            coefficients = coefficient_list[:interpretation_net_output_monomials]
+            index_array = coefficient_list[interpretation_net_output_monomials:]
+
+            assert index_array.shape[0] == interpretation_net_output_monomials*sparsity
+            index_list = np.split(index_array, interpretation_net_output_monomials)
+
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials
+            indices = np.argmax(index_list, axis=1)
+        else: 
+            coefficients = coefficient_list[:interpretation_net_output_monomials+1]
+            index_array = coefficient_list[interpretation_net_output_monomials+1:]
+
+            assert index_array.shape[0] == (interpretation_net_output_monomials+1)*sparsity
+            index_list = np.split(index_array, interpretation_net_output_monomials+1)
+
+            assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials+1
+            indices = np.argmax(index_list, axis=1)            
 
         # Calculate monomial values without coefficient
         value_without_coefficient_list = []
@@ -601,35 +654,54 @@ def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, 
     polynomial_list = return_numpy_representation(polynomial_list)
     lambda_input_list = return_numpy_representation(lambda_input_list)
     
-    assert polynomial_list.shape[0] == lambda_input_list.shape[0]
+    #print(polynomial_list.shape)
+    #print(type(polynomial_list))
+    #print(polynomial_list.dtype)
+    #print(polynomial_list)
+    #print(polynomial_list[0].shape)
+    #print(type(polynomial_list[0]))
+    #print(polynomial_list[0].dtype)
+    #print(polynomial_list[0])
+    
+    assert polynomial_list.shape[0] == lambda_input_list.shape[0] 
         
     if force_complete_poly_representation:
         assert polynomial_list.shape[1] == sparsity
     else:
-        assert polynomial_list.shape[1] == interpretation_net_output_shape
+        assert polynomial_list.shape[1] == interpretation_net_output_shape or polynomial_list.shape[1] == interpretation_net_output_shape + 1 + len(list_of_monomial_identifiers) , 'Poly Shape ' + str(polynomial_list.shape[1]) +' Output Monomials ' +  str(interpretation_net_output_shape) + str(polynomial_list[:2])
     assert lambda_input_list.shape[2] == n
         
-    parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=0, backend=backend)
+    parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=1, backend=backend)
     polynomial_true_fv = parallel(delayed(calculate_function_values_from_polynomial)(polynomial, lambda_inputs, force_complete_poly_representation=force_complete_poly_representation) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))  
     del parallel   
     
     return np.array(polynomial_true_fv)
 
 
-def calculate_function_values_from_sympy(function, data_points):
+def calculate_function_values_from_sympy(function, data_points, variable_names=None):
+    
+    print('function', function)
+    #print(data_points[:2])   
     
     try:
-        function_vars = function.atoms(Symbol)
-        lambda_function = lambdify(function_vars, function, modules=["scipy", "numpy"])
+        if variable_names == None:
+            function_vars = function.atoms(Symbol)
+        else:
+            function_vars = [sym.symbols(variable_name) for variable_name in variable_names]
+        print('function_vars', function_vars)
+        lambda_function = lambdify([function_vars], function, modules=["scipy", "numpy"])
+        print('lambda_function', lambda_function)
+        print('data_points[0]', data_points[0])
         if len(function_vars) >= 1:
-            function_values = lambda_function(data_points)
+            function_values = [lambda_function(data_point) for data_point in data_points]
+            
         else:
             function_values = [lambda_function() for i in range(data_points.shape[0])]
     except (NameError, KeyError) as e:
         #print(e)
         function_values = []
         for data_point in data_points:
-            function_value = function.evalf(subs={var: data_point[index] for index, var in enumerate(list(function.atoms(Symbol)))})
+            function_value = function.evalf(subs={var: data_point[index] for index, var in enumerate(list(function_vars))})
             try:
                 function_value = float(function_value)
             except TypeError as te:
@@ -643,16 +715,16 @@ def calculate_function_values_from_sympy(function, data_points):
 
 
 
-def parallel_fv_calculation_from_sympy(function_list, lambda_input_list, n_jobs_parallel_fv=10, backend='threading'):
-    
-    
-    
+def parallel_fv_calculation_from_sympy(function_list, lambda_input_list, n_jobs_parallel_fv=10, backend='threading', variable_names=None):
+        
+    backend='sequential'
+        
     lambda_input_list = return_numpy_representation(lambda_input_list)
     
     assert len(function_list) == lambda_input_list.shape[0]
              
     parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=1, backend=backend)
-    polynomial_true_fv = parallel(delayed(calculate_function_values_from_sympy)(function, lambda_inputs) for function, lambda_inputs in zip(function_list, lambda_input_list))  
+    polynomial_true_fv = parallel(delayed(calculate_function_values_from_sympy)(function, lambda_inputs, variable_names=variable_names) for function, lambda_inputs in zip(function_list, lambda_input_list))  
     del parallel   
     
 
@@ -676,7 +748,7 @@ def generate_paths(path_type='interpretation_net'):
         
     laurent_str = '_laurent' if laurent else ''
     monomial_vars_str = '_monvars_' + str(monomial_vars) if monomial_vars != None else ''
-    neg_d_str = '_negd_' + str(neg_d) if neg_d != None else ''
+    neg_d_str = '_negd_' + str(neg_d) + '_prob_' + str(neg_d_prob) if neg_d != None else ''
 
         
     dataset_description_string = ('_var_' + str(n) + 
@@ -1289,7 +1361,7 @@ def symbolic_regression(lambda_net,
     if x_min == 0:
         x_min = 1e-5    
     
-    symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+    symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'])
     
     if return_error:
         return r2_score, symbolic_reg
@@ -1330,7 +1402,7 @@ def symbolic_metamodeling(lambda_net,
     ########################################### OPTIMIZATION ########################################################
     
     if function_metamodeling:    
-        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'])
         symbolic_model.approximation_order = d
         
         if return_expression == 'exact':

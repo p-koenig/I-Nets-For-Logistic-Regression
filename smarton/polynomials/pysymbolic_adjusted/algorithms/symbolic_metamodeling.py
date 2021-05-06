@@ -58,7 +58,8 @@ def basis(a, b, c, x, hyper_order=[1, 2, 2, 2], approximation_order=3):
         
     epsilon = 0.001
     
-    print('a, b, c', a, b, c)
+    
+    #print('a, b, c', a, b, c)
     
     func_   = MeijerG(theta=[a, a, a, b, c], order=hyper_order, approximation_order=approximation_order)
     
@@ -169,7 +170,7 @@ def tune_single_dim(lr, n_iter, x, y, verbosity=False, approximation_order=3, ma
         a_new = a - lr * grads_a
         b_new = b - lr * grads_b
         c_new = c - lr * grads_c
-        if np.isnan([a_new, b_new, c_new]).any() or (np.abs(np.array([c_new, b_new, c_new])) > max_param_value).any() or c_new <= 0:
+        if np.isnan([a_new, b_new, c_new]).any() or np.isinf([a_new, b_new, c_new]).any() or (np.abs(np.array([c_new, b_new, c_new])) > max_param_value).any() or c_new <= 0:
             break
         a = a_new
         b = b_new
@@ -210,6 +211,9 @@ class symbolic_metamodel:
         self.X_new            = self.feature_expander.fit_transform(X) 
         self.X_names          = self.feature_expander.get_feature_names()
         
+        #print('self.X.shape', self.X.shape)
+        #print('self.X_new.shape', self.X_new.shape)
+        
         self.max_param_value = 100
         
         self.approximation_order = approximation_order
@@ -226,6 +230,9 @@ class symbolic_metamodel:
         
         
         self.num_basis        = self.X_new.shape[1]
+        
+        #print(self.num_basis)
+        
         self.params_per_basis = 3
         self.total_params     = self.num_basis * self.params_per_basis + 1
         
@@ -475,8 +482,14 @@ class symbolic_metamodel:
 
         #print(self.num_basis)
         #print(self.init_model.coef_)
-        if self.init_model.coef_.shape == (1,1):
-            self.init_model.coef_ = self.init_model.coef_.reshape(1,)
+        #print('self.init_model.coef_.shape', self.init_model.coef_.shape)
+        
+        #if self.init_model.coef_.shape == (1,1):
+        #    self.init_model.coef_ = self.init_model.coef_.reshape(1,)
+        if len(self.init_model.coef_.shape) >= 2 and self.init_model.coef_.shape[0] == 1:
+            self.init_model.coef_ = self.init_model.coef_.reshape(-1,)                
+                
+        #print('self.init_model.coef_.shape', self.init_model.coef_.shape)
                 
         for v in range(self.num_basis):
     
@@ -484,6 +497,10 @@ class symbolic_metamodel:
                                            b=float(self.params[v,1]), 
                                            c=float(self.params[v,2]), 
                                            approximation_order=self.approximation_order)
+        
+            #print(v)
+            #print('self.init_model.coef_', self.init_model.coef_)
+            #print(self.init_model.coef_[v])
         
             #print(sympify(str(self.init_model.coef_[v] * re(f_curr.expression()))))
             #print(sympify(str(self.init_model.coef_[v] * re(f_curr.approx_expression()))))

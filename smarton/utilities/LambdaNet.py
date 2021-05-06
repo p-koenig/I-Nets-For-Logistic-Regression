@@ -388,7 +388,7 @@ class LambdaNet():
         
         return model    
     
-    
+        
 def split_LambdaNetDataset(dataset, test_split, random_seed='RANDOM_SEED'):
     
     if random_seed == 'RANDOM_SEED':
@@ -426,6 +426,8 @@ def shape_flat_weights(flat_weights, target_weights):
     
     from utilities.utility_functions import flatten
     
+    #print('shape_flat_weights')
+    
     shaped_weights =[]
     start = 0
     for el in target_weights:
@@ -443,53 +445,72 @@ def weights_to_pred(weights, x, base_model=None):
         base_model = generate_base_model()
     else:
         base_model = keras.models.clone_model(base_model)
+    base_model_weights = base_model.get_weights()
     
     # Shape weights (flat) into correct model structure
-    shaped_weights = shape_flat_weights(weights, base_model.get_weights())
+    shaped_weights = shape_flat_weights(weights, base_model_weights)
+    
+    model = keras.models.clone_model(base_model)
     
     # Make prediction
-    base_model.set_weights(shaped_weights)
-    y = base_model.predict(x).ravel()
+    model.set_weights(shaped_weights)
+    y = model.predict(x).ravel()
     return y
 
     
-def weights_to_model(weights, config=None):
-
+def weights_to_model(weights, config=None, base_model=None):
+    
+    #print('W-FUNCTION START')
+    
     if config != None:
         globals().update(config) 
     
-    model = Sequential()
-    
-    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
-    if fixed_initialization_lambda_training:
-        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
-    else:
-        model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
-        
-    if dropout > 0:
-        model.add(Dropout(dropout))
+    if base_model is None:
 
-    for neurons in lambda_network_layers[1:]:
+        base_model = Sequential()
+
+        #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
         if fixed_initialization_lambda_training:
-            model.add(Dense(neurons, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
+            base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
         else:
-            model.add(Dense(neurons, activation='relu'))
+            base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+
         if dropout > 0:
-            model.add(Dropout(dropout))   
-    
-    if fixed_initialization_lambda_training:
-        model.add(Dense(1, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=self.train_settings['seed']), bias_initializer='zeros'))
+            base_model.add(Dropout(dropout))
+
+        for neurons in lambda_network_layers[1:]:
+            if fixed_initialization_lambda_training:
+                base_model.add(Dense(neurons, activation='relu', kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
+            else:
+                base_model.add(Dense(neurons, activation='relu'))
+            if dropout > 0:
+                base_model.add(Dropout(dropout))   
+
+        if fixed_initialization_lambda_training:
+            base_model.add(Dense(1, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=self.train_settings['seed']), bias_initializer='zeros'))
+        else:
+            base_model.add(Dense(1))        
+        
+        
     else:
-        model.add(Dense(1))
+        base_model = keras.models.clone_model(base_model)
+    
+    base_model_weights = base_model.get_weights()    
+
+        
 
     # Shape weights (flat) into correct model structure
-    shaped_weights = shape_flat_weights(weights, model.get_weights())
+    shaped_weights = shape_flat_weights(weights, base_model_weights)
+    
+    model = keras.models.clone_model(base_model)
 
     model.set_weights(shaped_weights)
     
     model.compile(optimizer=optimizer_lambda,
                   loss=loss_lambda,
-                  metrics=[r2_keras_loss, 'mae', root_mean_squared_error])    
+                  metrics=[r2_keras_loss, 'mae', tf.keras.metrics.RootMeanSquaredError()])    
+    
+    
     return model  
 
 
