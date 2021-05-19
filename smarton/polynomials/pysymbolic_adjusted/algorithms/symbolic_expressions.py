@@ -179,7 +179,7 @@ def symbolic_regressor(f, npoints, xrange, n_vars=1, data=None):
                 
     #Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
     
-    
+    print(sym_reg)
     
     R2_perf = compute_Rsquared(Y_true, Y_est)
 

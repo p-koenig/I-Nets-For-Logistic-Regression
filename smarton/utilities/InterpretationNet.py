@@ -159,13 +159,23 @@ class ClassificationDenseInet(ak.Block):
         layer = Dense(sparsity, activation='softmax')
         output_node = layer(input_node)
         return output_node    
+    
+class ClassificationDenseInetDegree(ak.Block):
+
+    def build(self, hp, inputs=None):
+        # Get the input_node from inputs.
+        input_node = tf.nest.flatten(inputs)[0]
+        layer = Dense(d+1, activation='softmax')
+        output_node = layer(input_node)
+        return output_node    
+    
 
 class RegressionDenseInet(ak.Block):
 
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
         input_node = tf.nest.flatten(inputs)[0]
-        layer = Dense(interpretation_net_output_monomials)
+        layer = Dense(interpretation_net_output_monomials)       
         output_node = layer(input_node)
         return output_node     
 
@@ -321,10 +331,10 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
 
     for i, (X_test, model) in enumerate(zip(X_test_list, model_list)):
         #y_test_pred = model.predict(X_test)    
-        print(model.summary())
-        print(X_test.shape)
+        #print(model.summary())
+        #print(X_test.shape)
         y_test_pred = make_inet_prediction(model, X_test, network_data=None, lambda_trained_normalized=False, inet_training_normalized=normalize_inet_data, normalization_parameter_dict=None)
-        print(y_test_pred.shape)   
+        #print(y_test_pred.shape)   
         polynomial_dict_test_list[i]['inet_polynomials'] = y_test_pred
 
 
@@ -334,7 +344,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
     hours, minutes = divmod(minutes, 60)        
     print('Predict Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
     print('---------------------------------------------------------------------------------------------------------------------------')
-    if False:
+    if symbolic_metamodeling_poly_evaluation:
         print('-------------------------------------------------- CALCULATE METAMODEL POLY -----------------------------------------------')
 
         start = time.time() 
@@ -349,7 +359,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Metamodel Poly Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
         print('---------------------------------------------------------------------------------------------------------------------------') 
-    if True:
+    if symbolic_metamodeling_evaluation:
         print('---------------------------------------------------- CALCULATE METAMODEL --------------------------------------------------')
 
         start = time.time() 
@@ -364,7 +374,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Metamodel Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
         print('---------------------------------------------------------------------------------------------------------------------------')   
-    if False:
+    if symbolic_metamodeling_function_evaluation:
         print('----------------------------------------------- CALCULATE METAMODEL FUNCTION ----------------------------------------------')
 
         start = time.time() 
@@ -379,7 +389,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Metamodel Function Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
         print('---------------------------------------------------------------------------------------------------------------------------') 
-    if True:
+    if symbolic_regression_evaluation:
         print('----------------------------------------- CALCULATE SYMBOLIC REGRESSION FUNCTION ------------------------------------------')
 
         start = time.time() 
@@ -394,7 +404,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Symbolic Regression Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
         print('---------------------------------------------------------------------------------------------------------------------------')          
-    if True:
+    if per_network_evaluation:
         print('------------------------------------------------ CALCULATE PER NETWORK POLY -----------------------------------------------')
 
         start = time.time() 
@@ -579,6 +589,9 @@ def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda
 
         for network_index, network_to_interpret in enumerate(networks_to_interpret):
 
+            print(network_to_interpret.shape)
+            
+            
             if not lambda_trained_normalized:    
                 network_to_interpret_normalized, (network_to_interpret_min, network_to_interpret_max) = normalize_lambda_net(network_to_interpret, network_data)
             else:
@@ -764,6 +777,14 @@ def train_inet(lambda_net_train_dataset,
         y_train = np.array(lambda_net_train_dataset.target_polynomial_list)
         y_valid = np.array(lambda_net_valid_dataset.target_polynomial_list)
         y_test = np.array(lambda_net_test_dataset.target_polynomial_list)
+        
+        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+            if data_reshape_version == None:
+                data_reshape_version = 2
+            X_train, X_train_flat = restructure_data_cnn_lstm(X_train, version=data_reshape_version, subsequences=None)
+            X_valid, X_valid_flat = restructure_data_cnn_lstm(X_valid, version=data_reshape_version, subsequences=None)
+            X_test, X_test_flat = restructure_data_cnn_lstm(X_test, version=data_reshape_version, subsequences=None)
+            
     else: #lstsq lambda pred polynomial as inet target
         y_train = np.array(lambda_net_train_dataset.lstsq_lambda_pred_polynomial_list)
         y_valid = np.array(lambda_net_valid_dataset.lstsq_lambda_pred_polynomial_list)
@@ -778,32 +799,42 @@ def train_inet(lambda_net_train_dataset,
         
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
            
+    current_monomial_degree = tf.Variable(0, dtype=tf.int64)
+        
     if consider_labels_training: #coefficient-based evaluation
         
         if interpretation_net_output_monomials != None:
-            raise SystemExit('No coefficient-based optimization possible with reduced output monomials - Please change settings') 
+            if sparse_poly_representation_version==1:
+                raise SystemExit('No coefficient-based optimization possible with reduced output monomials - Please change settings') 
         
         if evaluate_with_real_function: #based on comparison real and predicted polynomial coefficients        
-            if inet_loss == 'mae':
-                loss_function = 'mean_absolute_error'
-            elif inet_loss == 'r2':      
-                loss_function = r2_keras_loss
-            else:
-                raise SystemExit('Unknown I-Net Metric: ' + inet_loss)   
+            loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
             
-            metrics = ['mean_absolute_error', r2_keras_loss]
-            for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers))
+            metrics = []
+            #for inet_metric in list(flatten([inet_metrics, inet_loss])):
+            #    metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model))
             
-            valid_data = (X_valid, y_valid)
-            y_train_model = y_train
+            if True:
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims))    
+                
+                if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+                    y_train_model = np.hstack((y_train, X_train_flat))   
+                    valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
+                else:
+                    y_train_model = np.hstack((y_train, X_train))   
+                    valid_data = (X_valid, np.hstack((y_valid, X_valid)))   
+            else:    
+                valid_data = (X_valid, y_valid)
+                y_train_model = y_train
         else: #based on comparison lstsq-lambda and predicted polynomial coefficients
-            loss_function = inet_coefficient_loss_wrapper(inet_loss)
+            loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
             
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model))            
+                metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model))            
+            if True:
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims))            
             
             if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
@@ -814,24 +845,26 @@ def train_inet(lambda_net_train_dataset,
     else: #fv-based evaluation
         if evaluate_with_real_function: #based on in-loss fv calculation of real and predicted polynomial
             
-            loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers)
+            loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)
             
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers))    
+                metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model))    
              
             valid_data = (X_valid, y_valid)
             y_train_model = y_train
         else: #in-loss prediction of lambda-nets
             
             #loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, base_model)
-            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, base_model, weights_structure, dims)
+            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)
             metrics = []
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_coefficient_loss_wrapper(inet_metric))            
+                metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
                 #metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model)) 
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model, weights_structure, dims)) 
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
+            
+            print(metrics)
             
             if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
                 y_train_model = np.hstack((y_train, X_train_flat))   
@@ -862,7 +895,12 @@ def train_inet(lambda_net_train_dataset,
         with CustomObjectScope(custom_object_dict):
             if nas_type == 'SEQUENTIAL':
                 input_node = ak.Input()
-                hidden_node = ak.DenseBlock()(input_node)
+                
+                if nas_type =='SEQUENTIAL-NORM':
+                    hidden_node = ak.Normalization()(input_node)
+                    hidden_node = ak.DenseBlock()(hidden_node)
+                else:
+                    hidden_node = ak.DenseBlock()(input_node)
                 
                 #print('interpretation_net_output_monomials', interpretation_net_output_monomials)
                         
@@ -873,10 +911,16 @@ def train_inet(lambda_net_train_dataset,
                     #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
                     outputs_coeff = RegressionDenseInet()(hidden_node)  
                     outputs_list = [outputs_coeff]
-                    for outputs_index in range(interpretation_net_output_monomials):
-                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                        outputs_list.append(outputs_identifer)
-
+                    
+                    if sparse_poly_representation_version == 1:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                            outputs_list.append(outputs_identifer)                                    
+                    elif sparse_poly_representation_version == 2:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            for var_index in range(n):
+                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                outputs_list.append(outputs_identifer)
                     #print('outputs_list', outputs_list)
                     
                     #output_node = CombinedOutputInet(output_dim=interpretation_net_output_shape)(outputs_list)
@@ -894,9 +938,15 @@ def train_inet(lambda_net_train_dataset,
                     #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
                     outputs_coeff = RegressionDenseInet()(hidden_node)  
                     outputs_list = [outputs_coeff]
-                    for outputs_index in range(interpretation_net_output_monomials):
-                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                        outputs_list.append(outputs_identifer)
+                    if sparse_poly_representation_version == 1:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                            outputs_list.append(outputs_identifer)                                    
+                    elif sparse_poly_representation_version == 2:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            for var_index in range(n):
+                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                outputs_list.append(outputs_identifer)
 
                     output_node = CombinedOutputInet()(outputs_list)
                     
@@ -913,9 +963,15 @@ def train_inet(lambda_net_train_dataset,
                     #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
                     outputs_coeff = RegressionDenseInet()(hidden_node)  
                     outputs_list = [outputs_coeff]
-                    for outputs_index in range(interpretation_net_output_monomials):
-                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                        outputs_list.append(outputs_identifer)
+                    if sparse_poly_representation_version == 1:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                            outputs_list.append(outputs_identifer)                                    
+                    elif sparse_poly_representation_version == 2:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            for var_index in range(n):
+                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                outputs_list.append(outputs_identifer)
 
                     output_node = CombinedOutputInet()(outputs_list)            
                 
@@ -932,9 +988,15 @@ def train_inet(lambda_net_train_dataset,
                     #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
                     outputs_coeff = RegressionDenseInet()(hidden_node)  
                     outputs_list = [outputs_coeff]
-                    for outputs_index in range(interpretation_net_output_monomials):
-                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                        outputs_list.append(outputs_identifer)
+                    if sparse_poly_representation_version == 1:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                            outputs_list.append(outputs_identifer)                                    
+                    elif sparse_poly_representation_version == 2:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            for var_index in range(n):
+                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                outputs_list.append(outputs_identifer)
 
                     output_node = CombinedOutputInet()(outputs_list)           
                 
@@ -952,9 +1014,15 @@ def train_inet(lambda_net_train_dataset,
                     #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
                     outputs_coeff = RegressionDenseInet()(hidden_node)  
                     outputs_list = [outputs_coeff]
-                    for outputs_index in range(interpretation_net_output_monomials):
-                        outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                        outputs_list.append(outputs_identifer)
+                    if sparse_poly_representation_version == 1:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                            outputs_list.append(outputs_identifer)                                    
+                    elif sparse_poly_representation_version == 2:
+                        for outputs_index in range(interpretation_net_output_monomials):
+                            for var_index in range(n):
+                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                outputs_list.append(outputs_identifer)
 
                     output_node = CombinedOutputInet()(outputs_list)            
 
@@ -966,7 +1034,7 @@ def train_inet(lambda_net_train_dataset,
                                 metrics=metric_names,
                                 objective='val_loss',
                                 overwrite=True,
-                                tuner='greedy',#'hyperband',#"greedy",
+                                tuner='bayesian',#'hyperband',#"greedy",
                                 max_trials=nas_trials,
                                 directory=directory,
                                 seed=RANDOM_SEED+1)
@@ -991,31 +1059,51 @@ def train_inet(lambda_net_train_dataset,
     else: 
         inputs = Input(shape=X_train.shape[1], name='input')
         
-        hidden = Dense(dense_layers[0], activation='relu', name='hidden1_' + str(dense_layers[0]))(inputs)
-
+        #hidden = Dense(dense_layers[0], activation='relu', name='hidden1_' + str(dense_layers[0]))(inputs)
+        hidden = tf.keras.layers.Dense(dense_layers[0], name='hidden1_' + str(dense_layers[0]))(inputs)
+        hidden = tf.keras.layers.Activation(activation='relu', name='activation1_' + 'relu')(hidden)
+        
         if dropout > 0:
-            hidden = Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
-
+            #hidden = Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
+            hidden = tf.keras.layers.Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
+            
         for layer_index, neurons in enumerate(dense_layers[1:]):
             if dropout > 0 and layer_index > 0:
-                hidden = Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)            
-            hidden = Dense(neurons, activation='relu', name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+                #hidden = Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)  
+                hidden = tf.keras.layers.Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)
                 
+            #hidden = Dense(neurons, activation='relu', name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+            hidden = tf.keras.layers.Dense(neurons, name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+            hidden = tf.keras.layers.Activation(activation='relu', name='activation'  + str(layer_index+2) + '_relu')(hidden)
+        
         if dropout_output > 0:
-            hidden = Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)            
+            #hidden = Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)            
+            hidden = tf.keras.layers.Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)
         
         if interpretation_net_output_monomials == None:
-            outputs = Dense(sparsity, name='output_' + str(neurons))(hidden)
+            #outputs = Dense(sparsity, name='output_' + str(neurons))(hidden)
+            outputs = tf.keras.layers.Dense(sparsity, name='output_' + str(neurons))(hidden)
         else:
-            outputs_coeff = Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
-
+            #outputs_coeff = Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
+            outputs_coeff = tf.keras.layers.Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
+            
             outputs_list = [outputs_coeff]
-            for outputs_index in range(interpretation_net_output_monomials):
-                outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
-                outputs_list.append(outputs_identifer)
-                
-                
+            
+            if sparse_poly_representation_version == 1:
+                for outputs_index in range(interpretation_net_output_monomials):
+                    #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                    outputs_identifer = tf.keras.layers.Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                    outputs_list.append(outputs_identifer)
+
+            elif sparse_poly_representation_version == 2:
+                for outputs_index in range(interpretation_net_output_monomials):
+                    for var_index in range(n):
+                        #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                        outputs_identifer = tf.keras.layers.Dense(d+1, activation='softmax', name='output_identifier' + '_mon' +  str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(sparsity))(hidden)
+                        outputs_list.append(outputs_identifer)       
+            
             outputs = concatenate(outputs_list, name='output_combined')
+            
             
             
         model = Model(inputs=inputs, outputs=outputs)
@@ -1023,7 +1111,7 @@ def train_inet(lambda_net_train_dataset,
         callbacks = return_callbacks_from_string(callback_names)            
 
         if optimizer == "custom":
-            optimizer = keras.optimizers.Adam(learning_rate=2e-05)
+            optimizer = keras.optimizers.Adam(learning_rate=0.0001)
 
         model.compile(optimizer=optimizer,
                       loss=loss_function,
@@ -1060,6 +1148,7 @@ def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
         #backend='loky'
         
     backend='threading' 
+    
         
     function_value_dict = {
         'lambda_preds': np.nan_to_num(lambda_net_dataset.make_prediction_on_test_data()),
@@ -1100,6 +1189,20 @@ def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
         #variable_names[0] = 'x'        
         function_values = parallel_fv_calculation_from_sympy(polynomial_dict['symbolic_regression_functions'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
         function_value_dict['symbolic_regression_functions'] = np.nan_to_num(function_values)
+        
+        print(function_values)
+        
+        for function_value in function_values:
+            if np.isnan(function_value).any() or np.isinf(function_value).any():
+                print(function_value)
+                
+        print(function_values[-2])
+        
+        for function_value in function_value_dict['symbolic_regression_functions']:
+            if np.isnan(function_value).any() or np.isinf(function_value).any():
+                print(function_value)        
+        print(function_value_dict['symbolic_regression_functions'][-2])
+        
     except KeyError as ke:
         print('Exit', KeyError)    
     try:
@@ -1206,7 +1309,8 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
                  #'list_of_monomial_identifiers': list_of_monomial_identifiers,
                  'x_min': x_min,
                  'x_max': x_max,
-                 }
+                 'sparse_poly_representation_version': sparse_poly_representation_version,
+                }
 
         parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
 
@@ -1252,6 +1356,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
                  'interpretation_net_output_monomials': interpretation_net_output_monomials,
                  'x_min': x_min,
                  'x_max': x_max,
+                 'sparse_poly_representation_version': sparse_poly_representation_version,
                  }
 
         parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
@@ -1301,6 +1406,7 @@ def symbolic_regression_function_generation(lambda_net_dataset):
              #'list_of_monomial_identifiers': list_of_monomial_identifiers,
              'x_min': x_min,
              'x_max': x_max,
+             'sparse_poly_representation_version': sparse_poly_representation_version,
              }
 
     parallel_symbolic_regression = Parallel(n_jobs=n_jobs, verbose=11, backend='loky')
@@ -1358,6 +1464,7 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
              #'list_of_monomial_identifiers': list_of_monomial_identifiers,
              'x_min': x_min,
              'x_max': x_max,
+            'sparse_poly_representation_version': sparse_poly_representation_version,
              }
 
     parallel_metamodeling = Parallel(n_jobs=n_jobs, verbose=11, backend='loky')

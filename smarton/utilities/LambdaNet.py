@@ -647,12 +647,12 @@ def train_nn(lambda_index,
         polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
         polynomial_lstsq_true_list.append(polynomial_lstsq_true)
         
-        y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True)
-        y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True)
-        y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True)
-        y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda, force_complete_poly_representation=True)    
-        y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda, force_complete_poly_representation=True)
-        y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda, force_complete_poly_representation=True)  
+        y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+        y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+        y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+        y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)   
+        y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+        y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)  
         
         
         pred_list = {'lambda_index': lambda_index,
@@ -729,13 +729,13 @@ def train_nn(lambda_index,
             
 
             
-            y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True)
-            y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True)
-            y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda, force_complete_poly_representation=True)           
+            y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+            y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+            y_test_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_test_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)           
             if i == 0 and each_epochs_save != 1 or i == 1 and each_epochs_save == 1:
-                y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True)
-                y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda, force_complete_poly_representation=True)  
-                y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda, force_complete_poly_representation=True)                    
+                y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
+                y_valid_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_valid_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)  
+                y_test_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_test_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)                    
                 
             pred_list.append({'lambda_index': lambda_index,
                               'y_train_real_lambda': y_train_real_lambda, 
