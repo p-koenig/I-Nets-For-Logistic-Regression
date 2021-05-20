@@ -72,22 +72,27 @@ def initialize_LambdaNet_config_from_curent_notebook(config):
         tf.set_random_seed(RANDOM_SEED)
         
     global list_of_monomial_identifiers
-    from utilities.utility_functions import flatten, rec_gen
-                
+
+    from utilities.utility_functions import flatten, rec_gen, gen_monomial_identifier_list
+
     list_of_monomial_identifiers_extended = []
 
     if laurent:
         variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
-        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)    
+
+        if len(list_of_monomial_identifiers_extended) < 500:
+            print(list_of_monomial_identifiers_extended)     
+
+        list_of_monomial_identifiers = []
+        for monomial_identifier in tqdm(list_of_monomial_identifiers_extended):
+            if np.sum(monomial_identifier) <= d:
+                if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                    list_of_monomial_identifiers.append(monomial_identifier)        
     else:
-        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
-        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
-        
-    list_of_monomial_identifiers = []
-    for monomial_identifier in list_of_monomial_identifiers_extended:
-        if np.sum(monomial_identifier) <= d:
-            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
-                list_of_monomial_identifiers.append(monomial_identifier)
+        variable_list = ['x'+ str(i) for i in range(n)]
+        list_of_monomial_identifiers = gen_monomial_identifier_list(variable_list, d, n)
+
                                 
 #######################################################################################################################################################
 ##################################################################Lambda Net Wrapper###################################################################

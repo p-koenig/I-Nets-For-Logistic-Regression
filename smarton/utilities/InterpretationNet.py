@@ -92,22 +92,25 @@ def initialize_InterpretationNet_config_from_curent_notebook(config):
         tf.set_random_seed(RANDOM_SEED)
         
     global list_of_monomial_identifiers
-    from utilities.utility_functions import flatten, rec_gen
-        
+    from utilities.utility_functions import flatten, rec_gen, gen_monomial_identifier_list
+
     list_of_monomial_identifiers_extended = []
 
     if laurent:
         variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
-        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)    
+
+        if len(list_of_monomial_identifiers_extended) < 500:
+            print(list_of_monomial_identifiers_extended)     
+
+        list_of_monomial_identifiers = []
+        for monomial_identifier in tqdm(list_of_monomial_identifiers_extended):
+            if np.sum(monomial_identifier) <= d:
+                if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                    list_of_monomial_identifiers.append(monomial_identifier)        
     else:
-        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
-        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
-        
-    list_of_monomial_identifiers = []
-    for monomial_identifier in list_of_monomial_identifiers_extended:
-        if np.sum(monomial_identifier) <= d:
-            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
-                list_of_monomial_identifiers.append(monomial_identifier)
+        variable_list = ['x'+ str(i) for i in range(n)]
+        list_of_monomial_identifiers = gen_monomial_identifier_list(variable_list, d, n)
             
             
 #######################################################################################################################################################
@@ -800,78 +803,39 @@ def train_inet(lambda_net_train_dataset,
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
            
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
+    
+    metrics = []
+    if consider_labels_training:
+        if (not evaluate_with_real_function and sample_sparsity is not None) or sparse_poly_representation_version==1:
+            raise SystemExit('No coefficient-based optimization possible with reduced output monomials - Please change settings')         
+        loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
         
-    if consider_labels_training: #coefficient-based evaluation
-        
-        if interpretation_net_output_monomials != None:
-            if sparse_poly_representation_version==1:
-                raise SystemExit('No coefficient-based optimization possible with reduced output monomials - Please change settings') 
-        
-        if evaluate_with_real_function: #based on comparison real and predicted polynomial coefficients        
-            loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
-            
-            metrics = []
-            #for inet_metric in list(flatten([inet_metrics, inet_loss])):
-            #    metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model))
-            
-            if True:
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims))    
-                
-                if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-                    y_train_model = np.hstack((y_train, X_train_flat))   
-                    valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
-                else:
-                    y_train_model = np.hstack((y_train, X_train))   
-                    valid_data = (X_valid, np.hstack((y_valid, X_valid)))   
-            else:    
-                valid_data = (X_valid, y_valid)
-                y_train_model = y_train
-        else: #based on comparison lstsq-lambda and predicted polynomial coefficients
-            loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
-            
-            metrics = []
-            for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model))            
-            if True:
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims))            
-            
-            if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-                y_train_model = np.hstack((y_train, X_train_flat))   
-                valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
-            else:
-                y_train_model = np.hstack((y_train, X_train))   
-                valid_data = (X_valid, np.hstack((y_valid, X_valid)))                                  
-    else: #fv-based evaluation
-        if evaluate_with_real_function: #based on in-loss fv calculation of real and predicted polynomial
-            
+        for inet_metric in list(flatten([inet_metrics, inet_loss])):
+            metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model))     
+            metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
+    else:
+        if evaluate_with_real_function:
             loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)
-            
-            metrics = []
+            for inet_metric in inet_metrics:
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model))    
-             
-            valid_data = (X_valid, y_valid)
-            y_train_model = y_train
-        else: #in-loss prediction of lambda-nets
-            
-            #loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, base_model)
-            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)
-            metrics = []
-            for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
-                #metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model)) 
                 metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
-            
-            print(metrics)
-            
-            if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-                y_train_model = np.hstack((y_train, X_train_flat))   
-                valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
-            else:
-                y_train_model = np.hstack((y_train, X_train))   
-                valid_data = (X_valid, np.hstack((y_valid, X_valid)))          
+        else:
+            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)
+            for inet_metric in inet_metrics:
+                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
+            for inet_metric in list(flatten([inet_metrics, inet_loss])):
+                #COEFFICIENT LOSS NOT POSSIBLE IF sample_sparsity is not None --> LSTSQ POLY FÜR VEGLEICH HAT NICHT DIE GLEICHE STRUKTUR
+                #metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
+                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
+                
+    if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+        y_train_model = np.hstack((y_train, X_train_flat))   
+        valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
+    else:
+        y_train_model = np.hstack((y_train, X_train))   
+        valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
                  
         
     ############################## BUILD MODEL ###############################
@@ -1034,13 +998,14 @@ def train_inet(lambda_net_train_dataset,
                                 metrics=metric_names,
                                 objective='val_loss',
                                 overwrite=True,
-                                tuner='bayesian',#'hyperband',#"greedy",
+                                tuner='greedy',#'hyperband',#"bayesian",
                                 max_trials=nas_trials,
                                 directory=directory,
                                 seed=RANDOM_SEED+1)
 
             ############################## PREDICTION ###############################
                         
+                
             auto_model.fit(
                 x=X_train,
                 y=y_train_model,

@@ -3,7 +3,7 @@
 #######################################################################################################################################################
 
 #from itertools import product       # forms cartesian products
-#from tqdm import tqdm_notebook as tqdm
+from tqdm import tqdm_notebook as tqdm
 #import pickle
 import numpy as np
 from numpy import linspace
@@ -53,6 +53,7 @@ from sympy.sets.sets import Union
 import math
 
 from numba import jit, njit
+import itertools 
 
 
 #######################################################################################################################################################
@@ -94,22 +95,26 @@ def initialize_utility_functions_config_from_curent_notebook(config):
         tf.set_random_seed(RANDOM_SEED)
         
     global list_of_monomial_identifiers
-    from utilities.utility_functions import flatten, rec_gen
-        
+    from utilities.utility_functions import flatten, rec_gen, gen_monomial_identifier_list
+
     list_of_monomial_identifiers_extended = []
 
     if laurent:
         variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
-        list_of_monomial_identifiers_extended = rec_gen(variable_sets)       
+        list_of_monomial_identifiers_extended = rec_gen(variable_sets)    
+
+        if len(list_of_monomial_identifiers_extended) < 500:
+            print(list_of_monomial_identifiers_extended)     
+
+        list_of_monomial_identifiers = []
+        for monomial_identifier in tqdm(list_of_monomial_identifiers_extended):
+            if np.sum(monomial_identifier) <= d:
+                if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
+                    list_of_monomial_identifiers.append(monomial_identifier)        
     else:
-        variable_sets = [[_d for _d in range(d+1)] for _ in range(n)]  
-        list_of_monomial_identifiers_extended = rec_gen(variable_sets)
-        
-    list_of_monomial_identifiers = []
-    for monomial_identifier in list_of_monomial_identifiers_extended:
-        if np.sum(monomial_identifier) <= d:
-            if monomial_vars == None or len(list(filter(lambda x: x != 0, monomial_identifier))) <= monomial_vars:
-                list_of_monomial_identifiers.append(monomial_identifier)
+        variable_list = ['x'+ str(i) for i in range(n)]
+        list_of_monomial_identifiers = gen_monomial_identifier_list(variable_list, d, n)
+
                                     
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
@@ -120,7 +125,7 @@ def nCr(n,r):
     return f(n) // f(r) // f(n-r)
 
 
-def rec_gen(x):                                                                    
+def rec_gen(x): 
     if len(x) == 1:                                                                 
         return [[item] for item in x[0]]                                           
     appended = []                                                                  
@@ -129,6 +134,41 @@ def rec_gen(x):
             appended.append([s_el] + next_s)                                       
     return appended                                                                
 
+
+def gen_monomial_identifier_list(variable_list, degree, number_of_variables):
+    
+    def get_polynomial(vars, power): 
+
+        if "c" in vars: 
+            raise Exception("\"c\" cannot be a variable") 
+
+        vars.append("c") # add dummy variable 
+
+        # compute all combinations of variables 
+        terms = [] 
+        for x in itertools.combinations_with_replacement(vars, power): 
+            terms.append(x) 
+
+        # get rid of "c" terms 
+        terms = list(map(list, terms))
+        for i in range(len(terms)): 
+            while "c" in terms[i]: 
+                terms[i].remove("c") 
+
+        return terms    
+    
+    
+    terms = get_polynomial(variable_list, degree) 
+
+    monomial_identifier_list = []
+    for term in terms:
+        monomial = [0 for i in range(number_of_variables)]
+        for value in term:
+            index = int(value[1:])
+            monomial[index] = monomial[index] + 1
+        monomial_identifier_list.append(monomial)    
+        
+    return monomial_identifier_list
     
 def pairwise(iterable):
     "s -> (s0, s1), (s2, s3), (s4, s5), ..."
@@ -1175,7 +1215,6 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise
              #'list_of_monomial_identifiers': list_of_monomial_identifiers,
              'x_min': x_min,
              'x_max': x_max,
-             'sparse_poly_representation_version': sparse_poly_representation_version,
              }
         
     try:
