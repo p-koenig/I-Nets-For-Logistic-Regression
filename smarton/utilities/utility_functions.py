@@ -851,7 +851,7 @@ def generate_paths(path_type='interpretation_net'):
     noise_path = noise  
     
     if path_type=='interpretation_net_no_noise':
-        lambda_nets_total_path = 10000
+        lambda_nets_total_path = 50000
         noise_path = 0
     
     paths_dict = {}
@@ -1508,67 +1508,72 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
     
     ########################################### OPTIMIZATION ########################################################
         
-    
+    current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     best_result = np.inf
 
     for current_iteration in range(restarts):
                         
-        @tf.function(experimental_compile=True) 
-        def function_to_optimize_scipy(poly_optimize_input):   
-            
-            #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
-            poly_optimize = tf.cast(poly_optimize_input, tf.float32)
+        
+        def function_to_optimize_scipy_wrapper(current_monomial_degree):
+            @tf.function(experimental_compile=True) 
+            def function_to_optimize_scipy(poly_optimize_input):   
 
-            if interpretation_net_output_monomials != None:
-                poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
-                poly_optimize_identifiers_list = []
-                print('NEW')
-                if sparse_poly_representation_version == 1:
-                    for i in range(interpretation_net_output_monomials):
-                        poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
-                        poly_optimize_identifiers_list.append(poly_optimize_identifiers)
-                    poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
-                else:
-                    for i in range(interpretation_net_output_monomials):
-                        for j in range(n):
-                            poly_optimize_identifiers = tf.math.softmax(poly_optimize[i*n*j*(d+1)+interpretation_net_output_monomials:(i+1)*n*j*(d+1)+interpretation_net_output_monomials])
+                #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
+                poly_optimize = tf.cast(poly_optimize_input, tf.float32)
+
+                if interpretation_net_output_monomials != None:
+                    poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
+                    poly_optimize_identifiers_list = []
+                    print('NEW')
+                    if sparse_poly_representation_version == 1:
+                        for i in range(interpretation_net_output_monomials):
+                            poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
                             poly_optimize_identifiers_list.append(poly_optimize_identifiers)
-                    poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)                
-                poly_optimize = tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
+                        poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
+                    else:
+                        for i in range(interpretation_net_output_monomials):
+                            for j in range(n):
+                                poly_optimize_identifiers = tf.math.softmax(poly_optimize[i*n*j*(d+1)+interpretation_net_output_monomials:(i+1)*n*j*(d+1)+interpretation_net_output_monomials])
+                                poly_optimize_identifiers_list.append(poly_optimize_identifiers)
+                        poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)                
+                    poly_optimize = tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
 
-            poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, config=config), (random_lambda_input_data))
+                poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, current_monomial_degree, config=config), (random_lambda_input_data))
 
-            error = None
-            if inet_loss == 'mae':
-                error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
-            elif inet_loss == 'r2':
-                error = r2_keras_loss(lambda_fv, poly_optimize_fv_list)  
-            else:
-                raise SystemExit('Unknown I-Net Metric: ' + inet_loss)                
+                error = None
+                if inet_loss == 'mae':
+                    error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
+                elif inet_loss == 'r2':
+                    error = r2_keras_loss(lambda_fv, poly_optimize_fv_list)  
+                else:
+                    raise SystemExit('Unknown I-Net Metric: ' + inet_loss)                
 
-            error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
-    
-            return error
+                error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
+
+                return error
+            return function_to_optimize_scipy
     
                     
         poly_optimize_input = tf.random.uniform([1, interpretation_net_output_shape])    
 
-        def function_to_optimize_scipy_grad(poly_optimize_input):
-            
-            error = function_to_optimize_scipy(poly_optimize_input)
-            error = error.numpy()
-            return error
+        def function_to_optimize_scipy_grad_wrapper(current_monomial_degree):
+            def function_to_optimize_scipy_grad(poly_optimize_input):
+
+                error = function_to_optimize_scipy_wrapper(current_monomial_degree)(poly_optimize_input)
+                error = error.numpy()
+                return error
+            return function_to_optimize_scipy_grad
         
         stop_counter = 0
         
         if jac=='fprime':
-            jac = lambda x: optimize.approx_fprime(x, function_to_optimize_scipy_grad, 0.01)
+            jac = lambda x: optimize.approx_fprime(x, function_to_optimize_scipy_grad_wrapper(current_monomial_degree), 0.01)
         
         #tf.print(interpretation_net_output_monomials)
         #tf.print(config)        
-        opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, jac=jac, options={'maxfun': None, 'maxiter': max_steps})
+        opt_res = minimize(function_to_optimize_scipy_wrapper(current_monomial_degree), poly_optimize_input, method=optimizer, jac=jac, options={'maxfun': None, 'maxiter': max_steps})
         
-        #opt_res = minimize(function_to_optimize_scipy, poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
+        #opt_res = minimize(function_to_optimize_scipy_wrapper(current_monomial_degree), poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
 
         best_result_iteration = opt_res.fun
         best_poly_optimize_iteration = opt_res.x

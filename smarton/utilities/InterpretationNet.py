@@ -801,9 +801,7 @@ def train_inet(lambda_net_train_dataset,
             X_test, X_test_flat = restructure_data_cnn_lstm(X_test, version=data_reshape_version, subsequences=None)
         
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
-           
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
-    
     metrics = []
     if consider_labels_training:
         if (not evaluate_with_real_function and sample_sparsity is not None) or sparse_poly_representation_version==1:
@@ -811,13 +809,13 @@ def train_inet(lambda_net_train_dataset,
         loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
         
         for inet_metric in list(flatten([inet_metrics, inet_loss])):
-            metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, base_model))     
+            #metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model))     
             metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
     else:
         if evaluate_with_real_function:
             loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)
-            for inet_metric in inet_metrics:
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
+            #for inet_metric in inet_metrics:
+                #metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
             for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
                 metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
@@ -825,10 +823,10 @@ def train_inet(lambda_net_train_dataset,
             loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)
             for inet_metric in inet_metrics:
                 metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
-            for inet_metric in list(flatten([inet_metrics, inet_loss])):
+            #for inet_metric in list(flatten([inet_metrics, inet_loss])):
                 #COEFFICIENT LOSS NOT POSSIBLE IF sample_sparsity is not None --> LSTSQ POLY FÜR VEGLEICH HAT NICHT DIE GLEICHE STRUKTUR
                 #metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
-                metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
+                #metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
                 
     if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
         y_train_model = np.hstack((y_train, X_train_flat))   
