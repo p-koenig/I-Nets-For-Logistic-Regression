@@ -30,7 +30,10 @@ import time
 import tensorflow as tf
 import random 
 
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 from IPython.display import display, Math, Latex, clear_output
 

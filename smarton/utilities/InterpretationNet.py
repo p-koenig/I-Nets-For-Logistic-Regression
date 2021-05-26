@@ -38,8 +38,10 @@ from tensorflow.python.util import nest
 
 import random 
 
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 from matplotlib import pyplot as plt
 import seaborn as sns

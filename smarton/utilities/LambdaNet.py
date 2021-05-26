@@ -26,8 +26,10 @@ from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 import tensorflow as tf
 import random 
 
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 #udf import
 #from utilities.LambdaNet import *
