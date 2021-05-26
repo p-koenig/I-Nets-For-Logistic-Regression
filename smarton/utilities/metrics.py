@@ -101,9 +101,7 @@ def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, curre
 
     if config != None:
         globals().update(config)
-        
 
-        
     #@tf.function(experimental_compile=True)
     def calculate_poly_fv_tf(evaluation_entry):  
                 

@@ -1074,10 +1074,9 @@ def flip(y,p):
 
 @tf.function(experimental_compile=True)
 def calculate_poly_fv_tf_wrapper_new(list_of_monomial_identifiers, polynomial, evaluation_entry_list, force_complete_poly_representation=False, config=None):
-
+    
     if config != None:
-        globals().update(config)
-        
+        globals().update(config) 
     def calculate_poly_fv_tf(evaluation_entry):  
         
         
@@ -1313,7 +1312,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
     random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)
     list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)
     
-    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    model_lambda_placeholder = tf.keras.models.clone_model(base_model)  
     
     dims = [np_arrays.shape for np_arrays in weights_structure]
     
@@ -1477,7 +1476,7 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
     random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)
     list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)
     
-    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    model_lambda_placeholder = tf.keras.models.clone_model(base_model)  
     
     dims = [np_arrays.shape for np_arrays in weights_structure]
     
@@ -1516,11 +1515,16 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 
     for current_iteration in range(restarts):
                         
-        
         def function_to_optimize_scipy_wrapper(current_monomial_degree):
             @tf.function(experimental_compile=True) 
             def function_to_optimize_scipy(poly_optimize_input):   
+                print('HERE2')
+                if use_gpu:
+                    os.environ['CUDA_VISIBLE_DEVICES'] = ''
+                    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+                    print("Num XLA-GPUs Available: ", len(tf.config.experimental.list_physical_devices('XLA_GPU')))
 
+                    
                 #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
                 poly_optimize = tf.cast(poly_optimize_input, tf.float32)
 
@@ -1609,7 +1613,7 @@ def symbolic_regression(lambda_net,
     
     global x_min
     
-    if isinstance(lambda_net, keras.models.Sequential):
+    if isinstance(lambda_net, tf.keras.Sequential):
         model = lambda_net
     else:
         model = lambda_net.return_model(config=config)
@@ -1646,7 +1650,7 @@ def symbolic_metamodeling(lambda_net,
     
     global x_min
     
-    if isinstance(lambda_net, keras.models.Sequential):
+    if isinstance(lambda_net, tf.keras.Sequential):
         model = lambda_net
     else:
         model = lambda_net.return_model(config=config)
@@ -1721,7 +1725,7 @@ def symbolic_metamodeling_original(lambda_net,
     
     global x_min
     
-    if isinstance(lambda_net, keras.models.Sequential):
+    if isinstance(lambda_net, tf.keras.Sequential):
         model = lambda_net
     else:
         model = lambda_net.return_model(config=config)
@@ -1897,7 +1901,7 @@ def per_network_poly_optimization_slow(per_network_dataset_size,
     random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(per_network_dataset_size, max(1, n)))
 
     
-    model_lambda_placeholder = keras.models.clone_model(base_model)  
+    model_lambda_placeholder = tf.keras.models.clone_model(base_model)  
     
     dims = [np_arrays.shape for np_arrays in weights_structure]
     

@@ -192,10 +192,10 @@ class RegressionDenseInet(ak.Block):
 #################################################################I-NET RESULT CALCULATION##############################################################
 #######################################################################################################################################################
     
-def calculate_interpretation_net_results(lambda_net_train_dataset_list, 
+def interpretation_net_training(lambda_net_train_dataset_list, 
                                          lambda_net_valid_dataset_list, 
                                          lambda_net_test_dataset_list):
-        
+
     epochs_save_range_lambda = range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda) if each_epochs_save_lambda == 1 else range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda+1) if multi_epoch_analysis else range(1,2)
     
     n_jobs_inet_training = n_jobs
@@ -207,23 +207,7 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
     for i in range(len(lambda_net_train_dataset_list)):
         save_string_list.append('')
 
-        
-    polynomial_dict_test_list = []  
-    polynomial_dict_valid_list = []
-
-    
-    for lambda_net_valid_dataset, lambda_net_test_dataset in zip(lambda_net_valid_dataset_list, lambda_net_test_dataset_list):
-    
-        polynomial_dict_valid = {'lstsq_lambda_pred_polynomials': lambda_net_valid_dataset.lstsq_lambda_pred_polynomial_list,
-                                'lstsq_target_polynomials': lambda_net_valid_dataset.lstsq_target_polynomial_list,
-                                'target_polynomials': lambda_net_valid_dataset.target_polynomial_list}    
-    
-        polynomial_dict_test = {'lstsq_lambda_pred_polynomials': lambda_net_test_dataset.lstsq_lambda_pred_polynomial_list,
-                                'lstsq_target_polynomials': lambda_net_test_dataset.lstsq_target_polynomial_list,
-                                'target_polynomials': lambda_net_test_dataset.target_polynomial_list}    
-        
-        polynomial_dict_test_list.append(polynomial_dict_test)
-        polynomial_dict_valid_list.append(polynomial_dict_valid)        
+          
                  
 
             
@@ -255,8 +239,18 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Training Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')
         
-        history_list = [result[0] for result in results_list]
+        if train_model:
+            history_list = [result[0] for result in results_list]
+        else:
+            paths_dict = generate_paths(path_type = 'interpretation_net')
 
+            if by == 'epochs':
+                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
+            elif by == 'samples':
+                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
+            with open(path, 'wb') as f:
+                history_list = pickle.load(f, protocol=2)  
+                
         valid_data_list = [result[1] for result in results_list]
         X_valid_list = [valid_data[0] for valid_data in valid_data_list]
         y_valid_list = [valid_data[1] for valid_data in valid_data_list]
@@ -300,8 +294,19 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Training Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')
         
-        history_list = [result[0] for result in results_list]
+        if train_model:
+            history_list = [result[0] for result in results_list]
+        else:
+            paths_dict = generate_paths(path_type = 'interpretation_net')
 
+            if by == 'epochs':
+                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
+            elif by == 'samples':
+                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
+            with open(path, 'wb') as f:
+                history_list = pickle.load(f, protocol=2)      
+        
+        
         valid_data_list = [result[1] for result in results_list]
         X_valid_list = [valid_data[0] for valid_data in valid_data_list]
         y_valid_list = [valid_data[1] for valid_data in valid_data_list]
@@ -327,158 +332,30 @@ def calculate_interpretation_net_results(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Loading Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
 
-    print('---------------------------------------------------------------------------------------------------------------------------')
-    print('------------------------------------------------------- PREDICT INET ------------------------------------------------------')
-
-    start = time.time() 
-
-    
-
-    for i, (X_test, model) in enumerate(zip(X_test_list, model_list)):
-        #y_test_pred = model.predict(X_test)    
-        #print(model.summary())
-        #print(X_test.shape)
-        y_test_pred = make_inet_prediction(model, X_test, network_data=None, lambda_trained_normalized=False, inet_training_normalized=normalize_inet_data, normalization_parameter_dict=None)
-        #print(y_test_pred.shape)   
-        polynomial_dict_test_list[i]['inet_polynomials'] = y_test_pred
-
-
-    end = time.time()     
-    inet_train_time = (end - start) 
-    minutes, seconds = divmod(int(inet_train_time), 60)
-    hours, minutes = divmod(minutes, 60)        
-    print('Predict Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-    print('---------------------------------------------------------------------------------------------------------------------------')
-    if symbolic_metamodeling_poly_evaluation:
-        print('-------------------------------------------------- CALCULATE METAMODEL POLY -----------------------------------------------')
-
-        start = time.time() 
-
-        for i, lambda_net_test_dataset in enumerate(lambda_net_test_dataset_list): 
-            metamodel_functions_test = symbolic_metamodeling_function_generation(lambda_net_test_dataset, return_expression='approx', function_metamodeling=False, force_polynomial=True)
-            polynomial_dict_test_list[i]['metamodel_poly'] = metamodel_functions_test       
-
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Metamodel Poly Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-        print('---------------------------------------------------------------------------------------------------------------------------') 
-    if symbolic_metamodeling_evaluation:
-        print('---------------------------------------------------- CALCULATE METAMODEL --------------------------------------------------')
-
-        start = time.time() 
-
-        for i, lambda_net_test_dataset in enumerate(lambda_net_test_dataset_list): 
-            metamodel_functions_test = symbolic_metamodeling_function_generation(lambda_net_test_dataset, return_expression='approx', function_metamodeling=False, force_polynomial=False)
-            polynomial_dict_test_list[i]['metamodel_functions'] = metamodel_functions_test       
-
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Metamodel Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-        print('---------------------------------------------------------------------------------------------------------------------------')   
-    if symbolic_metamodeling_function_evaluation:
-        print('----------------------------------------------- CALCULATE METAMODEL FUNCTION ----------------------------------------------')
-
-        start = time.time() 
-
-        for i, lambda_net_test_dataset in enumerate(lambda_net_test_dataset_list): 
-            metamodel_functions_test = symbolic_metamodeling_function_generation(lambda_net_test_dataset, return_expression='approx', function_metamodeling=True)
-            polynomial_dict_test_list[i]['metamodel_functions_no_GD'] = metamodel_functions_test       
-
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Metamodel Function Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-        print('---------------------------------------------------------------------------------------------------------------------------') 
-    if symbolic_regression_evaluation:
-        print('----------------------------------------- CALCULATE SYMBOLIC REGRESSION FUNCTION ------------------------------------------')
-
-        start = time.time() 
-
-        for i, lambda_net_test_dataset in enumerate(lambda_net_test_dataset_list): 
-            symbolic_regression_functions_test = symbolic_regression_function_generation(lambda_net_test_dataset)
-            polynomial_dict_test_list[i]['symbolic_regression_functions'] = symbolic_regression_functions_test       
-
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Symbolic Regression Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-        print('---------------------------------------------------------------------------------------------------------------------------')          
-    if per_network_evaluation:
-        print('------------------------------------------------ CALCULATE PER NETWORK POLY -----------------------------------------------')
-
-        start = time.time() 
-
-        for i, lambda_net_test_dataset in enumerate(lambda_net_test_dataset_list): 
-            per_network_poly_test = per_network_poly_generation(lambda_net_test_dataset, optimization_type='scipy')
-            polynomial_dict_test_list[i]['per_network_polynomials'] = per_network_poly_test       
-
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Per Network Optimization Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-        print('---------------------------------------------------------------------------------------------------------------------------')
-    print('------------------------------------------------ CALCULATE FUNCTION VALUES ------------------------------------------------')                
-
-    start = time.time() 
-
-    function_values_test_list = []
-    for lambda_net_test_dataset, polynomial_dict_test in zip(lambda_net_test_dataset_list, polynomial_dict_test_list):
-        function_values_test = calculate_all_function_values(lambda_net_test_dataset, polynomial_dict_test)
-        function_values_test_list.append(function_values_test)
-
-    end = time.time()     
-    inet_train_time = (end - start) 
-    minutes, seconds = divmod(int(inet_train_time), 60)
-    hours, minutes = divmod(minutes, 60)        
-    print('FV Calculation Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-    print('---------------------------------------------------------------------------------------------------------------------------')
-    print('----------------------------------------------------- CALCULATE SCORES ----------------------------------------------------')                
-
-    start = time.time() 
-
-    scores_test_list = []
-    distrib_dict_test_list = []
-    
-    for function_values_test, polynomial_dict_test in zip(function_values_test_list, polynomial_dict_test_list):
-        scores_test, distrib_test = evaluate_all_predictions(function_values_test, polynomial_dict_test)
-        scores_test_list.append(scores_test)
-        distrib_dict_test_list.append(distrib_test)
-
-    end = time.time()     
-    inet_train_time = (end - start) 
-    minutes, seconds = divmod(int(inet_train_time), 60)
-    hours, minutes = divmod(minutes, 60)        
-    print('Score Calculation Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-    print('---------------------------------------------------------------------------------------------------------------------------')
-    print('---------------------------------------------------------------------------------------------------------------------------')         
 
     if not nas:
         generate_history_plots(history_list, by=identifier_type)
-        save_results(history_list, scores_test_list, by=identifier_type)    
-
+        #save_results(history_list, scores_test_list, by=identifier_type)    
+        save_results(history_list, by=identifier_type)    
     
 
             
-    return (history_list, 
+    return ((X_valid_list, y_valid_list), 
+            (X_test_list, y_test_list),
+            
+            history_list, 
             
             #scores_valid_list
-            scores_test_list, 
+            #scores_test_list, 
             
             #function_values_valid_list, 
-            function_values_test_list, 
+            #function_values_test_list, 
             
             #polynomial_dict_valid_list,
-            polynomial_dict_test_list,
+            #polynomial_dict_test_list,
             
             #distrib_dict_valid_list,
-            distrib_dict_test_list,
+            #distrib_dict_test_list,
             
             model_list)
     
@@ -703,6 +580,55 @@ def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda
     else: #(if not inet_training_normalized and lambda_trained_normalized)
         return None
         
+def generate_inet_train_data(lambda_net_dataset):
+    X_data = None
+    X_data_flat = None
+    y_data = None
+    normalization_parameter_dict = None
+    
+    X_data = np.array(lambda_net_dataset.weight_list)
+    
+    if normalize_inet_data: 
+        config={'optimizer_lambda': optimizer_lambda,
+               'loss_lambda': loss_lambda}
+        
+        
+        normalization_parameter_dict = {
+            'min': [],
+            'max': []
+        }
+
+        parallel_normalize_lambda = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
+        results_normalize_lambda = parallel_normalize_lambda(delayed(normalize_lambda_net)(flat_weights, random_evaluation_dataset, dill.dumps(base_model), config=config) for flat_weights in X_data)         
+        del parallel_normalize_lambda
+
+        X_data = np.array([result[0] for result in results_normalize_lambda])
+        normalization_parameter_dict['min'] = [result[1][0] for result in results_normalize_lambda]
+        normalization_parameter_dict['max'] = [result[1][1] for result in results_normalize_lambda]
+
+
+        
+    if evaluate_with_real_function: #target polynomial as inet target
+        y_data = np.array(lambda_net_dataset.target_polynomial_list)
+
+        
+        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+            if data_reshape_version == None:
+                data_reshape_version = 2
+            X_data, X_data_flat = restructure_data_cnn_lstm(X_data, version=data_reshape_version, subsequences=None)
+
+            
+    else: #lstsq lambda pred polynomial as inet target
+        y_data = np.array(lambda_net_dataset.lstsq_lambda_pred_polynomial_list)
+        
+        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+            if data_reshape_version == None:
+                data_reshape_version = 2
+            X_data, X_data_flat = restructure_data_cnn_lstm(X_data, version=data_reshape_version, subsequences=None)
+
+    
+    return X_data, X_data_flat, y_data, normalization_parameter_dict
+        
 def train_inet(lambda_net_train_dataset,
               lambda_net_valid_dataset,
               lambda_net_test_dataset, 
@@ -726,82 +652,10 @@ def train_inet(lambda_net_train_dataset,
     weights_structure = base_model.get_weights()
     dims = [np_arrays.shape for np_arrays in weights_structure]         
 
-    X_train = np.array(lambda_net_train_dataset.weight_list)
-    X_valid = np.array(lambda_net_valid_dataset.weight_list)
-    X_test = np.array(lambda_net_test_dataset.weight_list) 
-
-    if normalize_inet_data: 
-        config={'optimizer_lambda': optimizer_lambda,
-               'loss_lambda': loss_lambda}
-        
-        
-        normalization_parameter_train_dict = {
-            'min': [],
-            'max': []
-        }
-
-        parallel_normalize_lambda = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
-        results_normalize_lambda = parallel_normalize_lambda(delayed(normalize_lambda_net)(flat_weights, random_evaluation_dataset, dill.dumps(base_model), config=config) for flat_weights in X_train)         
-        del parallel_normalize_lambda
-
-        X_train = np.array([result[0] for result in results_normalize_lambda])
-        normalization_parameter_train_dict['min'] = [result[1][0] for result in results_normalize_lambda]
-        normalization_parameter_train_dict['max'] = [result[1][1] for result in results_normalize_lambda]
-
-
-
-        normalization_parameter_valid_dict = {
-            'min': [],
-            'max': []
-        }
-
-        parallel_normalize_lambda = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
-        results_normalize_lambda = parallel_normalize_lambda(delayed(normalize_lambda_net)(flat_weights, random_evaluation_dataset, dill.dumps(base_model), config=config) for flat_weights in X_valid)         
-        del parallel_normalize_lambda
-
-        X_valid = np.array([result[0] for result in results_normalize_lambda])
-        normalization_parameter_valid_dict['min'] = [result[1][0] for result in results_normalize_lambda]
-        normalization_parameter_valid_dict['max'] = [result[1][1] for result in results_normalize_lambda]
-
-
-        normalization_parameter_test_dict = {
-            'min': [],
-            'max': []
-        }
-
-        parallel_normalize_lambda = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
-        results_normalize_lambda = parallel_normalize_lambda(delayed(normalize_lambda_net)(flat_weights, random_evaluation_dataset, dill.dumps(base_model), config=config) for flat_weights in X_test)         
-        del parallel_normalize_lambda
-
-        X_test_normalized = np.array([result[0] for result in results_normalize_lambda])
-        normalization_parameter_test_dict['min'] = [result[1][0] for result in results_normalize_lambda]
-        normalization_parameter_test_dict['max'] = [result[1][1] for result in results_normalize_lambda]    
-
-        
-    if evaluate_with_real_function: #target polynomial as inet target
-        y_train = np.array(lambda_net_train_dataset.target_polynomial_list)
-        y_valid = np.array(lambda_net_valid_dataset.target_polynomial_list)
-        y_test = np.array(lambda_net_test_dataset.target_polynomial_list)
-        
-        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-            if data_reshape_version == None:
-                data_reshape_version = 2
-            X_train, X_train_flat = restructure_data_cnn_lstm(X_train, version=data_reshape_version, subsequences=None)
-            X_valid, X_valid_flat = restructure_data_cnn_lstm(X_valid, version=data_reshape_version, subsequences=None)
-            X_test, X_test_flat = restructure_data_cnn_lstm(X_test, version=data_reshape_version, subsequences=None)
-            
-    else: #lstsq lambda pred polynomial as inet target
-        y_train = np.array(lambda_net_train_dataset.lstsq_lambda_pred_polynomial_list)
-        y_valid = np.array(lambda_net_valid_dataset.lstsq_lambda_pred_polynomial_list)
-        y_test = np.array(lambda_net_test_dataset.lstsq_lambda_pred_polynomial_list)
-        
-        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-            if data_reshape_version == None:
-                data_reshape_version = 2
-            X_train, X_train_flat = restructure_data_cnn_lstm(X_train, version=data_reshape_version, subsequences=None)
-            X_valid, X_valid_flat = restructure_data_cnn_lstm(X_valid, version=data_reshape_version, subsequences=None)
-            X_test, X_test_flat = restructure_data_cnn_lstm(X_test, version=data_reshape_version, subsequences=None)
-        
+    (X_train, X_train_flat, y_train, normalization_parameter_train_dict) = generate_inet_train_data(lambda_net_train_dataset)
+    (X_valid, X_valid_flat, y_valid, normalization_parameter_valid_dict) = generate_inet_train_data(lambda_net_valid_dataset)
+    (X_test, X_test_flat, y_test, normalization_parameter_test_dict) = generate_inet_train_data(lambda_net_test_dataset)
+    
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     metrics = []
@@ -839,265 +693,266 @@ def train_inet(lambda_net_train_dataset,
                  
         
     ############################## BUILD MODEL ###############################
-    
-    if nas:
-        from tensorflow.keras.utils import CustomObjectScope
-        
-        custom_object_dict = {}
-        loss_function_name = loss_function.__name__
-        custom_object_dict[loss_function_name] = loss_function
-        metric_names = []
-        for metric in  metrics:
-            metric_name = metric.__name__
-            metric_names.append(metric_name)
-            custom_object_dict[metric_name] = metric  
-        
-        #print(custom_object_dict)    
-        #print(metric_names)
-        #print(loss_function_name)
-        
-        with CustomObjectScope(custom_object_dict):
-            if nas_type == 'SEQUENTIAL':
-                input_node = ak.Input()
-                
-                if nas_type =='SEQUENTIAL-NORM':
-                    hidden_node = ak.Normalization()(input_node)
+    if train_model:
+        if nas:
+            from tensorflow.keras.utils import CustomObjectScope
+
+            custom_object_dict = {}
+            loss_function_name = loss_function.__name__
+            custom_object_dict[loss_function_name] = loss_function
+            metric_names = []
+            for metric in  metrics:
+                metric_name = metric.__name__
+                metric_names.append(metric_name)
+                custom_object_dict[metric_name] = metric  
+
+            #print(custom_object_dict)    
+            #print(metric_names)
+            #print(loss_function_name)
+
+            with CustomObjectScope(custom_object_dict):
+                if nas_type == 'SEQUENTIAL':
+                    input_node = ak.Input()
+
+                    if nas_type =='SEQUENTIAL-NORM':
+                        hidden_node = ak.Normalization()(input_node)
+                        hidden_node = ak.DenseBlock()(hidden_node)
+                    else:
+                        hidden_node = ak.DenseBlock()(input_node)
+
+                    #print('interpretation_net_output_monomials', interpretation_net_output_monomials)
+
+                    if interpretation_net_output_monomials == None:
+                        output_node = ak.RegressionHead()(hidden_node)  
+                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                    else:
+                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                        outputs_coeff = RegressionDenseInet()(hidden_node)  
+                        outputs_list = [outputs_coeff]
+
+                        if sparse_poly_representation_version == 1:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                                outputs_list.append(outputs_identifer)                                    
+                        elif sparse_poly_representation_version == 2:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                for var_index in range(n):
+                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                    outputs_list.append(outputs_identifer)
+                        #print('outputs_list', outputs_list)
+
+                        #output_node = CombinedOutputInet(output_dim=interpretation_net_output_shape)(outputs_list)
+                        output_node = CombinedOutputInet()(outputs_list)
+
+                elif nas_type == 'CNN': 
+                    input_node = ak.Input()
+                    hidden_node = ak.ConvBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
-                else:
-                    hidden_node = ak.DenseBlock()(input_node)
-                
-                #print('interpretation_net_output_monomials', interpretation_net_output_monomials)
-                        
-                if interpretation_net_output_monomials == None:
-                    output_node = ak.RegressionHead()(hidden_node)  
-                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                else:
-                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                    outputs_coeff = RegressionDenseInet()(hidden_node)  
-                    outputs_list = [outputs_coeff]
-                    
-                    if sparse_poly_representation_version == 1:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                            outputs_list.append(outputs_identifer)                                    
-                    elif sparse_poly_representation_version == 2:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            for var_index in range(n):
-                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                outputs_list.append(outputs_identifer)
-                    #print('outputs_list', outputs_list)
-                    
-                    #output_node = CombinedOutputInet(output_dim=interpretation_net_output_shape)(outputs_list)
-                    output_node = CombinedOutputInet()(outputs_list)
-                    
-            elif nas_type == 'CNN': 
-                input_node = ak.Input()
-                hidden_node = ak.ConvBlock()(input_node)
-                hidden_node = ak.DenseBlock()(hidden_node)
-                
-                if interpretation_net_output_monomials == None:
-                    output_node = ak.RegressionHead()(hidden_node)  
-                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                else:
-                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                    outputs_coeff = RegressionDenseInet()(hidden_node)  
-                    outputs_list = [outputs_coeff]
-                    if sparse_poly_representation_version == 1:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                            outputs_list.append(outputs_identifer)                                    
-                    elif sparse_poly_representation_version == 2:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            for var_index in range(n):
-                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                outputs_list.append(outputs_identifer)
 
-                    output_node = CombinedOutputInet()(outputs_list)
-                    
-                    
-            elif nas_type == 'LSTM':
-                input_node = ak.Input()
-                hidden_node = ak.RNNBlock()(input_node)
-                hidden_node = ak.DenseBlock()(hidden_node)
-                
-                if interpretation_net_output_monomials == None:
-                    output_node = ak.RegressionHead()(hidden_node)  
-                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                else:
-                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                    outputs_coeff = RegressionDenseInet()(hidden_node)  
-                    outputs_list = [outputs_coeff]
-                    if sparse_poly_representation_version == 1:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                            outputs_list.append(outputs_identifer)                                    
-                    elif sparse_poly_representation_version == 2:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            for var_index in range(n):
-                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                outputs_list.append(outputs_identifer)
+                    if interpretation_net_output_monomials == None:
+                        output_node = ak.RegressionHead()(hidden_node)  
+                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                    else:
+                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                        outputs_coeff = RegressionDenseInet()(hidden_node)  
+                        outputs_list = [outputs_coeff]
+                        if sparse_poly_representation_version == 1:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                                outputs_list.append(outputs_identifer)                                    
+                        elif sparse_poly_representation_version == 2:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                for var_index in range(n):
+                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                    outputs_list.append(outputs_identifer)
 
-                    output_node = CombinedOutputInet()(outputs_list)            
-                
-            elif nas_type == 'CNN-LSTM': 
-                input_node = ak.Input()
-                hidden_node = ak.ConvBlock()(input_node)
-                hidden_node = ak.RNNBlock()(hidden_node)
-                hidden_node = ak.DenseBlock()(hidden_node)
+                        output_node = CombinedOutputInet()(outputs_list)
 
-                if interpretation_net_output_monomials == None:
-                    output_node = ak.RegressionHead()(hidden_node)  
-                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                else:
-                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                    outputs_coeff = RegressionDenseInet()(hidden_node)  
-                    outputs_list = [outputs_coeff]
-                    if sparse_poly_representation_version == 1:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                            outputs_list.append(outputs_identifer)                                    
-                    elif sparse_poly_representation_version == 2:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            for var_index in range(n):
-                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                outputs_list.append(outputs_identifer)
 
-                    output_node = CombinedOutputInet()(outputs_list)           
-                
-            elif nas_type == 'CNN-LSTM-parallel':                         
-                input_node = ak.Input()
-                hidden_node1 = ak.ConvBlock()(input_node)
-                hidden_node2 = ak.RNNBlock()(input_node)
-                hidden_node = ak.Merge()([hidden_node1, hidden_node2])
-                hidden_node = ak.DenseBlock()(hidden_node)
-                
-                if interpretation_net_output_monomials == None:
-                    output_node = ak.RegressionHead()(hidden_node)  
-                    #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                else:
-                    #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                    outputs_coeff = RegressionDenseInet()(hidden_node)  
-                    outputs_list = [outputs_coeff]
-                    if sparse_poly_representation_version == 1:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                            outputs_list.append(outputs_identifer)                                    
-                    elif sparse_poly_representation_version == 2:
-                        for outputs_index in range(interpretation_net_output_monomials):
-                            for var_index in range(n):
-                                outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                outputs_list.append(outputs_identifer)
+                elif nas_type == 'LSTM':
+                    input_node = ak.Input()
+                    hidden_node = ak.RNNBlock()(input_node)
+                    hidden_node = ak.DenseBlock()(hidden_node)
 
-                    output_node = CombinedOutputInet()(outputs_list)            
+                    if interpretation_net_output_monomials == None:
+                        output_node = ak.RegressionHead()(hidden_node)  
+                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                    else:
+                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                        outputs_coeff = RegressionDenseInet()(hidden_node)  
+                        outputs_list = [outputs_coeff]
+                        if sparse_poly_representation_version == 1:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                                outputs_list.append(outputs_identifer)                                    
+                        elif sparse_poly_representation_version == 2:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                for var_index in range(n):
+                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                    outputs_list.append(outputs_identifer)
 
-            directory = './data/autokeras/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string
+                        output_node = CombinedOutputInet()(outputs_list)            
 
-            auto_model = ak.AutoModel(inputs=input_node, 
-                                outputs=output_node,
-                                loss=loss_function_name,
-                                metrics=metric_names,
-                                objective='val_loss',
-                                overwrite=True,
-                                tuner='greedy',#'hyperband',#"bayesian",
-                                max_trials=nas_trials,
-                                directory=directory,
-                                seed=RANDOM_SEED+1)
+                elif nas_type == 'CNN-LSTM': 
+                    input_node = ak.Input()
+                    hidden_node = ak.ConvBlock()(input_node)
+                    hidden_node = ak.RNNBlock()(hidden_node)
+                    hidden_node = ak.DenseBlock()(hidden_node)
+
+                    if interpretation_net_output_monomials == None:
+                        output_node = ak.RegressionHead()(hidden_node)  
+                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                    else:
+                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                        outputs_coeff = RegressionDenseInet()(hidden_node)  
+                        outputs_list = [outputs_coeff]
+                        if sparse_poly_representation_version == 1:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                                outputs_list.append(outputs_identifer)                                    
+                        elif sparse_poly_representation_version == 2:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                for var_index in range(n):
+                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                    outputs_list.append(outputs_identifer)
+
+                        output_node = CombinedOutputInet()(outputs_list)           
+
+                elif nas_type == 'CNN-LSTM-parallel':                         
+                    input_node = ak.Input()
+                    hidden_node1 = ak.ConvBlock()(input_node)
+                    hidden_node2 = ak.RNNBlock()(input_node)
+                    hidden_node = ak.Merge()([hidden_node1, hidden_node2])
+                    hidden_node = ak.DenseBlock()(hidden_node)
+
+                    if interpretation_net_output_monomials == None:
+                        output_node = ak.RegressionHead()(hidden_node)  
+                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
+                    else:
+                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
+                        outputs_coeff = RegressionDenseInet()(hidden_node)  
+                        outputs_list = [outputs_coeff]
+                        if sparse_poly_representation_version == 1:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
+                                outputs_list.append(outputs_identifer)                                    
+                        elif sparse_poly_representation_version == 2:
+                            for outputs_index in range(interpretation_net_output_monomials):
+                                for var_index in range(n):
+                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
+                                    outputs_list.append(outputs_identifer)
+
+                        output_node = CombinedOutputInet()(outputs_list)            
+
+                directory = './data/autokeras/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string
+
+                auto_model = ak.AutoModel(inputs=input_node, 
+                                    outputs=output_node,
+                                    loss=loss_function_name,
+                                    metrics=metric_names,
+                                    objective='val_loss',
+                                    overwrite=True,
+                                    tuner='greedy',#'hyperband',#"bayesian",
+                                    max_trials=nas_trials,
+                                    directory=directory,
+                                    seed=RANDOM_SEED+1)
+
+                ############################## PREDICTION ###############################
+
+
+                auto_model.fit(
+                    x=X_train,
+                    y=y_train_model,
+                    validation_data=valid_data,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    callbacks=return_callbacks_from_string('early_stopping'),
+                    )
+
+
+                history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
+                model = auto_model.export_model()
+
+                model.save('./data/saved_models/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
+
+        else: 
+            inputs = Input(shape=X_train.shape[1], name='input')
+
+            #hidden = Dense(dense_layers[0], activation='relu', name='hidden1_' + str(dense_layers[0]))(inputs)
+            hidden = tf.keras.layers.Dense(dense_layers[0], name='hidden1_' + str(dense_layers[0]))(inputs)
+            hidden = tf.keras.layers.Activation(activation='relu', name='activation1_' + 'relu')(hidden)
+
+            if dropout > 0:
+                #hidden = Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
+                hidden = tf.keras.layers.Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
+
+            for layer_index, neurons in enumerate(dense_layers[1:]):
+                if dropout > 0 and layer_index > 0:
+                    #hidden = Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)  
+                    hidden = tf.keras.layers.Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)
+
+                #hidden = Dense(neurons, activation='relu', name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+                hidden = tf.keras.layers.Dense(neurons, name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+                hidden = tf.keras.layers.Activation(activation='relu', name='activation'  + str(layer_index+2) + '_relu')(hidden)
+
+            if dropout_output > 0:
+                #hidden = Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)            
+                hidden = tf.keras.layers.Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)
+
+            if interpretation_net_output_monomials == None:
+                #outputs = Dense(sparsity, name='output_' + str(neurons))(hidden)
+                outputs = tf.keras.layers.Dense(sparsity, name='output_' + str(neurons))(hidden)
+            else:
+                #outputs_coeff = Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
+                outputs_coeff = tf.keras.layers.Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
+
+                outputs_list = [outputs_coeff]
+
+                if sparse_poly_representation_version == 1:
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                        outputs_identifer = tf.keras.layers.Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                        outputs_list.append(outputs_identifer)
+
+                elif sparse_poly_representation_version == 2:
+                    for outputs_index in range(interpretation_net_output_monomials):
+                        for var_index in range(n):
+                            #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
+                            outputs_identifer = tf.keras.layers.Dense(d+1, activation='softmax', name='output_identifier' + '_mon' +  str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(sparsity))(hidden)
+                            outputs_list.append(outputs_identifer)       
+
+                outputs = concatenate(outputs_list, name='output_combined')
+
+
+
+            model = Model(inputs=inputs, outputs=outputs)
+
+            callbacks = return_callbacks_from_string(callback_names)            
+
+            if optimizer == "custom":
+                optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+
+            model.compile(optimizer=optimizer,
+                          loss=loss_function,
+                          metrics=metrics
+                         )
+
+            verbosity = 1 #if n_jobs ==1 else 0
 
             ############################## PREDICTION ###############################
-                        
-                
-            auto_model.fit(
-                x=X_train,
-                y=y_train_model,
-                validation_data=valid_data,
-                epochs=epochs,
-                batch_size=batch_size,
-                callbacks=return_callbacks_from_string('early_stopping'),
-                )
+            history = model.fit(X_train,
+                      y_train_model,
+                      epochs=epochs, 
+                      batch_size=batch_size, 
+                      validation_data=valid_data,
+                      callbacks=callbacks,
+                      verbose=verbosity)
 
+            history = history.history
 
-            history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
-            model = auto_model.export_model()
-
-            model.save('./data/saved_models/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
-
-    else: 
-        inputs = Input(shape=X_train.shape[1], name='input')
-        
-        #hidden = Dense(dense_layers[0], activation='relu', name='hidden1_' + str(dense_layers[0]))(inputs)
-        hidden = tf.keras.layers.Dense(dense_layers[0], name='hidden1_' + str(dense_layers[0]))(inputs)
-        hidden = tf.keras.layers.Activation(activation='relu', name='activation1_' + 'relu')(hidden)
-        
-        if dropout > 0:
-            #hidden = Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
-            hidden = tf.keras.layers.Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
-            
-        for layer_index, neurons in enumerate(dense_layers[1:]):
-            if dropout > 0 and layer_index > 0:
-                #hidden = Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)  
-                hidden = tf.keras.layers.Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)
-                
-            #hidden = Dense(neurons, activation='relu', name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
-            hidden = tf.keras.layers.Dense(neurons, name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
-            hidden = tf.keras.layers.Activation(activation='relu', name='activation'  + str(layer_index+2) + '_relu')(hidden)
-        
-        if dropout_output > 0:
-            #hidden = Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)            
-            hidden = tf.keras.layers.Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)
-        
-        if interpretation_net_output_monomials == None:
-            #outputs = Dense(sparsity, name='output_' + str(neurons))(hidden)
-            outputs = tf.keras.layers.Dense(sparsity, name='output_' + str(neurons))(hidden)
-        else:
-            #outputs_coeff = Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
-            outputs_coeff = tf.keras.layers.Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
-            
-            outputs_list = [outputs_coeff]
-            
-            if sparse_poly_representation_version == 1:
-                for outputs_index in range(interpretation_net_output_monomials):
-                    #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
-                    outputs_identifer = tf.keras.layers.Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
-                    outputs_list.append(outputs_identifer)
-
-            elif sparse_poly_representation_version == 2:
-                for outputs_index in range(interpretation_net_output_monomials):
-                    for var_index in range(n):
-                        #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
-                        outputs_identifer = tf.keras.layers.Dense(d+1, activation='softmax', name='output_identifier' + '_mon' +  str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(sparsity))(hidden)
-                        outputs_list.append(outputs_identifer)       
-            
-            outputs = concatenate(outputs_list, name='output_combined')
-            
-            
-            
-        model = Model(inputs=inputs, outputs=outputs)
-            
-        callbacks = return_callbacks_from_string(callback_names)            
-
-        if optimizer == "custom":
-            optimizer = keras.optimizers.Adam(learning_rate=0.0001)
-
-        model.compile(optimizer=optimizer,
-                      loss=loss_function,
-                      metrics=metrics
-                     )
-
-        verbosity = 1 #if n_jobs ==1 else 0
-
-        ############################## PREDICTION ###############################
-        history = model.fit(X_train,
-                  y_train_model,
-                  epochs=epochs, 
-                  batch_size=batch_size, 
-                  validation_data=valid_data,
-                  callbacks=callbacks,
-                  verbose=verbosity)
-    
-        history = history.history
-        
-        model.save('./data/saved_models/' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
-        
+            model.save('./data/saved_models/' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
+    else:
+        history = None
         
     return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics) 
      
@@ -1240,11 +1095,23 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
     
     return scores_dict, distrib_dicts
 
-def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'): 
-    
-    if use_gpu:
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', backend='loky'): 
         
+    printing = True if n_jobs == 1 else False
+    
+    if use_gpu and False:
+        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers if use_gpu else ''
+        os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+        os.environ['XLA_FLAGS'] =  '--xla_gpu_cuda_data_dir=/usr/lib/cuda-10.1'     
+        backend = 'sequential'
+        printing = True
+        
+    backend = 'sequential'
+    printing = True       
+    
+    
+
+
     if optimization_type=='tf':
         
         per_network_hyperparams = {
@@ -1256,7 +1123,6 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
             'per_network_dataset_size': 5000,
         }
 
-        printing = True if n_jobs == 1 else False
 
         lambda_network_weights_list = np.array(lambda_net_dataset.weight_list)
 
@@ -1275,9 +1141,11 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
                  'x_min': x_min,
                  'x_max': x_max,
                  'sparse_poly_representation_version': sparse_poly_representation_version,
+                 'use_gpu': use_gpu,
+                 'gpu_numbers': gpu_numbers,
                 }
 
-        parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
+        parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
 
         per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_hyperparams['per_network_dataset_size'], 
                                                                                                               lambda_network_weights, 
@@ -1303,9 +1171,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
             'per_network_dataset_size': 500,
         }
 
-        printing = True if n_jobs == 1 else False
-
-
+        
         lambda_network_weights_list = np.array(lambda_net_dataset.weight_list)
 
 
@@ -1322,9 +1188,23 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy'):
                  'x_min': x_min,
                  'x_max': x_max,
                  'sparse_poly_representation_version': sparse_poly_representation_version,
+                 'use_gpu': use_gpu,
+                 'gpu_numbers': gpu_numbers,            
                  }
 
-        parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
+        result = per_network_poly_optimization_scipy(per_network_hyperparams['per_network_dataset_size'], 
+                                          lambda_network_weights_list[0], 
+                                          list_of_monomial_identifiers, 
+                                          config,
+                                          optimizer = per_network_hyperparams['optimizer'],
+                                          jac = per_network_hyperparams['jac'],
+                                          max_steps = per_network_hyperparams['max_steps'], 
+                                          restarts = per_network_hyperparams['restarts'],
+                                          printing = printing,
+                                          return_error = True)
+        print(result)        
+        
+        parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
 
         result_list_per_network = parallel_per_network(delayed(per_network_poly_optimization_scipy)(per_network_hyperparams['per_network_dataset_size'], 
                                                                                                                   lambda_network_weights, 
@@ -1436,15 +1316,29 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
 
     return_error = False 
     
-    result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling)(lambda_net, 
-                                                                                  config,
-                                                                                  metamodeling_hyperparams,
-                                                                                  #printing = printing,
-                                                                                  return_error = return_error,
-                                                                                  return_expression=return_expression,
-                                                                                  function_metamodeling=function_metamodeling,
-                                                                                  force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)      
+    if adjusted_symbolic_metamodeling_code:
+    
+        result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling)(lambda_net, 
+                                                                                      config,
+                                                                                      metamodeling_hyperparams,
+                                                                                      #printing = printing,
+                                                                                      return_error = return_error,
+                                                                                      return_expression=return_expression,
+                                                                                      function_metamodeling=function_metamodeling,
+                                                                                      force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)      
 
+    else:
+        
+        result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling_original)(lambda_net, 
+                                                                                      config,
+                                                                                      metamodeling_hyperparams,
+                                                                                      #printing = printing,
+                                                                                      return_error = return_error,
+                                                                                      return_expression=return_expression,
+                                                                                      function_metamodeling=function_metamodeling,
+                                                                                      force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)          
+        
+    
     del parallel_metamodeling  
     
     if return_error:
@@ -1503,24 +1397,24 @@ def generate_history_plots(history_list, by='epochs'):
             plt.clf() 
             
             
-def save_results(history_list, scores_list, by='epochs'):
+def save_results(history_list=None, scores_list=None, by='epochs'):
     
     paths_dict = generate_paths(path_type = 'interpretation_net')
-    
-    if by == 'epochs':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
-    elif by == 'samples':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
-    with open(path, 'wb') as f:
-        pickle.dump(history_list, f, protocol=2)   
+    if history_list is not None:
+        if by == 'epochs':
+            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
+        elif by == 'samples':
+            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
+        with open(path, 'wb') as f:
+            pickle.dump(history_list, f, protocol=2)   
         
-        
-    if by == 'epochs':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_epochs' + '.pkl'
-    elif by == 'samples':
-        path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_samples' + '.pkl'    
-    with open(path, 'wb') as f:
-        pickle.dump(scores_list, f, protocol=2)  
+    if scores_list is not None: 
+        if by == 'epochs':
+            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_epochs' + '.pkl'
+        elif by == 'samples':
+            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_samples' + '.pkl'    
+        with open(path, 'wb') as f:
+            pickle.dump(scores_list, f, protocol=2)  
         
 
 def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):

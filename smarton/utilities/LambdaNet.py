@@ -451,13 +451,13 @@ def weights_to_pred(weights, x, base_model=None):
     if base_model is None:
         base_model = generate_base_model()
     else:
-        base_model = keras.models.clone_model(base_model)
+        base_model = tf.keras.models.clone_model(base_model)
     base_model_weights = base_model.get_weights()
     
     # Shape weights (flat) into correct model structure
     shaped_weights = shape_flat_weights(weights, base_model_weights)
     
-    model = keras.models.clone_model(base_model)
+    model = tf.keras.models.clone_model(base_model)
     
     # Make prediction
     model.set_weights(shaped_weights)
@@ -500,7 +500,7 @@ def weights_to_model(weights, config=None, base_model=None):
         
         
     else:
-        base_model = keras.models.clone_model(base_model)
+        base_model = tf.keras.models.clone_model(base_model)
     
     base_model_weights = base_model.get_weights()    
 
@@ -509,7 +509,7 @@ def weights_to_model(weights, config=None, base_model=None):
     # Shape weights (flat) into correct model structure
     shaped_weights = shape_flat_weights(weights, base_model_weights)
     
-    model = keras.models.clone_model(base_model)
+    model = tf.keras.models.clone_model(base_model)
 
     model.set_weights(shaped_weights)
     
