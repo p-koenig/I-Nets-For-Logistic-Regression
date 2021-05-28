@@ -585,6 +585,11 @@ def mean_absolute_error_function_values(y_true, y_pred):
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(np.mean(np.abs(true_values-pred_values)))
     
     return np.mean(np.array(result_list))  
@@ -598,6 +603,11 @@ def mean_absolute_error_function_values_return_multi_values(y_true, y_pred):
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        #if np.isnan(true_values).all() or np.isnan(pred_values).all():
+        #    continue
+        #true_values = np.nan_to_num(true_values)
+        #pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(np.mean(np.abs(true_values-pred_values)))
     
     return np.array(result_list) 
@@ -611,6 +621,11 @@ def mean_std_function_values_difference(y_true, y_pred):
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)
+        
         result_list.append(np.std(true_values-pred_values))
     
     return np.mean(np.array(result_list))  
@@ -619,11 +634,16 @@ def root_mean_squared_error_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))       
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)        
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(np.sqrt(np.mean((true_values-pred_values)**2)))
     
     return np.mean(np.array(result_list)) 
@@ -632,11 +652,16 @@ def mean_absolute_percentage_error_function_values(y_true, y_pred, epsilon=10e-3
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(np.mean(np.abs(((true_values-pred_values)/(true_values+epsilon)))))
 
     return np.mean(np.array(result_list))
@@ -645,25 +670,39 @@ def r2_score_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(r2_score(true_values, pred_values))
     
     return np.mean(np.array(result_list))
 
-def r2_score_function_values_return_multi_values(y_true, y_pred):
+def r2_score_function_values_return_multi_values(y_true, y_pred, epsilon=1e-07):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
-        result_list.append(r2_score(true_values, pred_values))
+        #if np.isnan(true_values).all() or np.isnan(pred_values).all():
+        #    continue
+        #true_values = np.nan_to_num(true_values)
+        #pred_values = np.nan_to_num(pred_values)        
+        
+        SS_res = np.sum(np.square(true_values - pred_values)) 
+        SS_tot = np.sum(np.square(true_values - np.mean(true_values))) 
+            
+            
+        result_list.append(( 1 - SS_res/(SS_tot + epsilon) )   )
     
     return np.array(result_list)
 
@@ -671,12 +710,17 @@ def relative_absolute_average_error_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
     
     result_list = []
     
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(np.sum(np.abs(true_values-pred_values))/(true_values.shape[0]*np.std(true_values)))
     
     return np.mean(np.array(result_list))
@@ -685,11 +729,16 @@ def relative_maximum_average_error_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(np.max(true_values-pred_values)/np.std(true_values))
     
     return np.mean(np.array(result_list))
@@ -698,13 +747,18 @@ def mean_area_between_two_curves_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
-      
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
+    
     assert number_of_variables==1
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)        
+        
         result_list.append(area_between_two_curves(true_values, pred_values))
  
     return np.mean(np.array(result_list))
@@ -713,13 +767,18 @@ def mean_dtw_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)    
 
     result_list_single = []
     result_list_array = []
     
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)
+        
         result_single_value, result_single_array = dtw(true_values, pred_values)
         result_list_single.append(result_single_value)
         result_list_array.append(result_single_array)
@@ -730,11 +789,16 @@ def mean_frechet_dist_function_values(y_true, y_pred):
     
     from utilities.utility_functions import return_numpy_representation
     
-    y_true = np.nan_to_num(return_numpy_representation(y_true))
-    y_pred = np.nan_to_num(return_numpy_representation(y_pred))
+    y_true = return_numpy_representation(y_true)
+    y_pred = return_numpy_representation(y_pred)   
     
     result_list = []
     for true_values, pred_values in zip(y_true, y_pred):
+        if np.isnan(true_values).all() or np.isnan(pred_values).all():
+            continue
+        true_values = np.nan_to_num(true_values)
+        pred_values = np.nan_to_num(pred_values)
+        
         result_list.append(frechet_dist(true_values, pred_values))
     
     return np.mean(np.array(result_list))
@@ -1137,17 +1201,17 @@ def evaluate_interpretation_net(function_1_coefficients,
     #print(function_1_fv[:10])
     #print(function_2_fv[:10])
     
-    function_1_fv = function_1_fv.astype('float32')
-    print(np.isnan(function_1_fv).any())
-    print(np.isinf(function_1_fv).any())
-    print(np.max(function_1_fv))
-    print(np.min(function_1_fv))
+    #function_1_fv = function_1_fv.astype('float32')
+    #print(np.isnan(function_1_fv).any())
+    #print(np.isinf(function_1_fv).any())
+    #print(np.max(function_1_fv))
+    #print(np.min(function_1_fv))
     
-    function_2_fv = function_2_fv.astype('float32')
-    print(np.isnan(function_2_fv).any())
-    print(np.isinf(function_2_fv).any())
-    print(np.max(function_2_fv))
-    print(np.min(function_2_fv))
+    #function_2_fv = function_2_fv.astype('float32')
+    #print(np.isnan(function_2_fv).any())
+    #print(np.isinf(function_2_fv).any())
+    #print(np.max(function_2_fv))
+    #print(np.min(function_2_fv))
     
     
     r2_fv = np.round(r2_score_function_values(function_1_fv, function_2_fv), 4)

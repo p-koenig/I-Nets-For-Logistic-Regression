@@ -36,6 +36,7 @@ from sympy.abc import x, y
 
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
+from IPython import get_ipython
 
 
 def is_ipython():
@@ -132,9 +133,7 @@ def tune_single_dim(lr, n_iter, x, y, verbosity=True):
         a         = a - lr * grads_a
         b         = b - lr * grads_b
         c         = c - lr * grads_c
-        
-        print(a,b,c)
-        
+                
     return a, b, c 
 
 

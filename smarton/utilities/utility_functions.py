@@ -49,7 +49,7 @@ from utilities.metrics import *
 from scipy.optimize import minimize
 from scipy import optimize
 import sympy as sym
-from sympy import Symbol, sympify, lambdify, abc
+from sympy import Symbol, sympify, lambdify, abc, SympifyError
 
 # Function Generation 0 1 import
 from sympy.sets.sets import Union
@@ -58,6 +58,7 @@ import math
 from numba import jit, njit
 import itertools 
 
+from interruptingcow import timeout
 
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
@@ -245,10 +246,10 @@ def return_callbacks_from_string(callback_string_list):
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
     if 'reduce_lr_loss' in callback_string_list:
-        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=epochs//10, verbose=0, min_delta=0, mode='min') #epsilon
+        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=min(50, epochs//10), verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=epochs//10, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=min(50, epochs//10), min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
@@ -781,8 +782,11 @@ def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, 
         config['interpretation_net_output_monomials'] = interpretation_net_output_monomials
     except:
         config['interpretation_net_output_monomials'] = None
-        
-    polynomial_true_fv = parallel(delayed(calculate_poly_fv_tf_wrapper_new)(return_float_tensor_representation(list_of_monomial_identifiers), return_float_tensor_representation(polynomial), return_float_tensor_representation(lambda_inputs), force_complete_poly_representation=force_complete_poly_representation, config=config) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))  
+       
+    if use_gpu:
+        polynomial_true_fv = parallel(delayed(calculate_poly_fv_tf_wrapper_new_no_tfFunction)(return_float_tensor_representation(list_of_monomial_identifiers), return_float_tensor_representation(polynomial), return_float_tensor_representation(lambda_inputs), force_complete_poly_representation=force_complete_poly_representation, config=config) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))      
+    else:
+        polynomial_true_fv = parallel(delayed(calculate_poly_fv_tf_wrapper_new)(return_float_tensor_representation(list_of_monomial_identifiers), return_float_tensor_representation(polynomial), return_float_tensor_representation(lambda_inputs), force_complete_poly_representation=force_complete_poly_representation, config=config) for polynomial, lambda_inputs in zip(polynomial_list, lambda_input_list))  
     
     del parallel   
     
@@ -792,9 +796,8 @@ def parallel_fv_calculation_from_polynomial(polynomial_list, lambda_input_list, 
 
 def calculate_function_values_from_sympy(function, data_points, variable_names=None):
     
-    #print('function', function)
-    #print(data_points[:2])   
-    
+    if function is None:
+        return np.array([np.nan for i in range(data_points.shape[0])])
     try:
         if variable_names == None:
             function_vars = function.atoms(Symbol)
@@ -828,7 +831,7 @@ def calculate_function_values_from_sympy(function, data_points, variable_names=N
 
 
 def parallel_fv_calculation_from_sympy(function_list, lambda_input_list, n_jobs_parallel_fv=10, backend='threading', variable_names=None):
-                
+    backend='sequential'            
     lambda_input_list = return_numpy_representation(lambda_input_list)
     
     assert len(function_list) == lambda_input_list.shape[0]
@@ -852,10 +855,12 @@ def sleep_hours(hours):
 def generate_paths(path_type='interpretation_net'):
     
     noise_path = noise  
+    RANDOM_SEED_path = RANDOM_SEED
     
     if path_type=='interpretation_net_no_noise':
         lambda_nets_total_path = 50000
         noise_path = 0
+        RANDOM_SEED_path = 42
     
     paths_dict = {}
     
@@ -923,7 +928,7 @@ def generate_paths(path_type='interpretation_net'):
                                            lambda_net_identifier + 
                                            '_train_' + str(lambda_dataset_size) + 
                                            training_string + 
-                                           seed_init_string + '_' + str(RANDOM_SEED) +
+                                           seed_init_string + '_' + str(RANDOM_SEED_path) +
                                            '/' +
                                            dataset_description_string[1:] + 
                                            adjusted_dataset_string)        
@@ -947,7 +952,7 @@ def generate_paths(path_type='interpretation_net'):
                                                    lambda_net_identifier + 
                                                    '_train_' + str(lambda_dataset_size) + 
                                                    training_string + 
-                                                   seed_init_string + '_' + str(RANDOM_SEED) +
+                                                   seed_init_string + '_' + str(RANDOM_SEED_path) +
                                                    '/' +
                                                    dataset_description_string[1:] + 
                                                    adjusted_dataset_string)       
@@ -1069,6 +1074,84 @@ def flip(y,p):
     lst=np.array(lst)
     return np.array(np.logical_xor(y,lst),dtype=int)
 
+@tf.function
+def calculate_poly_fv_tf_wrapper_new_no_tfFunction(list_of_monomial_identifiers, polynomial, evaluation_entry_list, force_complete_poly_representation=False, config=None):
+    
+    if config != None:
+        globals().update(config) 
+    def calculate_poly_fv_tf(evaluation_entry):  
+        
+        
+        def calculate_monomial_with_coefficient_degree_by_var_wrapper(evaluation_entry):
+            def calculate_monomial_with_coefficient_degree_by_var(input_list):     
+                
+                degree_by_var_per_monomial = input_list[0]
+                coefficient = input_list[1]
+                
+                #degree_by_var_per_monomial = gewählter degree für jede variable in monomial
+                monomial_value_without_coefficient = tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**tf.dtypes.cast(x[1], tf.float32), (evaluation_entry, degree_by_var_per_monomial)))
+
+                return coefficient*monomial_value_without_coefficient
+            return calculate_monomial_with_coefficient_degree_by_var
+        
+        
+        if interpretation_net_output_monomials == None or force_complete_poly_representation:
+            monomials_without_coefficient = tf.vectorized_map(calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry), (list_of_monomial_identifiers))      
+            monomial_values = tf.vectorized_map(lambda x: x[0]*x[1], (monomials_without_coefficient, polynomial))
+        else: 
+            if sparse_poly_representation_version == 1:
+                monomials_without_coefficient = tf.vectorized_map(calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry), (list_of_monomial_identifiers))      
+                
+                coefficients = polynomial[:interpretation_net_output_monomials]
+                index_array = polynomial[interpretation_net_output_monomials:]
+
+                assert index_array.shape[0] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices : ' + str(index_array.shape)
+
+                index_list = tf.split(index_array, interpretation_net_output_monomials)
+
+                assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(index_list))
+
+                indices = tf.argmax(index_list, axis=1) 
+
+                monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, x[0])*x[1], (indices, coefficients)) 
+            elif sparse_poly_representation_version == 2:
+                coefficients = polynomial[:interpretation_net_output_monomials]
+                index_array = polynomial[interpretation_net_output_monomials:]
+                #tf.print('index_array.shape', index_array)
+                
+                assert index_array.shape[0] == interpretation_net_output_monomials*n*(d+1), 'Shape of Coefficient Indices : ' + str(index_array.shape)
+
+                if False:
+                    index_list_by_monomial = tf.split(index_array, n)
+
+                    assert len(index_list_by_monomial) == coefficients.shape[0] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(index_list))
+
+                    index_list_by_monomial_by_var = tf.split(index_list_by_monomial, d+1, axis=1)
+                    degree_by_var_per_monomial_list = tf.argmax(index_list_by_monomial_by_var, axis=2) 
+                else:
+                    index_list_by_monomial = tf.transpose(tf.split(index_array, interpretation_net_output_monomials))
+
+                    index_list_by_monomial_by_var = tf.split(index_list_by_monomial, n, axis=0)
+                    index_list_by_monomial_by_var_new = []
+                    for tensor in index_list_by_monomial_by_var:
+                        index_list_by_monomial_by_var_new.append(tf.transpose(tensor))
+                    index_list_by_monomial_by_var = index_list_by_monomial_by_var_new   
+                    #tf.print('index_list_by_monomial_by_var', index_list_by_monomial_by_var)
+                    degree_by_var_per_monomial_list = tf.transpose(tf.argmax(index_list_by_monomial_by_var, axis=2))                  
+                
+                #tf.print('degree_by_var_per_monomial_list', degree_by_var_per_monomial_list)
+                #tf.print('evaluation_entry', evaluation_entry)
+                #tf.print('coefficients', coefficients)
+
+                monomial_values = tf.vectorized_map(calculate_monomial_with_coefficient_degree_by_var_wrapper(evaluation_entry), (degree_by_var_per_monomial_list, coefficients))                 
+                #tf.print('monomial_values', monomial_values)
+            
+        polynomial_fv = tf.reduce_sum(monomial_values)    
+        #tf.print(polynomial_fv)
+
+        return polynomial_fv
+            
+    return tf.vectorized_map(calculate_poly_fv_tf, (evaluation_entry_list))
 
 
 
@@ -1151,10 +1234,10 @@ def calculate_poly_fv_tf_wrapper_new(list_of_monomial_identifiers, polynomial, e
             
     return tf.vectorized_map(calculate_poly_fv_tf, (evaluation_entry_list))
 
+
 #calculate intermediate term (without coefficient multiplication)
 def calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry):
-    def calculate_monomial_without_coefficient_tf(coefficient_multiplier_term):      
-
+    def calculate_monomial_without_coefficient_tf(coefficient_multiplier_term): 
         return tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**x[1], (evaluation_entry, coefficient_multiplier_term)))
     return calculate_monomial_without_coefficient_tf
 
@@ -1232,9 +1315,9 @@ def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise
     eval_results=eval_results.reshape(n_samples,1)
     
     if noise_dist=='normal':
-        noise_sample=noise*np.random.normal(loc=0, scale=np.mean(np.abs(eval_results)),size=n_samples)
+        noise_sample=noise*np.random.normal(loc=0, scale=np.max(eval_results)-np.min(eval_results),size=n_samples)
     elif noise_dist=='uniform':
-        noise_sample=noise*np.random.uniform(low=-np.mean(np.abs(eval_results))/2, high=np.mean(np.abs(eval_results))/2,size=n_samples)
+        noise_sample=noise*np.random.uniform(low=-(np.max(eval_results)-np.min(eval_results)), high=np.max(eval_results)-np.min(eval_results),size=n_samples)
         
     noise_sample=noise_sample.reshape(n_samples,1)
     
@@ -1346,7 +1429,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
     
     ########################################### OPTIMIZATION ########################################################
         
-    
+    current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     best_result = np.inf
 
     for current_iteration in range(restarts):
@@ -1359,7 +1442,6 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
             if interpretation_net_output_monomials != None:
                 poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
                 poly_optimize_identifiers_list = []
-                print('NEW')
                 if sparse_poly_representation_version == 1:
                     for i in range(interpretation_net_output_monomials):
                         poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
@@ -1373,7 +1455,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
                     poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)                
                 poly_optimize = tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
 
-            poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, config=config), (random_lambda_input_data))
+            poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, current_monomial_degree, config=config), (random_lambda_input_data))
 
             error = None
             if inet_loss == 'mae':
@@ -1439,26 +1521,25 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
                                           restarts=5, 
                                           printing=True,
                                           return_error=False):
-    
-    
+
     from utilities.metrics import calculate_poly_fv_tf_wrapper
-    
+
     def copy( self ):
         return tf.identity(self)
     tf.Tensor.copy = copy
 
 
     ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
-            
+
     globals().update(config)
-        
+
     random.seed(RANDOM_SEED)
     np.random.seed(RANDOM_SEED)    
     if int(tf.__version__[0]) >= 2:
         tf.random.set_seed(RANDOM_SEED)
     else:
         tf.set_random_seed(RANDOM_SEED)       
-    
+
 
     base_model = Sequential()
 
@@ -1468,21 +1549,21 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
         base_model.add(Dense(neurons, activation='relu'))
 
     base_model.add(Dense(1))
-    
+
     weights_structure = base_model.get_weights()
-    
-    
+
+
     random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(per_network_dataset_size, max(1, n)))
     random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)
     list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)
-    
+
     model_lambda_placeholder = tf.keras.models.clone_model(base_model)  
-    
+
     dims = [np_arrays.shape for np_arrays in weights_structure]
-    
+
 
     lambda_network_weights = tf.dtypes.cast(tf.convert_to_tensor(lambda_network_weights), tf.float32)
-    
+
     #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
     # build models
     start = 0
@@ -1505,33 +1586,26 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 
 
     lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_lambda_input_data))    
-    
 
-    
+
+
     ########################################### OPTIMIZATION ########################################################
-        
+
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     best_result = np.inf
 
     for current_iteration in range(restarts):
-                        
+
         def function_to_optimize_scipy_wrapper(current_monomial_degree):
             @tf.function(experimental_compile=True) 
             def function_to_optimize_scipy(poly_optimize_input):   
-                print('HERE2')
-                if use_gpu:
-                    os.environ['CUDA_VISIBLE_DEVICES'] = ''
-                    print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-                    print("Num XLA-GPUs Available: ", len(tf.config.experimental.list_physical_devices('XLA_GPU')))
 
-                    
                 #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
                 poly_optimize = tf.cast(poly_optimize_input, tf.float32)
 
                 if interpretation_net_output_monomials != None:
                     poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
                     poly_optimize_identifiers_list = []
-                    print('NEW')
                     if sparse_poly_representation_version == 1:
                         for i in range(interpretation_net_output_monomials):
                             poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
@@ -1559,8 +1633,8 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 
                 return error
             return function_to_optimize_scipy
-    
-                    
+
+
         poly_optimize_input = tf.random.uniform([1, interpretation_net_output_shape])    
 
         def function_to_optimize_scipy_grad_wrapper(current_monomial_degree):
@@ -1570,30 +1644,31 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
                 error = error.numpy()
                 return error
             return function_to_optimize_scipy_grad
-        
+
         stop_counter = 0
-        
+
+
         if jac=='fprime':
             jac = lambda x: optimize.approx_fprime(x, function_to_optimize_scipy_grad_wrapper(current_monomial_degree), 0.01)
-        
+
         #tf.print(interpretation_net_output_monomials)
         #tf.print(config)        
         opt_res = minimize(function_to_optimize_scipy_wrapper(current_monomial_degree), poly_optimize_input, method=optimizer, jac=jac, options={'maxfun': None, 'maxiter': max_steps})
-        
+        print(opt_res)
         #opt_res = minimize(function_to_optimize_scipy_wrapper(current_monomial_degree), poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
 
         best_result_iteration = opt_res.fun
         best_poly_optimize_iteration = opt_res.x
-        
+
         if best_result_iteration < best_result:
             best_result = best_result_iteration
             best_poly_optimize = best_poly_optimize_iteration
 
     per_network_poly = best_poly_optimize
-    
+
     if printing:
         print("Optimization terminated at {}".format(best_result))
-        
+
     if return_error:
         return best_result, per_network_poly
     
@@ -1718,7 +1793,6 @@ def symbolic_metamodeling_original(lambda_net,
     from pysymbolic_original.algorithms.symbolic_metamodeling import symbolic_metamodel
     from pysymbolic_original.algorithms.symbolic_expressions import get_symbolic_model
     
-    
     ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
             
     globals().update(config) 
@@ -1735,9 +1809,16 @@ def symbolic_metamodeling_original(lambda_net,
     
     
     ########################################### OPTIMIZATION ########################################################
-    
     if function_metamodeling:    
-        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+        try:
+            with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
+                symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+        except (RuntimeError, SympifyError, AttributeError) as e:
+            if return_error:
+                return np.nan, None
+            else:
+                return None
+        
         symbolic_model.approximation_order = d
         
         if return_expression == 'exact':
@@ -1754,11 +1835,17 @@ def symbolic_metamodeling_original(lambda_net,
         
         if metamodeling_hyperparams['batch_size'] == None:
             metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
-
-        metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression")
-        metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
-
-
+        print(metamodeling_hyperparams['num_iter'])
+        try:
+            with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
+                metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression")
+                metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
+        except (RuntimeError, SympifyError, AttributeError) as e:
+            if return_error:
+                return np.nan, None
+            else:
+                return None
+            
         if return_expression == 'exact':
             metamodel_function = metamodel.exact_expression
             #print(metamodel_function)

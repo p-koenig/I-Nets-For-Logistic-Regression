@@ -46,8 +46,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-from sympy import Symbol, sympify, lambdify, abc
-
+from sympy import Symbol, sympify, lambdify, abc, SympifyError
 
 #udf import
 from utilities.LambdaNet import *
@@ -207,9 +206,6 @@ def interpretation_net_training(lambda_net_train_dataset_list,
     for i in range(len(lambda_net_train_dataset_list)):
         save_string_list.append('')
 
-          
-                 
-
             
     if samples_list == None:      
         
@@ -244,12 +240,9 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         else:
             paths_dict = generate_paths(path_type = 'interpretation_net')
 
-            if by == 'epochs':
-                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
-            elif by == 'samples':
-                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
-            with open(path, 'wb') as f:
-                history_list = pickle.load(f, protocol=2)  
+            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
+            with open(path, 'rb') as f:
+                history_list = pickle.load(f)  
                 
         valid_data_list = [result[1] for result in results_list]
         X_valid_list = [valid_data[0] for valid_data in valid_data_list]
@@ -299,12 +292,9 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         else:
             paths_dict = generate_paths(path_type = 'interpretation_net')
 
-            if by == 'epochs':
-                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
-            elif by == 'samples':
-                path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
-            with open(path, 'wb') as f:
-                history_list = pickle.load(f, protocol=2)      
+            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
+            with open(path, 'rb') as f:
+                history_list = pickle.load(f)      
         
         
         valid_data_list = [result[1] for result in results_list]
@@ -332,11 +322,10 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         hours, minutes = divmod(minutes, 60)        
         print('Loading Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
 
-
     if not nas:
         generate_history_plots(history_list, by=identifier_type)
         #save_results(history_list, scores_test_list, by=identifier_type)    
-        save_results(history_list, by=identifier_type)    
+        save_results(history_list=history_list, by=identifier_type)    
     
 
             
@@ -641,8 +630,7 @@ def train_inet(lambda_net_train_dataset,
     global loss
     global data_reshape_version
     
-    paths_dict = generate_paths(path_type = 'interpretation_net')
-    
+    paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
     
     ############################## DATA PREPARATION ###############################
     
@@ -690,7 +678,8 @@ def train_inet(lambda_net_train_dataset,
     else:
         y_train_model = np.hstack((y_train, X_train))   
         valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
-                 
+              
+
         
     ############################## BUILD MODEL ###############################
     if train_model:
@@ -949,7 +938,7 @@ def train_inet(lambda_net_train_dataset,
                       verbose=verbosity)
 
             history = history.history
-
+            
             model.save('./data/saved_models/' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
     else:
         history = None
@@ -957,82 +946,80 @@ def train_inet(lambda_net_train_dataset,
     return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics) 
      
 def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
-    
+          
     n_jobs_parallel_fv = n_jobs
-    
-    
+    backend='threading'
+
     if n_jobs_parallel_fv <= 5:
         n_jobs_parallel_fv = 10
-        #backend='threading'
-    #else:
-        #backend='loky'
-        
-    backend='threading' 
-    
-        
-    function_value_dict = {
-        'lambda_preds': np.nan_to_num(lambda_net_dataset.make_prediction_on_test_data()),
-        'target_polynomials': np.nan_to_num(lambda_net_dataset.return_target_poly_fvs_on_test_data(n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),          
-        'lstsq_lambda_pred_polynomials': np.nan_to_num(lambda_net_dataset.return_lstsq_lambda_pred_polynomial_fvs_on_test_data(n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),         
-        'lstsq_target_polynomials': np.nan_to_num(lambda_net_dataset.return_lstsq_target_polynomial_fvs_on_test_data(n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),   
-        'inet_polynomials': np.nan_to_num(parallel_fv_calculation_from_polynomial(polynomial_dict['inet_polynomials'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),      
-    }
-    
-    
-    try:
-        print('metamodel_poly')
-        variable_names = ['X' + str(i) for i in range(n)]
-        function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metamodel_poly'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
-        function_value_dict['metamodel_poly'] =  np.nan_to_num(function_values)
-    except KeyError as ke:
-        print('Exit', KeyError)    
-             
-    try:
-        print('metamodel_functions')
-        variable_names = ['X' + str(i) for i in range(n)]
-        function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metamodel_functions'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
-        function_value_dict['metamodel_functions'] = np.nan_to_num(function_values)
-    except KeyError as ke:
-        print('Exit', KeyError)    
-        
-    try:
-        print('metamodel_functions_no_GD')
-        variable_names = ['X' + str(i) for i in range(n)]
-        function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metametamodel_functions_no_GD'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
-        function_value_dict['metamodel_functions_no_GD'] = np.nan_to_num(function_values)
-    except KeyError as ke:
-        print('Exit', KeyError)    
-        
-    try:
-        print('symbolic_regression_functions')
-        variable_names = ['X' + str(i) for i in range(n)]
-        #variable_names[0] = 'x'        
-        function_values = parallel_fv_calculation_from_sympy(polynomial_dict['symbolic_regression_functions'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
-        function_value_dict['symbolic_regression_functions'] = np.nan_to_num(function_values)
-        
-        print(function_values)
-        
-        for function_value in function_values:
-            if np.isnan(function_value).any() or np.isinf(function_value).any():
-                print(function_value)
-                
-        print(function_values[-2])
-        
-        for function_value in function_value_dict['symbolic_regression_functions']:
-            if np.isnan(function_value).any() or np.isinf(function_value).any():
-                print(function_value)        
-        print(function_value_dict['symbolic_regression_functions'][-2])
-        
-    except KeyError as ke:
-        print('Exit', KeyError)    
-    try:
-        print('per_network_polynomials')
-        function_values = parallel_fv_calculation_from_polynomial(polynomial_dict['per_network_polynomials'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)        
-        function_value_dict['per_network_polynomials'] = np.nan_to_num(function_values)
-    except KeyError as ke:
-        print('Exit', KeyError)    
-    
-    
+
+    #backend='threading' 
+    #backend='sequential' 
+
+    with tf.device('/CPU:0'):        
+        function_value_dict = {
+            'lambda_preds': np.nan_to_num(lambda_net_dataset.make_prediction_on_test_data()),
+            'target_polynomials': np.nan_to_num(lambda_net_dataset.return_target_poly_fvs_on_test_data(n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),          
+            'lstsq_lambda_pred_polynomials': np.nan_to_num(lambda_net_dataset.return_lstsq_lambda_pred_polynomial_fvs_on_test_data(n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),         
+            'lstsq_target_polynomials': np.nan_to_num(lambda_net_dataset.return_lstsq_target_polynomial_fvs_on_test_data(n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),   
+            'inet_polynomials': np.nan_to_num(parallel_fv_calculation_from_polynomial(polynomial_dict['inet_polynomials'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)),      
+        }
+
+
+        try:
+            print('metamodel_poly')
+            variable_names = ['X' + str(i) for i in range(n)]
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metamodel_poly'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
+            function_value_dict['metamodel_poly'] =  function_values#np.nan_to_num(function_values)
+        except KeyError as ke:
+            print('Exit', KeyError)    
+
+        try:
+            print('metamodel_functions')
+            variable_names = ['X' + str(i) for i in range(n)]
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metamodel_functions'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
+            function_value_dict['metamodel_functions'] = function_values#np.nan_to_num(function_values)
+        except KeyError as ke:
+            print('Exit', KeyError)    
+
+        try:
+            print('metamodel_functions_no_GD')
+            variable_names = ['X' + str(i) for i in range(n)]
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metametamodel_functions_no_GD'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
+            function_value_dict['metamodel_functions_no_GD'] = function_values#np.nan_to_num(function_values)
+        except KeyError as ke:
+            print('Exit', KeyError)    
+
+        try:
+            print('symbolic_regression_functions')
+            variable_names = ['X' + str(i) for i in range(n)]
+            #variable_names[0] = 'x'        
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['symbolic_regression_functions'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
+            function_value_dict['symbolic_regression_functions'] = function_values#np.nan_to_num(function_values)
+
+            #print(function_values)
+
+            #for function_value in function_values:
+            #    if np.isnan(function_value).any() or np.isinf(function_value).any():
+            #        print(function_value)
+
+            #print(function_values[-2])
+
+            #for function_value in function_value_dict['symbolic_regression_functions']:
+            #    if np.isnan(function_value).any() or np.isinf(function_value).any():
+            #        print(function_value)        
+            #print(function_value_dict['symbolic_regression_functions'][-2])
+
+        except KeyError as ke:
+            print('Exit', KeyError)    
+        try:
+            print('per_network_polynomials')
+            function_values = parallel_fv_calculation_from_polynomial(polynomial_dict['per_network_polynomials'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)        
+            function_value_dict['per_network_polynomials'] = function_values#np.nan_to_num(function_values)
+        except KeyError as ke:
+            print('Exit', KeyError)    
+
+
     return function_value_dict
     
 def evaluate_all_predictions(function_value_dict, polynomial_dict):
@@ -1099,18 +1086,16 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
         
     printing = True if n_jobs == 1 else False
     
-    if use_gpu and False:
-        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers if use_gpu else ''
-        os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-        os.environ['XLA_FLAGS'] =  '--xla_gpu_cuda_data_dir=/usr/lib/cuda-10.1'     
-        backend = 'sequential'
-        printing = True
+    #if use_gpu and False:
+        #os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers if use_gpu else ''
+        #os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+        #os.environ['XLA_FLAGS'] =  '--xla_gpu_cuda_data_dir=/usr/lib/cuda-10.1'     
+        #backend = 'sequential'
+        #printing = True
         
-    backend = 'sequential'
-    printing = True       
-    
-    
-
+    #backend = 'sequential'
+    #printing = True       
+    #per_network_optimization_dataset_size = 5
 
     if optimization_type=='tf':
         
@@ -1120,7 +1105,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
             'max_steps': 500,
             'early_stopping': 10,
             'restarts': 3,
-            'per_network_dataset_size': 5000,
+            'per_network_dataset_size': per_network_optimization_dataset_size,
         }
 
 
@@ -1141,34 +1126,34 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
                  'x_min': x_min,
                  'x_max': x_max,
                  'sparse_poly_representation_version': sparse_poly_representation_version,
-                 'use_gpu': use_gpu,
-                 'gpu_numbers': gpu_numbers,
                 }
 
-        parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
+        with tf.device('/CPU:0'):
 
-        per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_hyperparams['per_network_dataset_size'], 
-                                                                                                              lambda_network_weights, 
-                                                                                                              list_of_monomial_identifiers, 
-                                                                                                              config,
-                                                                                                              optimizer = per_network_hyperparams['optimizer'],
-                                                                                                              lr = per_network_hyperparams['lr'], 
-                                                                                                              max_steps = per_network_hyperparams['max_steps'], 
-                                                                                                              early_stopping = per_network_hyperparams['early_stopping'], 
-                                                                                                              restarts = per_network_hyperparams['restarts'],
-                                                                                                              printing = printing,
-                                                                                                              return_error = True) for lambda_network_weights in lambda_network_weights_list)      
+            parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
 
-        del parallel_per_network
-        
+            per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_hyperparams['per_network_dataset_size'], 
+                                                                                                                  lambda_network_weights, 
+                                                                                                                  list_of_monomial_identifiers, 
+                                                                                                                  config,
+                                                                                                                  optimizer = per_network_hyperparams['optimizer'],
+                                                                                                                  lr = per_network_hyperparams['lr'], 
+                                                                                                                  max_steps = per_network_hyperparams['max_steps'], 
+                                                                                                                  early_stopping = per_network_hyperparams['early_stopping'], 
+                                                                                                                  restarts = per_network_hyperparams['restarts'],
+                                                                                                                  printing = printing,
+                                                                                                                  return_error = True) for lambda_network_weights in lambda_network_weights_list)      
+
+            del parallel_per_network
+
     elif optimization_type=='scipy':    
 
         per_network_hyperparams = {
             'optimizer':  'Powell',
             'jac': 'fprime',
-            'max_steps': 5000,#100,
+            'max_steps': 500,
             'restarts': 3,
-            'per_network_dataset_size': 500,
+            'per_network_dataset_size': per_network_optimization_dataset_size,
         }
 
         
@@ -1187,49 +1172,49 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
                  'interpretation_net_output_monomials': interpretation_net_output_monomials,
                  'x_min': x_min,
                  'x_max': x_max,
-                 'sparse_poly_representation_version': sparse_poly_representation_version,
-                 'use_gpu': use_gpu,
-                 'gpu_numbers': gpu_numbers,            
+                 'sparse_poly_representation_version': sparse_poly_representation_version,     
+                'max_optimization_minutes': max_optimization_minutes,
                  }
+        with tf.device('/CPU:0'):
+            if False:
+                result = per_network_poly_optimization_scipy(per_network_hyperparams['per_network_dataset_size'], 
+                                                  lambda_network_weights_list[0], 
+                                                  list_of_monomial_identifiers, 
+                                                  config,
+                                                  optimizer = per_network_hyperparams['optimizer'],
+                                                  jac = per_network_hyperparams['jac'],
+                                                  max_steps = per_network_hyperparams['max_steps'], 
+                                                  restarts = per_network_hyperparams['restarts'],
+                                                  printing = True,
+                                                  return_error = True)
+                print(result)        
 
-        result = per_network_poly_optimization_scipy(per_network_hyperparams['per_network_dataset_size'], 
-                                          lambda_network_weights_list[0], 
-                                          list_of_monomial_identifiers, 
-                                          config,
-                                          optimizer = per_network_hyperparams['optimizer'],
-                                          jac = per_network_hyperparams['jac'],
-                                          max_steps = per_network_hyperparams['max_steps'], 
-                                          restarts = per_network_hyperparams['restarts'],
-                                          printing = printing,
-                                          return_error = True)
-        print(result)        
-        
-        parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
+            parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
 
-        result_list_per_network = parallel_per_network(delayed(per_network_poly_optimization_scipy)(per_network_hyperparams['per_network_dataset_size'], 
-                                                                                                                  lambda_network_weights, 
-                                                                                                                  list_of_monomial_identifiers, 
-                                                                                                                  config,
-                                                                                                                  optimizer = per_network_hyperparams['optimizer'],
-                                                                                                                  jac = per_network_hyperparams['jac'],
-                                                                                                                  max_steps = per_network_hyperparams['max_steps'], 
-                                                                                                                  restarts = per_network_hyperparams['restarts'],
-                                                                                                                  printing = printing,
-                                                                                                                  return_error = True) for lambda_network_weights in lambda_network_weights_list)      
-        per_network_optimization_errors = [result[0] for result in result_list_per_network]
-        per_network_optimization_polynomials = [result[1] for result in result_list_per_network]          
-        
-        del parallel_per_network    
+            result_list_per_network = parallel_per_network(delayed(per_network_poly_optimization_scipy)(per_network_hyperparams['per_network_dataset_size'], 
+                                                                                                                      lambda_network_weights, 
+                                                                                                                      list_of_monomial_identifiers, 
+                                                                                                                      config,
+                                                                                                                      optimizer = per_network_hyperparams['optimizer'],
+                                                                                                                      jac = per_network_hyperparams['jac'],
+                                                                                                                      max_steps = per_network_hyperparams['max_steps'], 
+                                                                                                                      restarts = per_network_hyperparams['restarts'],
+                                                                                                                      printing = printing,
+                                                                                                                      return_error = True) for lambda_network_weights in lambda_network_weights_list)      
+            per_network_optimization_errors = [result[0] for result in result_list_per_network]
+            per_network_optimization_polynomials = [result[1] for result in result_list_per_network]          
+
+            del parallel_per_network    
     
-    if use_gpu:
-        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers    
+    #if use_gpu:
+        #os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers    
         
     return per_network_optimization_polynomials
 
 def symbolic_regression_function_generation(lambda_net_dataset):
     
     symbolic_regression_hyperparams = {
-        'dataset_size': 500,
+        'dataset_size': per_network_optimization_dataset_size,
     }
     
     config = {
@@ -1252,6 +1237,7 @@ def symbolic_regression_function_generation(lambda_net_dataset):
              'x_min': x_min,
              'x_max': x_max,
              'sparse_poly_representation_version': sparse_poly_representation_version,
+            'max_optimization_minutes': max_optimization_minutes,
              }
 
     parallel_symbolic_regression = Parallel(n_jobs=n_jobs, verbose=11, backend='loky')
@@ -1275,13 +1261,13 @@ def symbolic_regression_function_generation(lambda_net_dataset):
     return symbolic_regression_errors, symbolic_regression_functions
 
 
-def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False):
+def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):
     
     metamodeling_hyperparams = {
         'num_iter': 500,
         'batch_size': None,
         'learning_rate': 0.01,        
-        'dataset_size': 500,
+        'dataset_size': per_network_optimization_dataset_size,
     }
 
     #list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
@@ -1289,7 +1275,9 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
     #printing = True if n_jobs == 1 else False
 
     #lambda_network_weights_list = np.array(lambda_net_dataset.weight_list)
-    
+    #print('HERE')
+    #backend = 'sequential'
+                                              
     config = {
             'n': n,
             'd': d,
@@ -1310,9 +1298,10 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
              'x_min': x_min,
              'x_max': x_max,
             'sparse_poly_representation_version': sparse_poly_representation_version,
+            'max_optimization_minutes': max_optimization_minutes,
              }
 
-    parallel_metamodeling = Parallel(n_jobs=n_jobs, verbose=11, backend='loky')
+    parallel_metamodeling = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
 
     return_error = False 
     
