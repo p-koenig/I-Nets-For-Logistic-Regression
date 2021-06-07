@@ -238,7 +238,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         if train_model:
             history_list = [result[0] for result in results_list]
         else:
-            paths_dict = generate_paths(path_type = 'interpretation_net')
+            paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
 
             path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
             with open(path, 'rb') as f:
@@ -290,7 +290,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         if train_model:
             history_list = [result[0] for result in results_list]
         else:
-            paths_dict = generate_paths(path_type = 'interpretation_net')
+            paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
 
             path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
             with open(path, 'rb') as f:
@@ -356,7 +356,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
 def load_inets(identifier_type, path_identifier_list, loss_function_list, metrics_list):
     
     
-    paths_dict = generate_paths(path_type = 'interpretation_net')
+    paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
 
     generic_path_identifier = str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data']
     if nas:
@@ -569,7 +569,7 @@ def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda
     else: #(if not inet_training_normalized and lambda_trained_normalized)
         return None
         
-def generate_inet_train_data(lambda_net_dataset):
+def generate_inet_train_data(lambda_net_dataset, data_reshape_version=1):
     X_data = None
     X_data_flat = None
     y_data = None
@@ -640,9 +640,9 @@ def train_inet(lambda_net_train_dataset,
     weights_structure = base_model.get_weights()
     dims = [np_arrays.shape for np_arrays in weights_structure]         
 
-    (X_train, X_train_flat, y_train, normalization_parameter_train_dict) = generate_inet_train_data(lambda_net_train_dataset)
-    (X_valid, X_valid_flat, y_valid, normalization_parameter_valid_dict) = generate_inet_train_data(lambda_net_valid_dataset)
-    (X_test, X_test_flat, y_test, normalization_parameter_test_dict) = generate_inet_train_data(lambda_net_test_dataset)
+    (X_train, X_train_flat, y_train, normalization_parameter_train_dict) = generate_inet_train_data(lambda_net_train_dataset, data_reshape_version=data_reshape_version)
+    (X_valid, X_valid_flat, y_valid, normalization_parameter_valid_dict) = generate_inet_train_data(lambda_net_valid_dataset, data_reshape_version=data_reshape_version)
+    (X_test, X_test_flat, y_test, normalization_parameter_test_dict) = generate_inet_train_data(lambda_net_test_dataset, data_reshape_version=data_reshape_version)
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
@@ -1211,17 +1211,22 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
         
     return per_network_optimization_polynomials
 
-def symbolic_regression_function_generation(lambda_net_dataset):
+def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
+    
+    #backend='multiprocessing'
     
     symbolic_regression_hyperparams = {
         'dataset_size': per_network_optimization_dataset_size,
     }
+    #backend='sequential'
+
     
     config = {
             'n': n,
             'd': d,
             'inet_loss': inet_loss,
             'sparsity': sparsity,
+            'sample_sparsity': sample_sparsity,
             'lambda_network_layers': lambda_network_layers,
             'interpretation_net_output_shape': interpretation_net_output_shape,
             'RANDOM_SEED': RANDOM_SEED,
@@ -1240,7 +1245,7 @@ def symbolic_regression_function_generation(lambda_net_dataset):
             'max_optimization_minutes': max_optimization_minutes,
              }
 
-    parallel_symbolic_regression = Parallel(n_jobs=n_jobs, verbose=11, backend='loky')
+    parallel_symbolic_regression = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
 
     return_error = False
     
@@ -1262,9 +1267,9 @@ def symbolic_regression_function_generation(lambda_net_dataset):
 
 
 def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):
-    
+        
     metamodeling_hyperparams = {
-        'num_iter': 500,
+        'num_iter': 10,#500,
         'batch_size': None,
         'learning_rate': 0.01,        
         'dataset_size': per_network_optimization_dataset_size,
@@ -1277,7 +1282,7 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
     #lambda_network_weights_list = np.array(lambda_net_dataset.weight_list)
     #print('HERE')
     #backend = 'sequential'
-                                              
+
     config = {
             'n': n,
             'd': d,
@@ -1327,7 +1332,7 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
                                                                                       function_metamodeling=function_metamodeling,
                                                                                       force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)          
         
-    
+        print(result_list_metamodeling)
     del parallel_metamodeling  
     
     if return_error:

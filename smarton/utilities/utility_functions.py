@@ -1694,10 +1694,17 @@ def symbolic_regression(lambda_net,
         model = lambda_net.return_model(config=config)
     
     if x_min == 0:
-        x_min = 1e-5    
-    
-    symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'])
-    
+        x_min = 1e-5 
+    try:
+        with timeout(60*max_optimization_minutes, exception=RuntimeError):
+            symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'])
+    except RuntimeError as e:
+        print(e)
+        if return_error:
+            return np.nan, None
+        else:
+            return None         
+            
     if return_error:
         return r2_score, symbolic_reg
     
@@ -1813,7 +1820,8 @@ def symbolic_metamodeling_original(lambda_net,
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
                 symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
-        except (RuntimeError, SympifyError, AttributeError) as e:
+        except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
+            print(e)
             if return_error:
                 return np.nan, None
             else:
@@ -1835,12 +1843,14 @@ def symbolic_metamodeling_original(lambda_net,
         
         if metamodeling_hyperparams['batch_size'] == None:
             metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
-        print(metamodeling_hyperparams['num_iter'])
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
                 metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression")
-                metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
-        except (RuntimeError, SympifyError, AttributeError) as e:
+                metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], 
+                              batch_size=metamodeling_hyperparams['batch_size'], 
+                              learning_rate=metamodeling_hyperparams['learning_rate'])    
+        except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
+            print(e)
             if return_error:
                 return np.nan, None
             else:

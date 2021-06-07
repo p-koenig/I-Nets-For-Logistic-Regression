@@ -38,6 +38,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from IPython import get_ipython
 
+from interruptingcow import timeout
+
 
 def is_ipython():
     
@@ -66,7 +68,7 @@ def basis_expression(a, b, c, hyper_order=[1, 2, 2, 2]):
     
     return func_
     
-
+@timeout(60, exception=RuntimeError)
 def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
     
     K1     = sc.special.digamma(a - b + 1)
@@ -301,6 +303,9 @@ class symbolic_metamodel:
         sym_approx  = 0
         x           = symbols('x')
 
+        if len(self.init_model.coef_.shape) >= 2 and self.init_model.coef_.shape[0] == 1:
+            self.init_model.coef_ = self.init_model.coef_.reshape(-1,)          
+        
         for v in range(self.num_basis):
     
             f_curr      = basis_expression(a=float(self.params[v,0]), 

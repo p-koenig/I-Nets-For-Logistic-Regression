@@ -112,7 +112,7 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
     return symbol_exprs[best_model], R2_perf    
 
 
-def symbolic_regressor(f, npoints, xrange, n_vars=1, data=None):
+def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None):
 
     if data is not None:
         X = data
@@ -125,21 +125,59 @@ def symbolic_regressor(f, npoints, xrange, n_vars=1, data=None):
     #print('X[0]', X[0])
     #print('X.shape', X.shape)
     
-    
     if type(f) is types.FunctionType:
         y  = f(X)
     else:
         #print(f.summary())
         y  = f.predict(X)
 
+    generations = 100
+    metric='mean absolute error'
+    early_stopping = 10
+    epsilon = 0#0.001
+    
+    #sparsity= 10
+    
     est_gp = SymbolicRegressor(population_size=5000,
-                               generations=20, stopping_criteria=0.01,
-                               p_crossover=0.7, p_subtree_mutation=0.1,
-                               p_hoist_mutation=0.05, p_point_mutation=0.1,
-                               max_samples=0.9, verbose=1,
-                               parsimony_coefficient=0.01, random_state=0)
-
-    est_gp.fit(X, y)
+                               generations=1,#1000, 
+                               #stopping_criteria=0.01,
+                               tournament_size=100,#
+                               init_depth=(sparsity, sparsity),#
+                               #p_crossover=0.7, 
+                               #p_subtree_mutation=0.1,
+                               #p_hoist_mutation=0.05, 
+                               #p_point_mutation=0.1,
+                               #max_samples=0.9, 
+                               verbose=1,
+                               parsimony_coefficient=0.001,#0,#0.01, 
+                               random_state=0,
+                               metric=metric,#
+                               #low_memory=True,
+                              )
+    current_generation = 0
+    best_fitness = np.inf
+    early_stopping_counter = 0
+    for generation in range(generations):
+        est_gp.fit(X, y)
+        current_generation += 1
+        est_gp.set_params(generations=current_generation+1, warm_start=True)
+        best_fitness_generation = est_gp.run_details_['best_fitness'][-1]
+        #print(est_gp.run_details_)
+        print('best_fitness_generation', best_fitness_generation)
+        print('best_fitness', best_fitness)
+        if best_fitness_generation < best_fitness-epsilon:
+            early_stopping_counter = 0
+            best_fitness = best_fitness_generation
+        else:
+            early_stopping_counter += 1
+            
+        if early_stopping_counter >= early_stopping:
+            break
+            
+            
+#SymbolicRegressor(population_size=1000, generations=20, tournament_size=20, stopping_criteria=0.0, const_range=(-1.0, 1.0), init_depth=(2, 6), init_method='half and half', function_set=('add', 'sub', 'mul', 'div'), metric='mean absolute error', parsimony_coefficient=0.001, p_crossover=0.9, p_subtree_mutation=0.01, p_hoist_mutation=0.01, p_point_mutation=0.01, p_point_replace=0.05, max_samples=1.0, feature_names=None, warm_start=False, low_memory=False, n_jobs=1, verbose=0, random_state=None)    
+    
+    
 
     sym_expr = str(est_gp._program)
 
