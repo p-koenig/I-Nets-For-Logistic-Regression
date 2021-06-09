@@ -28,7 +28,6 @@ from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 import time
 
 import tensorflow as tf
-import random 
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
@@ -103,7 +102,7 @@ def initialize_utility_functions_config_from_curent_notebook(config):
 
     list_of_monomial_identifiers_extended = []
 
-    if laurent:
+    if laurent:x
         variable_sets = [list(flatten([[_d for _d in range(d+1)], [-_d for _d in range(1, neg_d+1)]])) for _ in range(n)]
         list_of_monomial_identifiers_extended = rec_gen(variable_sets)    
 

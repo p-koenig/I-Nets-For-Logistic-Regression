@@ -51,7 +51,7 @@ def Optimize(Loss, theta_0):
     return theta_opt, Loss_ 
 
 
-def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None):
+def symbolic_modeling(f, G_order, theta_0, npoints=None, xrange=None, n_vars=1, data=None):
         
     if data is not None:
         X = data
@@ -62,11 +62,15 @@ def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None)
         
         
     def Loss(theta):
-        
+        print('theta', theta)
+        print('G_order', G_order)
         G     = MeijerG(theta=theta, order=G_order)
         if type(f) is types.FunctionType:
             loss_ = np.mean((f(X) - G.evaluate(X))**2)
         else:
+            print('f', f)
+            print('f.predict(X)', f.predict(X))
+            print('G.evaluate(X)', G.evaluate(X))
             loss_ = np.mean((f.predict(X) - G.evaluate(X))**2)
         print("Expression:", G.expression())
         print("Loss:", loss_)
@@ -78,7 +82,7 @@ def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None)
 
     return symbolic_model, Loss_ 
 
-def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
+def get_symbolic_model(f, npoints=None, xrange=None, n_vars=1, data=None):
 
     hyperparameter_space = load_hyperparameter_config() 
     loss_threshold       = 10e-5
@@ -88,8 +92,13 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
 
     for k in range(len(hyperparameter_space)):
 
-        symbolic_model, Loss_ = symbolic_modeling(f, hyperparameter_space['hyper_'+str(k+1)][1], 
-                                                  hyperparameter_space['hyper_'+str(k+1)][0], npoints, xrange, n_vars)
+        symbolic_model, Loss_ = symbolic_modeling(f, 
+                                                  [2, 2, 2, 1, 1],#hyperparameter_space['hyper_'+str(k+1)][1], 
+                                                  [0, 1, 3, 1],#hyperparameter_space['hyper_'+str(k+1)][0], 
+                                                  npoints, 
+                                                  xrange, 
+                                                  n_vars, 
+                                                  data)
 
         symbol_exprs.append(symbolic_model)
         losses_.append(Loss_)
@@ -99,7 +108,12 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
 
     best_model = np.argmin(np.array(losses_))
 
-    X          = np.linspace(xrange[0], xrange[1], npoints).reshape((-1,1))
+    if data is not None:
+        X = data
+    elif n_vars == 1:
+        X  = np.linspace(xrange[0], xrange[1], npoints).reshape((-1,1))
+    else:
+        X  = np.random.uniform(low=xrange[0], high=xrange[1], size=(npoints, n_vars))    
     
     if type(f) is types.FunctionType:
         Y_true     = f(X).reshape((-1,1))
@@ -112,7 +126,7 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
     return symbol_exprs[best_model], R2_perf    
 
 
-def symbolic_regressor(f, npoints, xrange, n_vars=1, data=None):
+def symbolic_regressor(f, npoints=None, xrange=None, n_vars=1, data=None):
 
     if data is not None:
         X = data

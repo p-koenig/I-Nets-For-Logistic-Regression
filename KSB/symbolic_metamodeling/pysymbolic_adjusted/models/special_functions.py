@@ -134,6 +134,7 @@ class MeijerG:
         """
         x     = Symbol('x', real=True) 
         
+        
         if self.evaluation_mode=='eval':
             
             Y = np.array(list(map(lambda z: float(meijerg(self.a_p, self.b_q, self._const * z).evalf()), list(X))))
@@ -145,7 +146,9 @@ class MeijerG:
                            'theano': lambdify([x], self.approx_expression(), modules=['math'])} #theano_function([x], [self.approx_expression()])}
             
             evaluater_  = evaluators_[self.evaluation_mode]
+
             Y           = np.array([evaluater_(X[k]) for k in range(len(X))])
+            
             
         return np.real(Y)
     

@@ -341,6 +341,10 @@ class symbolic_metamodel:
             #print('batch_index', batch_index[:10])
                         
             if np.isnan(self.X_init[batch_index, :]).any() or np.isinf(self.X_init[batch_index, :]).any():
+                if i == 0:
+                    self.set_equation()  
+                    self.exact_expression, self.approx_expression = self.symbolic_expression()                
+                
                 if self.verbosity:
                     print('\n\nBREAK X_init')
                     print('self.X_init[batch_index, :]', self.X_init[batch_index, :])
@@ -350,10 +354,7 @@ class symbolic_metamodel:
 
                     print('self.exact_expression', self.exact_expression)
                     print('self.approx_expression', self.approx_expression)
-                
-                if i == 0:
-                    self.set_equation()  
-                    self.exact_expression, self.approx_expression = self.symbolic_expression()
+            
                 
                 break                
                 
@@ -366,6 +367,10 @@ class symbolic_metamodel:
             #print('self.Y_r[batch_index]', self.Y_r[batch_index])
             
             if np.isnan(curr_func).any() or np.isinf(curr_func).any():
+                if i == 0:
+                    self.set_equation()  
+                    self.exact_expression, self.approx_expression = self.symbolic_expression()                
+                    
                 if self.verbosity:
                     print('\n\nBREAK curr_func')
                     print('curr_func', curr_func)
@@ -376,9 +381,6 @@ class symbolic_metamodel:
                     print('self.exact_expression', self.exact_expression)
                     print('self.approx_expression', self.approx_expression)
                 
-                if i == 0:
-                    self.set_equation()  
-                    self.exact_expression, self.approx_expression = self.symbolic_expression()
                 
                 break
             
@@ -410,6 +412,10 @@ class symbolic_metamodel:
             if np.isnan(params).any() or (np.abs(np.array(params)) > self.max_param_value).any() or (params[:, 2] <= 0).any() or np.isnan(coef_).any() or np.abs((np.array(coef_) > self.max_param_value)).any():
                 #self.set_equation()  
                 #self.exact_expression, self.approx_expression = self.symbolic_expression()
+                if i == 0:
+                    self.set_equation()  
+                    self.exact_expression, self.approx_expression = self.symbolic_expression()
+                    
                 if self.verbosity:
                     print('\n\nBREAK Params or Coef')
                     print('curr_func', curr_func)
@@ -424,9 +430,6 @@ class symbolic_metamodel:
                     print('self.exact_expression', self.exact_expression)
                     print('self.approx_expression', self.approx_expression)
             
-                if i == 0:
-                    self.set_equation()  
-                    self.exact_expression, self.approx_expression = self.symbolic_expression()
                 
                 break
             else:
