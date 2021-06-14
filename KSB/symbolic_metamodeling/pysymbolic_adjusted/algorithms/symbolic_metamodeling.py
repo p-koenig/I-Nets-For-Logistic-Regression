@@ -101,7 +101,7 @@ def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
     
     #print('G', G1, G2, G3, G4)
         
-    nema1  = 6 * ((c * x)**3) * (K4 - np.log(c * x))
+    nema1  = 6 * ((c * x)**3) * (K4 - np.log(c * x)) #np.abs() oder np.sqrt()
     nema2  = 2 * ((c * x)**2) * (-K3 + np.log(c * x))
     nema3  = (c * x) * (K2 - np.log(c * x))
     nema4  = -1 * (K1 - np.log(c * x))
