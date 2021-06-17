@@ -235,7 +235,6 @@ def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_ident
                 #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
                 # build models
                 start = 0
-                layers = []
                 for i in range(len(dims)//2):
 
                     # set weights of layer

@@ -40,6 +40,8 @@ from sklearn.preprocessing import Normalizer
 
 from IPython import get_ipython
 
+import tensorflow as tf
+
 
 def is_ipython():
     
@@ -74,16 +76,22 @@ def basis_expression(a, b, c, hyper_order=[1, 2, 2, 2], approximation_order=3):
     return func_
     
 
-def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
+def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2], verbosity=False):
+    secure_positive_log = False
     
-    if c <= 0: #if c <= 0, log or div cant be calculated ans thus return nan 
+    if c <= 0 and not secure_positive_log: #if c <= 0, log or div cant be calculated ans thus return nan 
         grad_a = np.empty(x.shape)
         grad_a[:] = np.nan
         grad_b = np.empty(x.shape)
         grad_b[:] = np.nan
         grad_c = np.empty(x.shape)
-        grad_c[:] = np.nan        
+        grad_c[:] = np.nan       
+        
+        print('Wrong c Value: ' + str(c))
+        
         return grad_a, grad_b, grad_c
+    elif c == 0:
+        c = c + 1e-4
     
     #print('abc', a, b, c)
     
@@ -100,12 +108,16 @@ def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
     G4     = sc.special.gamma(a - b + 4)
     
     #print('G', G1, G2, G3, G4)
-        
-    nema1  = 6 * ((c * x)**3) * (K4 - np.log(c * x)) #np.abs() oder np.sqrt()
-    nema2  = 2 * ((c * x)**2) * (-K3 + np.log(c * x))
-    nema3  = (c * x) * (K2 - np.log(c * x))
-    nema4  = -1 * (K1 - np.log(c * x))
-    
+    if secure_positive_log:
+        nema1  = 6 * ((c * x)**3) * (K4 - np.log(np.abs(c * x))) #np.abs() oder np.sqrt()
+        nema2  = 2 * ((c * x)**2) * (-K3 + np.log(np.abs(c * x)))
+        nema3  = (c * x) * (K2 - np.log(np.abs(c * x)))
+        nema4  = -1 * (K1 - np.log(np.abs(c * x)))
+    else:
+        nema1  = 6 * ((c * x)**3) * (K4 - np.log(c * x))
+        nema2  = 2 * ((c * x)**2) * (-K3 + np.log(c * x))
+        nema3  = (c * x) * (K2 - np.log(c * x))
+        nema4  = -1 * (K1 - np.log(c * x)) 
     #print('nema', nema1[:5], nema2[:5], nema3[:5], nema4[:5])
     
     nemb1  = -1 * 6 * ((c * x)**3) * K4 
@@ -132,62 +144,110 @@ def basis_grad(a, b, c, x, hyper_order=[1, 2, 2, 2]):
 
 
 
-def tune_single_dim(lr, n_iter, x, y, verbosity=False, approximation_order=3, max_param_value=100):
+def tune_single_dim(lr, n_iter, x, y, tqdm_mode, mode = "classification", verbosity=False, approximation_order=3, max_param_value=100, early_stopping=None, restarts=0):
     
     
     epsilon   = 0.001
     x         = x + epsilon
     
+    #optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
     a         = 2
     b         = 1
     c         = 1
     
     batch_size  = np.min((x.shape[0], 500)) 
+      
+    global_minimum = np.inf
+    
+    best_parameters = {'a': np.nan,
+                      'b': np.nan,
+                      'c': np.nan}
         
-    for u in range(n_iter):
+    for restart_number in tqdm(range(restarts+1), desc='restart loop'):
+        if restart_number > 0:
+            a         = np.random.uniform(1, 2)
+            b         = np.random.uniform(1, 2)
+            c         = np.random.uniform(1, 2)
         
-        batch_index = np.random.choice(list(range(x.shape[0])), size=batch_size)
+        min_loss = np.inf
+        early_stopping_counter = 0
         
-        #print('function calls')
-                
-        new_grads   = basis_grad(a, b, c, x[batch_index])
-        func_true   = basis(a, b, c, x[batch_index], approximation_order=approximation_order)
         
-        loss        =  np.mean((func_true - y[batch_index])**2)
         
-        if verbosity:
-        
-            print("Iteration: %d \t--- Loss: %.3f" % (u, loss))
-        
-        #print('grads', new_grads)
-        #print('func', func_true)
-        
-        grads_a   = np.mean(2 * new_grads[0] * (func_true - y[batch_index]))
-        grads_b   = np.mean(2 * new_grads[1] * (func_true - y[batch_index]))
-        grads_c   = np.mean(2 * new_grads[2] * (func_true - y[batch_index]))
-                
-            
-        a_new = a - lr * grads_a
-        b_new = b - lr * grads_b
-        c_new = c - lr * grads_c
-        if np.isnan([a_new, b_new, c_new]).any() or np.isinf([a_new, b_new, c_new]).any() or (np.abs(np.array([c_new, b_new, c_new])) > max_param_value).any() or c_new <= 0:
-            break
-        a = a_new
-        b = b_new
-        c = c_new          
+        for u in tqdm_mode(range(n_iter), desc='iter loop'):
 
-                
-        #grads_a   = np.nan_to_num(np.mean(2 * new_grads[0] * (func_true - y[batch_index])).astype(np.float32))
-        #grads_b   = np.nan_to_num(np.mean(2 * new_grads[1] * (func_true - y[batch_index])).astype(np.float32))
-        #grads_c   = np.nan_to_num(np.mean(2 * new_grads[2] * (func_true - y[batch_index])).astype(np.float32))
-        
-        
-        #(grads_a, grads_b, grads_c) = Normalizer().fit_transform([np.nan_to_num([grads_a, grads_b, grads_c])])[0]
-        
-        #print('tune_single_dim abc', a, b, c)
+            batch_index = np.random.choice(list(range(x.shape[0])), size=batch_size)
+
+            #print('function calls')
+
+            new_grads   = basis_grad(a, b, c, x[batch_index])
+            func_true   = basis(a, b, c, x[batch_index], approximation_order=approximation_order)
+    
+            loss        =  np.mean((func_true - y[batch_index])**2)
+
+            if verbosity:
+
+                print("Iteration: %d \t--- Loss: %.3f" % (u, loss))
+
+            #print('grads', new_grads)
+            #print('func', func_true)           
+            
+            grads_a   = np.mean(2 * new_grads[0] * (func_true - y[batch_index]))
+            grads_b   = np.mean(2 * new_grads[1] * (func_true - y[batch_index]))
+            grads_c   = np.mean(2 * new_grads[2] * (func_true - y[batch_index]))
+
+
+            a_new = a - lr * grads_a
+            b_new = b - lr * grads_b
+            c_new = c - lr * grads_c           
+
+            if np.isnan([a_new, b_new, c_new]).any() or np.isinf([a_new, b_new, c_new]).any() or (np.abs(np.array([c_new, b_new, c_new])) > max_param_value).any(): #or c_new <= 0
+                if verbosity:
+                    print('BREAK tune_single_dim')
+                    print('func_true', func_true[0])
+                    print('y[batch_index]', y[batch_index][0])
+                    print('a_new, b_new, c_new', a_new, b_new, c_new)
+                break
+
+            a = a_new
+            b = b_new
+            c = c_new          
+
+            if early_stopping is not None:
+                if loss < min_loss:
+                    min_loss = loss
+                    early_stopping_counter = 0
+                    
+                    best_parameters['a'] = a
+                    best_parameters['b'] = b
+                    best_parameters['c'] = c
+
+                else:
+                    if early_stopping_counter >= early_stopping:
+                        if verbosity:
+                            print('Early Stopping requirement reached after ' + str(u) + ' Iterations')                          
+                        break
+                    else:
+                        early_stopping_counter += 1              
+
+            #grads_a   = np.nan_to_num(np.mean(2 * new_grads[0] * (func_true - y[batch_index])).astype(np.float32))
+            #grads_b   = np.nan_to_num(np.mean(2 * new_grads[1] * (func_true - y[batch_index])).astype(np.float32))
+            #grads_c   = np.nan_to_num(np.mean(2 * new_grads[2] * (func_true - y[batch_index])).astype(np.float32))
+
+
+            #(grads_a, grads_b, grads_c) = Normalizer().fit_transform([np.nan_to_num([grads_a, grads_b, grads_c])])[0]
+
+            
+        if min_loss < global_minimum:
+            print('New Global Minimum: ' + str(min_loss))
+            global_minimum = min_loss
+            a_final = best_parameters['a']
+            b_final = best_parameters['b']
+            c_final = best_parameters['c']
+            
     if verbosity:
         print('return abc', a, b, c)
-    return a, b, c 
+    return a_final, b_final, c_final 
 
 
 def compose_features(params, X, approximation_order=3):
@@ -202,7 +262,7 @@ def compose_features(params, X, approximation_order=3):
 
 class symbolic_metamodel:
     
-    def __init__(self, model, X, mode="classification", approximation_order=3, force_polynomial=False, verbosity=False):
+    def __init__(self, model, X, mode="classification", approximation_order=3, force_polynomial=False, verbosity=False, early_stopping=None, restarts=0):
         
         self.verbosity = verbosity
         
@@ -211,19 +271,22 @@ class symbolic_metamodel:
         self.X_new            = self.feature_expander.fit_transform(X) 
         self.X_names          = self.feature_expander.get_feature_names()
         
+        self.mode = mode
         #print('self.X.shape', self.X.shape)
         #print('self.X_new.shape', self.X_new.shape)
         
         self.max_param_value = 100
+        self.early_stopping = early_stopping
+        self.restarts = restarts
         
         self.approximation_order = approximation_order
         self.force_polynomial = force_polynomial
                 
-        if mode == "classification": 
-        
-            self.Y                = model.predict_proba(self.X)[:, 1]
-            self.Y_r              = np.log(self.Y/(1 - self.Y))
             
+        if self.mode == "classification": 
+
+            self.Y                = model.predict_proba(self.X)[:, 1]
+            self.Y_r              = np.log(self.Y/(1 - self.Y))        
         else:
             
             self.Y_r              = model.predict(self.X)
@@ -298,8 +361,9 @@ class symbolic_metamodel:
         
     
     def loss(self, Y_true, Y_metamodel):
-        
-        return np.mean((Y_true - Y_metamodel)**2)
+
+        loss = np.mean((Y_true - Y_metamodel)**2)
+        return loss
     
     def loss_grads(self, Y_true, Y_metamodel, param_grads_x):
         
@@ -320,9 +384,19 @@ class symbolic_metamodel:
         
         print("---- Tuning the basis functions ----")
         
-        for u in self.tqdm_mode(range(self.X.shape[1])):
+        for u in self.tqdm_mode(range(self.X.shape[1]), desc='basis function loop'):
             
-            self.params[u, :] = tune_single_dim(lr=0.1, n_iter=500, x=self.X_new[:, u], y=self.Y_r, approximation_order=self.approximation_order, max_param_value=self.max_param_value)
+            self.params[u, :] = tune_single_dim(lr=0.1, 
+                                                n_iter=500, 
+                                                x=self.X_new[:, u], 
+                                                y=self.Y_r, 
+                                                mode=self.mode,
+                                                tqdm_mode=self.tqdm_mode, 
+                                                verbosity=self.verbosity, 
+                                                approximation_order=self.approximation_order, 
+                                                max_param_value=self.max_param_value, 
+                                                early_stopping=self.early_stopping, 
+                                                restarts=self.restarts)
             
         self.set_equation(reset_init_model=True)
 
@@ -333,6 +407,11 @@ class symbolic_metamodel:
         #print(num_iter) 
         
         #print('self.params', self.params)
+        min_loss = np.inf
+        early_stopping_counter = 0       
+        
+        best_params = None
+        best_coefs = None
         
         for i in self.tqdm_mode(range(num_iter)):
                         
@@ -341,9 +420,10 @@ class symbolic_metamodel:
             #print('batch_index', batch_index[:10])
                         
             if np.isnan(self.X_init[batch_index, :]).any() or np.isinf(self.X_init[batch_index, :]).any():
-                if i == 0:
-                    self.set_equation()  
-                    self.exact_expression, self.approx_expression = self.symbolic_expression()                
+                self.params  = best_params
+                self.init_model.coef_ = best_coefs                    
+                self.set_equation()  
+                self.exact_expression, self.approx_expression = self.symbolic_expression()           
                 
                 if self.verbosity:
                     print('\n\nBREAK X_init')
@@ -352,8 +432,8 @@ class symbolic_metamodel:
                     print('self.params', self.params)
                     print('self.init_model.coef_', self.init_model.coef_)
 
-                    print('self.exact_expression', self.exact_expression)
-                    print('self.approx_expression', self.approx_expression)
+                    #print('self.exact_expression', self.exact_expression)
+                    #print('self.approx_expression', self.approx_expression)
             
                 
                 break                
@@ -367,9 +447,10 @@ class symbolic_metamodel:
             #print('self.Y_r[batch_index]', self.Y_r[batch_index])
             
             if np.isnan(curr_func).any() or np.isinf(curr_func).any():
-                if i == 0:
-                    self.set_equation()  
-                    self.exact_expression, self.approx_expression = self.symbolic_expression()                
+                self.params  = best_params
+                self.init_model.coef_ = best_coefs                   
+                self.set_equation()  
+                self.exact_expression, self.approx_expression = self.symbolic_expression()            
                     
                 if self.verbosity:
                     print('\n\nBREAK curr_func')
@@ -378,8 +459,8 @@ class symbolic_metamodel:
                     print('self.params', self.params)
                     print('self.init_model.coef_', self.init_model.coef_)
 
-                    print('self.exact_expression', self.exact_expression)
-                    print('self.approx_expression', self.approx_expression)
+                    #print('self.exact_expression', self.exact_expression)
+                    #print('self.approx_expression', self.approx_expression)
                 
                 
                 break
@@ -409,12 +490,13 @@ class symbolic_metamodel:
                         
             #print('self.init_model.coef_', self.init_model.coef_[:10])  
             
-            if np.isnan(params).any() or (np.abs(np.array(params)) > self.max_param_value).any() or (params[:, 2] <= 0).any() or np.isnan(coef_).any() or np.abs((np.array(coef_) > self.max_param_value)).any():
+            if np.isnan(params).any() or (np.abs(np.array(params)) > self.max_param_value).any() or np.isnan(coef_).any() or np.abs((np.array(coef_) > self.max_param_value)).any(): #or (params[:, 2] <= 0).any()
                 #self.set_equation()  
                 #self.exact_expression, self.approx_expression = self.symbolic_expression()
-                if i == 0:
-                    self.set_equation()  
-                    self.exact_expression, self.approx_expression = self.symbolic_expression()
+                self.params  = best_params
+                self.init_model.coef_ = best_coefs                      
+                self.set_equation()  
+                self.exact_expression, self.approx_expression = self.symbolic_expression()
                     
                 if self.verbosity:
                     print('\n\nBREAK Params or Coef')
@@ -427,27 +509,54 @@ class symbolic_metamodel:
                     print('coef_', coef_)
                     print('self.init_model.coef_', self.init_model.coef_)
 
-                    print('self.exact_expression', self.exact_expression)
-                    print('self.approx_expression', self.approx_expression)
+                    #print('self.exact_expression', self.exact_expression)
+                    #print('self.approx_expression', self.approx_expression)
+            
             
                 
                 break
             else:
-                self.metamodel_loss.append(self.loss(self.Y_r[batch_index], curr_func))
+                metamodel_loss = self.loss(self.Y_r[batch_index], curr_func)
+                
+                if self.early_stopping is not None:
+                    if metamodel_loss < min_loss:
+                        min_loss = metamodel_loss
+                        early_stopping_counter = 0
+                        
+                        best_params = params
+                        best_coefs = coef_                        
+                        
+                    else:
+                        if early_stopping_counter >= self.early_stopping:
+                            if self.verbosity:
+                                print('Early Stopping requirement reached after ' + str(i) + ' Iterations')
+
+                            self.params  = best_params
+                            self.init_model.coef_ = best_coefs                     
+                            self.set_equation()  
+                            self.exact_expression, self.approx_expression = self.symbolic_expression()
+                            
+                            break
+                        else:
+                            early_stopping_counter += 1
+                    
+                self.metamodel_loss.append(metamodel_loss)
                 self.params  = params
                 self.init_model.coef_ = coef_
                 
                 self.set_equation()  
                 self.exact_expression, self.approx_expression = self.symbolic_expression()            
-                if self.verbosity:
-                    print('self.exact_expression', self.exact_expression)
-                    print('self.approx_expression', self.approx_expression)
+                #if self.verbosity:
+                    #print('self.exact_expression', self.exact_expression)
+                    #print('self.approx_expression', self.approx_expression)
             
     def evaluate(self, X):
         
         X_modified  = self.feature_expander.fit_transform(X)
         X_modified_ = compose_features(self.params, X_modified, approximation_order=self.approximation_order)
+        X_modified_ = np.nan_to_num(X_modified_)
         Y_pred_r    = self.init_model.predict(X_modified_)
+
         
         if self.force_polynomial:
             return Y_pred_r
