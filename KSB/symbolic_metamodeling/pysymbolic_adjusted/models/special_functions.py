@@ -15,12 +15,14 @@ from mpmath import *
 from sympy import *
 #from sympy.printing.theanocode import theano_function
 from sympy.utilities.autowrap import ufuncify
+import sympy as sym
 
 import warnings
 warnings.filterwarnings("ignore")
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
+import tensorflow as tf
 
 class MeijerG:
     
@@ -132,18 +134,27 @@ class MeijerG:
         """
         Evaluates the Meijer G function for the input vector X
         """
+        
+        
         x     = Symbol('x', real=True) 
         
         
         if self.evaluation_mode=='eval':
             
             Y = np.array(list(map(lambda z: float(meijerg(self.a_p, self.b_q, self._const * z).evalf()), list(X))))
-        
+            print(h)
+            
         elif self.evaluation_mode in ['numpy','cython','theano']:
             
-            evaluators_ = {'numpy': lambdify([x], self.approx_expression(), modules=['math']),
-                           'cython': lambdify([x], self.approx_expression(), modules=['math']), #ufuncify([x], self.approx_expression()),
-                           'theano': lambdify([x], self.approx_expression(), modules=['math'])} #theano_function([x], [self.approx_expression()])}
+            return calculate_function_values_from_sympy(self.expression(), X.reshape(-1,1), variable_names='x')
+            
+            #evaluators_ = {'numpy': lambdify([x], self.approx_expression(), modules=['math']),
+            #               'cython': lambdify([x], self.approx_expression(), modules=['math']), #ufuncify([x], self.approx_expression()),
+            #               'theano': lambdify([x], self.approx_expression(), modules=['math'])} #theano_function([x], [self.approx_expression()])}
+            
+            evaluators_ = {'numpy': lambdify([x], self.expression(), modules=['math']),
+                           'cython': lambdify([x], self.expression(), modules=['math']), #ufuncify([x], self.approx_expression()),
+                           'theano': lambdify([x], self.expression(), modules=['math'])} #theano_function([x], [self.approx_expression()])}
             
             evaluater_  = evaluators_[self.evaluation_mode]
 
@@ -167,3 +178,45 @@ class MeijerG:
         
         return grads   
     
+
+
+#@tf.function(experimental_compile=True)
+def calculate_function_values_from_sympy(function, data_points, variable_names=None):
+    function_vars = None
+    
+    if variable_names is None:
+        variable_names = ['X' + str(i) for i in range(data_points.shape[1])]
+    
+    if function is None:
+        return np.array([np.nan for i in range(data_points.shape[0])])
+    try:
+        if variable_names is None:
+            function_vars = function.atoms(Symbol)
+        else:
+            function_vars = [sym.symbols(variable_name, real=True) for variable_name in variable_names]
+        #print('function_vars', function_vars)
+        lambda_function = lambdify([function_vars], function, modules=["scipy", "numpy"])
+        #print('lambda_function', lambda_function)
+        #print('data_points[0]', data_points[0])
+        if len(function_vars) >= 1:
+            function_values = [lambda_function(data_point) for data_point in data_points]
+            
+        else:
+            function_values = [lambda_function() for i in range(data_points.shape[0])]
+    except (NameError, KeyError, TypeError) as e:
+        #print(e)
+        function_values = []
+        for data_point in data_points:
+            function_value = function.evalf(subs={var: data_point[index] for index, var in enumerate(list(function_vars))})
+            try:
+                function_value = float(function_value)
+            except TypeError as te:
+                print('te', te)
+                print('function_value', function_value)
+                print('function', function)
+                print('function_vars', function_vars, type(function_vars))
+                function_value = np.inf
+            function_values.append(function_value)
+    function_values = np.nan_to_num(function_values).ravel()
+                
+    return function_values

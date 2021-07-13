@@ -41,6 +41,7 @@ from sklearn.preprocessing import Normalizer
 from IPython import get_ipython
 
 import tensorflow as tf
+import sympy as sym
 
 
 def is_ipython():
@@ -150,10 +151,10 @@ def tune_single_dim(lr, n_iter, x, y, tqdm_mode, mode = "classification", verbos
     epsilon   = 0.001
     x         = x + epsilon
     
-    #optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
-    a         = 2
-    b         = 1
-    c         = 1
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+    a         = tf.Variable(2.0)
+    b         = tf.Variable(1.0)
+    c         = tf.Variable(1.0)
     
     batch_size  = np.min((x.shape[0], 500)) 
       
@@ -165,9 +166,9 @@ def tune_single_dim(lr, n_iter, x, y, tqdm_mode, mode = "classification", verbos
         
     for restart_number in tqdm(range(restarts+1), desc='restart loop'):
         if restart_number > 0:
-            a         = np.random.uniform(1, 2)
-            b         = np.random.uniform(1, 2)
-            c         = np.random.uniform(1, 2)
+            a         = tf.Variable(np.random.uniform(1, 2))
+            b         = tf.Variable(np.random.uniform(1, 2))
+            c         = tf.Variable(np.random.uniform(1, 2))
         
         min_loss = np.inf
         early_stopping_counter = 0
@@ -180,8 +181,8 @@ def tune_single_dim(lr, n_iter, x, y, tqdm_mode, mode = "classification", verbos
 
             #print('function calls')
 
-            new_grads   = basis_grad(a, b, c, x[batch_index])
-            func_true   = basis(a, b, c, x[batch_index], approximation_order=approximation_order)
+            new_grads   = basis_grad(tf.identity(a).numpy(), tf.identity(b).numpy(), tf.identity(c).numpy(), x[batch_index])
+            func_true   = basis(tf.identity(a).numpy(), tf.identity(b).numpy(), tf.identity(c).numpy(), x[batch_index], approximation_order=approximation_order)
     
             loss        =  np.mean((func_true - y[batch_index])**2)
 
@@ -196,31 +197,35 @@ def tune_single_dim(lr, n_iter, x, y, tqdm_mode, mode = "classification", verbos
             grads_b   = np.mean(2 * new_grads[1] * (func_true - y[batch_index]))
             grads_c   = np.mean(2 * new_grads[2] * (func_true - y[batch_index]))
 
-
-            a_new = a - lr * grads_a
-            b_new = b - lr * grads_b
-            c_new = c - lr * grads_c           
-
-            if np.isnan([a_new, b_new, c_new]).any() or np.isinf([a_new, b_new, c_new]).any() or (np.abs(np.array([c_new, b_new, c_new])) > max_param_value).any(): #or c_new <= 0
+            optimizer.apply_gradients(zip([grads_a, grads_b, grads_c], [a,b,c]))
+            
+            if tf.reduce_any(np.isnan([tf.identity(a).numpy(), tf.identity(b).numpy(), tf.identity(c).numpy()])) or tf.reduce_any(np.isinf([tf.identity(a).numpy(), tf.identity(b).numpy(), tf.identity(c).numpy()])) or tf.reduce_any((np.abs(np.array([tf.identity(a).numpy(), tf.identity(b).numpy(), tf.identity(c).numpy()])) > max_param_value)): #or c_new <= 0
                 if verbosity:
                     print('BREAK tune_single_dim')
                     print('func_true', func_true[0])
                     print('y[batch_index]', y[batch_index][0])
-                    print('a_new, b_new, c_new', a_new, b_new, c_new)
+                    print('a_new, b_new, c_new', grads_a, grads_b, grads_c)
+                    print('best_parameters abc', best_parameters['a'], best_parameters['b'], best_parameters['c'])
                 break
+                
+            #print('a,b,c', a,b,c)
+            #a_new = a - lr * grads_a
+            #b_new = b - lr * grads_b
+            #c_new = c - lr * grads_c           
 
-            a = a_new
-            b = b_new
-            c = c_new          
+
+            #a = a_new
+            #b = b_new
+            #c = c_new          
 
             if early_stopping is not None:
                 if loss < min_loss:
                     min_loss = loss
                     early_stopping_counter = 0
                     
-                    best_parameters['a'] = a
-                    best_parameters['b'] = b
-                    best_parameters['c'] = c
+                    best_parameters['a'] = tf.identity(a).numpy()
+                    best_parameters['b'] = tf.identity(b).numpy()
+                    best_parameters['c'] = tf.identity(c).numpy()
 
                 else:
                     if early_stopping_counter >= early_stopping:
@@ -246,7 +251,7 @@ def tune_single_dim(lr, n_iter, x, y, tqdm_mode, mode = "classification", verbos
             c_final = best_parameters['c']
             
     if verbosity:
-        print('return abc', a, b, c)
+        print('return abc', a_final, b_final, c_final)
     return a_final, b_final, c_final 
 
 
@@ -275,7 +280,7 @@ class symbolic_metamodel:
         #print('self.X.shape', self.X.shape)
         #print('self.X_new.shape', self.X_new.shape)
         
-        self.max_param_value = 100
+        self.max_param_value = 100000
         self.early_stopping = early_stopping
         self.restarts = restarts
         
@@ -363,6 +368,7 @@ class symbolic_metamodel:
     def loss(self, Y_true, Y_metamodel):
 
         loss = np.mean((Y_true - Y_metamodel)**2)
+        
         return loss
     
     def loss_grads(self, Y_true, Y_metamodel, param_grads_x):
@@ -383,9 +389,8 @@ class symbolic_metamodel:
     def fit(self, num_iter=10, batch_size=100, learning_rate=.01):
         
         print("---- Tuning the basis functions ----")
-        
         for u in self.tqdm_mode(range(self.X.shape[1]), desc='basis function loop'):
-            
+    
             self.params[u, :] = tune_single_dim(lr=0.1, 
                                                 n_iter=500, 
                                                 x=self.X_new[:, u], 
@@ -397,9 +402,8 @@ class symbolic_metamodel:
                                                 max_param_value=self.max_param_value, 
                                                 early_stopping=self.early_stopping, 
                                                 restarts=self.restarts)
-            
         self.set_equation(reset_init_model=True)
-
+        self.exact_expression, self.approx_expression = self.symbolic_expression()         
         self.metamodel_loss = []
         
         print("----  Optimizing the metamodel  ----")
@@ -413,17 +417,24 @@ class symbolic_metamodel:
         best_params = None
         best_coefs = None
         
+        optimizer_coef_ = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        optimizer_params = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        
+        params_variable       = [[tf.Variable(item) for item in array] for array in self.params] #tf.Variable(self.params)
+        coef_variable         = [tf.Variable(item) for item in self.init_model.coef_]#tf.Variable(self.init_model.coef_)
+        
+      
         for i in self.tqdm_mode(range(num_iter)):
-                        
             batch_index = np.random.choice(list(range(self.X_new.shape[0])), size=batch_size)
             
             #print('batch_index', batch_index[:10])
                         
             if np.isnan(self.X_init[batch_index, :]).any() or np.isinf(self.X_init[batch_index, :]).any():
-                self.params  = best_params
-                self.init_model.coef_ = best_coefs                    
-                self.set_equation()  
-                self.exact_expression, self.approx_expression = self.symbolic_expression()           
+                print('\n\nBREAK X_init', i)
+                #self.params  = best_params
+                #self.init_model.coef_ = best_coefs                    
+                #self.set_equation()  
+                #self.exact_expression, self.approx_expression = self.symbolic_expression()           
                 
                 if self.verbosity:
                     print('\n\nBREAK X_init')
@@ -437,20 +448,25 @@ class symbolic_metamodel:
             
                 
                 break                
-                
-            curr_func   = self.init_model.predict(np.nan_to_num(self.X_init[batch_index, :]))
             
-            #print('curr_func', curr_func[:10])
-                        
+            curr_func   = self.init_model.predict(np.nan_to_num(self.X_init[batch_index, :]))
+            #print('curr_func INIT MODEL', np.round(curr_func, 3)[:5])
+                            
+            
+            curr_func   = calculate_function_values_from_sympy(self.exact_expression, np.nan_to_num(self.X_init[batch_index, :]))
+            #print('curr_func calculate_function_values_from_sympy MODEL', np.round(curr_func, 3)[:5])
+            
+                                    
             #print('self.loss(self.Y_r[batch_index], curr_func)', self.loss(self.Y_r[batch_index], curr_func))
             
             #print('self.Y_r[batch_index]', self.Y_r[batch_index])
             
             if np.isnan(curr_func).any() or np.isinf(curr_func).any():
-                self.params  = best_params
-                self.init_model.coef_ = best_coefs                   
-                self.set_equation()  
-                self.exact_expression, self.approx_expression = self.symbolic_expression()            
+                print('\n\nBREAK curr_func', i)
+                #self.params  = best_params
+                #self.init_model.coef_ = best_coefs                   
+                #self.set_equation()  
+                #self.exact_expression, self.approx_expression = self.symbolic_expression()            
                     
                 if self.verbosity:
                     print('\n\nBREAK curr_func')
@@ -468,9 +484,10 @@ class symbolic_metamodel:
             #param_grads  = np.nan_to_num(self.get_gradients(self.Y_r[batch_index], curr_func, batch_index).astype(np.float32))
             param_grads  = self.get_gradients(self.Y_r[batch_index], curr_func, batch_index)
             
-            params = self.params - learning_rate * param_grads #np.nan_to_num(self.params - learning_rate * param_grads, nan=0.001)
-
+            flatten_list = lambda t: [item for sublist in t for item in sublist]      
             
+            optimizer_params.apply_gradients(flatten_list(list([list(zip(grads, variables)) for grads, variables in zip(param_grads, params_variable)])))
+            #params = self.params - learning_rate * param_grads #np.nan_to_num(self.params - learning_rate * param_grads, nan=0.001)            
             
             
             
@@ -480,8 +497,8 @@ class symbolic_metamodel:
             #coef_grads            = np.nan_to_num(np.array([self.loss_grad_coeff(self.Y_r[batch_index], curr_func, self.X_init[batch_index, k]) for k in range(self.X_init.shape[1])]).astype(np.float32)) 
             
             coef_grads            = [self.loss_grad_coeff(self.Y_r[batch_index], curr_func, self.X_init[batch_index, k]) for k in range(self.X_init.shape[1])]
-            
-            coef_ = self.init_model.coef_ - learning_rate * np.array(coef_grads)
+            optimizer_coef_.apply_gradients(zip(coef_grads, coef_variable))
+            #coef_ = self.init_model.coef_ - learning_rate * np.array(coef_grads)
 
              
             #print('coef_grads', coef_grads[:10])
@@ -490,23 +507,32 @@ class symbolic_metamodel:
                         
             #print('self.init_model.coef_', self.init_model.coef_[:10])  
             
-            if np.isnan(params).any() or (np.abs(np.array(params)) > self.max_param_value).any() or np.isnan(coef_).any() or np.abs((np.array(coef_) > self.max_param_value)).any(): #or (params[:, 2] <= 0).any()
+            #if np.isnan(params).any() or (np.abs(np.array(params)) > self.max_param_value).any() or np.isnan(coef_).any() or np.abs((np.array(coef_) > self.max_param_value)).any(): #or (params[:, 2] <= 0).any()
+            if tf.reduce_any(np.isnan(tf.identity(params_variable))) or tf.reduce_any((tf.abs(tf.identity(params_variable)) > self.max_param_value)) or tf.reduce_any(np.isnan(tf.identity(coef_variable))) or tf.reduce_any((np.abs(tf.identity(coef_variable)) > self.max_param_value)): #or (params[:, 2] <= 0).any()
+                print('\n\nBREAK Params or Coef', i)
+                print('curr_func', curr_func)
+
+                print('param_grads', param_grads)
+                print('params', params_variable)
+                print('self.params', self.params)
+                print('coef_grads', coef_grads)
+                print('coef_', coef_variable)
+                
+                
+                #self.params  = best_params
+                #self.init_model.coef_ = best_coefs                      
                 #self.set_equation()  
                 #self.exact_expression, self.approx_expression = self.symbolic_expression()
-                self.params  = best_params
-                self.init_model.coef_ = best_coefs                      
-                self.set_equation()  
-                self.exact_expression, self.approx_expression = self.symbolic_expression()
                     
                 if self.verbosity:
                     print('\n\nBREAK Params or Coef')
                     print('curr_func', curr_func)
 
                     print('param_grads', param_grads)
-                    print('params', params)
+                    print('params', params_variable)
                     print('self.params', self.params)
                     print('coef_grads', coef_grads)
-                    print('coef_', coef_)
+                    print('coef_', coef_variable)
                     print('self.init_model.coef_', self.init_model.coef_)
 
                     #print('self.exact_expression', self.exact_expression)
@@ -518,38 +544,49 @@ class symbolic_metamodel:
             else:
                 metamodel_loss = self.loss(self.Y_r[batch_index], curr_func)
                 
+                print("Iteration: %d \t--- Loss: %.3f" % (i, metamodel_loss))
+                
                 if self.early_stopping is not None:
                     if metamodel_loss < min_loss:
                         min_loss = metamodel_loss
                         early_stopping_counter = 0
                         
-                        best_params = params
-                        best_coefs = coef_                        
+                        best_params = tf.identity(params_variable).numpy()
+                        best_coefs = tf.identity(coef_variable).numpy()                      
+                        #best_params = params
+                        #best_coefs = coef_                           
                         
                     else:
                         if early_stopping_counter >= self.early_stopping:
                             if self.verbosity:
                                 print('Early Stopping requirement reached after ' + str(i) + ' Iterations')
 
-                            self.params  = best_params
-                            self.init_model.coef_ = best_coefs                     
-                            self.set_equation()  
-                            self.exact_expression, self.approx_expression = self.symbolic_expression()
+                            #self.params  = best_params
+                            #self.init_model.coef_ = best_coefs                     
+                            #self.set_equation()  
+                            #self.exact_expression, self.approx_expression = self.symbolic_expression()
                             
                             break
                         else:
                             early_stopping_counter += 1
                     
                 self.metamodel_loss.append(metamodel_loss)
-                self.params  = params
-                self.init_model.coef_ = coef_
+                self.params  = tf.identity(params_variable).numpy()
+                self.init_model.coef_ = tf.identity(coef_variable).numpy()                
+                #self.params  = params
+                #self.init_model.coef_ = coef_
                 
                 self.set_equation()  
                 self.exact_expression, self.approx_expression = self.symbolic_expression()            
                 #if self.verbosity:
                     #print('self.exact_expression', self.exact_expression)
                     #print('self.approx_expression', self.approx_expression)
-            
+        
+        self.params  = best_params
+        self.init_model.coef_ = best_coefs                     
+        self.set_equation()  
+        self.exact_expression, self.approx_expression = self.symbolic_expression()        
+        
     def evaluate(self, X):
         
         X_modified  = self.feature_expander.fit_transform(X)
@@ -660,3 +697,45 @@ class symbolic_metamodel:
         return gards_
     
         
+
+        
+def calculate_function_values_from_sympy(function, data_points, variable_names=None):
+    function_vars = None
+    
+    if variable_names is None:
+        variable_names = ['X' + str(i) for i in range(data_points.shape[1])]
+    
+    if function is None:
+        return np.array([np.nan for i in range(data_points.shape[0])])
+    try:
+        if variable_names is None:
+            function_vars = function.atoms(Symbol)
+            print(function_vars)
+        else:
+            function_vars = [sym.symbols(variable_name, real=True) for variable_name in variable_names]
+        #print('function_vars', function_vars)
+        lambda_function = lambdify([function_vars], function, modules=["scipy", "numpy"])
+        #print('lambda_function', lambda_function)
+        #print('data_points[0]', data_points[0])
+        if len(function_vars) >= 1:
+            function_values = [lambda_function(data_point) for data_point in data_points]
+            
+        else:
+            function_values = [lambda_function() for i in range(data_points.shape[0])]
+    except (NameError, KeyError) as e:
+        #print(e)
+        function_values = []
+        for data_point in data_points:
+            function_value = function.evalf(subs={var: data_point[index] for index, var in enumerate(list(function_vars))})
+            try:
+                function_value = float(function_value)
+            except TypeError as te:
+                #print('te', te)
+                #print('function_value', function_value)
+                #print('function', function)
+                #print('function_vars', function_vars, type(function_vars))
+                function_value = np.inf
+            function_values.append(function_value)
+    function_values = np.nan_to_num(function_values).ravel()
+                
+    return function_values
