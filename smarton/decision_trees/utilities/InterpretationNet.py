@@ -52,45 +52,9 @@ from sympy import Symbol, sympify, lambdify, abc, SympifyError
 from utilities.LambdaNet import *
 from utilities.metrics import *
 from utilities.utility_functions import *
+from utilities.DecisionTree_BASIC import *
 
-#######################################################################################################################################################
-#############################################################Setting relevant parameters from current config###########################################
-#######################################################################################################################################################
 
-def initialize_InterpretationNet_config_from_curent_notebook(config):
-    try:
-        globals().update(config['data'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['lambda_net'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['i_net'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['evaluation'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['computation'])
-    except KeyError:
-        print(KeyError)
-    
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
-    if int(tf.__version__[0]) >= 2:
-        tf.random.set_seed(RANDOM_SEED)
-    else:
-        tf.set_random_seed(RANDOM_SEED)
-
-            
             
 #######################################################################################################################################################
 ######################################################################AUTOKERAS BLOCKS#################################################################
@@ -169,137 +133,62 @@ class RegressionDenseInet(ak.Block):
 #################################################################I-NET RESULT CALCULATION##############################################################
 #######################################################################################################################################################
     
-def interpretation_net_training(lambda_net_train_dataset_list, 
-                                         lambda_net_valid_dataset_list, 
-                                         lambda_net_test_dataset_list):
+def interpretation_net_training(lambda_net_train_dataset, 
+                                lambda_net_valid_dataset, 
+                                lambda_net_test_dataset,
+                                config,
+                                callback_names=[]):
 
-    epochs_save_range_lambda = range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda) if each_epochs_save_lambda == 1 else range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda+1) if multi_epoch_analysis else range(1,2)
     
-    n_jobs_inet_training = n_jobs
-    if n_jobs==1 or (samples_list != None and len(samples_list) == 1) or (len(lambda_net_train_dataset_list) == 1 and samples_list == None) or use_gpu:
-        n_jobs_inet_training = 1
-    verbose = 0 if n_jobs_inet_training == 1 else 11
-        
-    save_string_list = []      
-    for i in range(len(lambda_net_train_dataset_list)):
-        save_string_list.append('')
-
-            
-    if samples_list == None:      
-        
-        print('----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------')
-        
-        start = time.time() 
-        
-        
-        parallel_inet = Parallel(n_jobs=n_jobs_inet_training, verbose=verbose, backend='multiprocessing')     
-        results_list = parallel_inet(delayed(train_inet)(lambda_net_train_dataset,
-                                                           lambda_net_valid_dataset,
-                                                           lambda_net_test_dataset,
-                                                           current_jobs=n_jobs_inet_training,
-                                                           callback_names=['early_stopping'],
-                                                           save_string='epochs_' + str(save_epochs)) for lambda_net_train_dataset,
-                                                                                                         lambda_net_valid_dataset,
-                                                                                                         lambda_net_test_dataset,
-                                                                                                         save_epochs in zip(lambda_net_train_dataset_list,
-                                                                                                                                          lambda_net_valid_dataset_list,
-                                                                                                                                          lambda_net_test_dataset_list,
-                                                                                                                                          list(epochs_save_range_lambda)))          
-        del parallel_inet
-                
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Training Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')
-        
-        if train_model:
-            history_list = [result[0] for result in results_list]
-        else:
-            paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
-
-            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
-            with open(path, 'rb') as f:
-                history_list = pickle.load(f)  
-                
-        valid_data_list = [result[1] for result in results_list]
-        X_valid_list = [valid_data[0] for valid_data in valid_data_list]
-        y_valid_list = [valid_data[1] for valid_data in valid_data_list]
-        
-        test_data_list = [result[2] for result in results_list]
-        X_test_list = [test_data[0] for test_data in test_data_list]
-        y_test_list = [test_data[1] for test_data in test_data_list]   
-        
-        
-        loss_function_list = [result[3] for result in results_list]
-        metrics_list = [result[4] for result in results_list]
-        
-        print('---------------------------------------------------------------------------------------------------------------------------')
-        print('------------------------------------------------------ LOADING MODELS -----------------------------------------------------')
-        
-        start = time.time() 
-        
-        identifier_type = 'epochs'
-        model_list = load_inets(identifier_type=identifier_type, path_identifier_list=list(epochs_save_range_lambda), loss_function_list=loss_function_list, metrics_list=metrics_list)
-        
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Loading Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
-        
+    print('----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------')
+    start = time.time() 
+    
+    result = train_inet(lambda_net_train_dataset,
+                        lambda_net_valid_dataset,
+                        lambda_net_test_dataset,
+                        config,
+                        callback_names)
+    
+    end = time.time()     
+    inet_train_time = (end - start) 
+    minutes, seconds = divmod(int(inet_train_time), 60)
+    hours, minutes = divmod(minutes, 60)        
+    print('Training Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')    
+           
+    if not config['computation']['load_model']:
+        history = result[0]
     else:
-        parallel_inet = Parallel(n_jobs=n_jobs_inet_training, verbose=verbose, backend='multiprocessing') 
-        results_list = parallel_inet(delayed(train_inet)(lambda_net_train_dataset.sample(samples),
-                                                          lambda_net_valid_dataset,
-                                                          lambda_net_test_dataset, 
-                                                          current_jobs=n_jobs_inet_training,
-                                                          callback_names=['early_stopping'],
-                                                          save_string='samples_' + str(samples)) for samples in samples_list)     
+        paths_dict = generate_paths(config, path_type = 'interpretation_net')
 
-        del parallel_inet
+        path = './data/results/' + paths_dict['path_identifier_interpretation_net'] + '/history' + '.pkl'
+        with open(path, 'rb') as f:
+            history = pickle.load(f)  
                 
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Training Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')
-        
-        if train_model:
-            history_list = [result[0] for result in results_list]
-        else:
-            paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
+    valid_data = result[1]
+    X_valid = valid_data[0]
+    y_valid = valid_data[1]
 
-            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
-            with open(path, 'rb') as f:
-                history_list = pickle.load(f)      
-        
-        
-        valid_data_list = [result[1] for result in results_list]
-        X_valid_list = [valid_data[0] for valid_data in valid_data_list]
-        y_valid_list = [valid_data[1] for valid_data in valid_data_list]
-        
-        test_data_list = [result[2] for result in results_list]
-        X_test_list = [test_data[0] for test_data in test_data_list]
-        y_test_list = [test_data[1] for test_data in test_data_list]   
-        
-        loss_function_list = [result[3] for result in results_list]
-        metrics_list = [result[4] for result in results_list]
-        
-        print('---------------------------------------------------------------------------------------------------------------------------')
-        print('------------------------------------------------------ LOADING MODELS -----------------------------------------------------')
-        
-        start = time.time() 
-        
-        identifier_type = 'samples'
-        model_list = load_inets(identifier_type=identifier_type, path_identifier_list=samples_list, loss_function_list=loss_function_list, metrics_list=metrics_list)
-        
-        end = time.time()     
-        inet_train_time = (end - start) 
-        minutes, seconds = divmod(int(inet_train_time), 60)
-        hours, minutes = divmod(minutes, 60)        
-        print('Loading Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
+    test_data = result[2]
+    X_test = test_data[0]
+    y_test = test_data[1]
 
+
+    loss_function = result[3]
+    metrics = result[4]
+
+    print('---------------------------------------------------------------------------------------------------------------------------')
+    print('------------------------------------------------------ LOADING MODELS -----------------------------------------------------')
+
+    start = time.time() 
+
+    model_list = load_inet(loss_function=loss_function, metrics=metrics)
+
+    end = time.time()     
+    inet_load_time = (end - start) 
+    minutes, seconds = divmod(int(inet_load_time), 60)
+    hours, minutes = divmod(minutes, 60)        
+    print('Loading Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
+       
     if not nas:
         generate_history_plots(history_list, by=identifier_type)
         #save_results(history_list, scores_test_list, by=identifier_type)    
@@ -331,38 +220,28 @@ def interpretation_net_training(lambda_net_train_dataset_list,
 ######################################################################I-NET TRAINING###################################################################
 #######################################################################################################################################################
 
-def load_inets(identifier_type, path_identifier_list, loss_function_list, metrics_list):
+def load_inet(loss_function_list, metrics_list):
     
     
-    paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
-
-    generic_path_identifier = str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data']
-    if nas:
-        generic_path_identifier = nas_type + '_' + generic_path_identifier
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
-    save_string_list = []
-    for path_identifier in path_identifier_list:
-        save_string_list.append(str(identifier_type) + '_' + str(path_identifier))
-       
-    directory = './data/saved_models/'
-    
+    path = paths_dict['path_identifier_interpretation_net_data'] + '/model'
     
 
-    model_list = []
+    model = []
     from tensorflow.keras.utils import CustomObjectScope
-    for save_string, loss_function, metrics in zip(save_string_list, loss_function_list, metrics_list):
-        loss_function = dill.loads(loss_function)
-        metrics = dill.loads(metrics)         
+    loss_function = dill.loads(loss_function)
+    metrics = dill.loads(metrics)         
+
+    #with CustomObjectScope({'custom_loss': loss_function}):
+    custom_object_dict = {}
+    custom_object_dict[loss_function.__name__] = loss_function
+    for metric in  metrics:
+        custom_object_dict[metric.__name__] = metric        
+    model = tf.keras.models.load_model(path, custom_objects=custom_object_dict) # #, compile=False
+    model_list.append(model)
         
-        #with CustomObjectScope({'custom_loss': loss_function}):
-        custom_object_dict = {}
-        custom_object_dict[loss_function.__name__] = loss_function
-        for metric in  metrics:
-            custom_object_dict[metric.__name__] = metric        
-        model = tf.keras.models.load_model(directory + generic_path_identifier + save_string, custom_objects=custom_object_dict) # #, compile=False
-        model_list.append(model)
-        
-    return model_list
+    return model
 
 
 def normalize_lambda_net(flat_weights, random_evaluation_dataset, base_model=None, config=None): 
@@ -547,128 +426,97 @@ def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda
     else: #(if not inet_training_normalized and lambda_trained_normalized)
         return None
         
-def generate_inet_train_data(lambda_net_dataset, data_reshape_version=1):
-    X_data = None
+def generate_inet_train_data(lambda_net_dataset, config):
+    #X_data = None
     X_data_flat = None
     y_data = None
     normalization_parameter_dict = None
     
-    X_data = np.array(lambda_net_dataset.weight_list)
+    X_data = lambda_net_dataset.network_parameters_array
     
-    if normalize_inet_data: 
-        config={'optimizer_lambda': optimizer_lambda,
-               'loss_lambda': loss_lambda}
         
+    if not config['i_net']['optimize_decision_function']: #target polynomial as inet target
+        y_data = lambda_net_dataset.target_function_parameters_array
+    else:
+        y_data = np.zeros_like(lambda_net_dataset.target_function_parameters_array)
         
-        normalization_parameter_dict = {
-            'min': [],
-            'max': []
-        }
+    if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['nas_type']['convolution_layers'] != 'SEQUENTIAL'):
+        X_data, X_data_flat = restructure_data_cnn_lstm(X_data, config, subsequences=None)
 
-        parallel_normalize_lambda = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
-        results_normalize_lambda = parallel_normalize_lambda(delayed(normalize_lambda_net)(flat_weights, random_evaluation_dataset, dill.dumps(base_model), config=config) for flat_weights in X_data)         
-        del parallel_normalize_lambda
-
-        X_data = np.array([result[0] for result in results_normalize_lambda])
-        normalization_parameter_dict['min'] = [result[1][0] for result in results_normalize_lambda]
-        normalization_parameter_dict['max'] = [result[1][1] for result in results_normalize_lambda]
-
-
-        
-    if evaluate_with_real_function: #target polynomial as inet target
-        y_data = np.array(lambda_net_dataset.target_polynomial_list)
-
-        
-        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-            if data_reshape_version == None:
-                data_reshape_version = 2
-            X_data, X_data_flat = restructure_data_cnn_lstm(X_data, version=data_reshape_version, subsequences=None)
-
-            
-    else: #lstsq lambda pred polynomial as inet target
-        y_data = np.array(lambda_net_dataset.lstsq_lambda_pred_polynomial_list)
-        
-        if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
-            if data_reshape_version == None:
-                data_reshape_version = 2
-            X_data, X_data_flat = restructure_data_cnn_lstm(X_data, version=data_reshape_version, subsequences=None)
 
     
-    return X_data, X_data_flat, y_data, normalization_parameter_dict
-        
+    return X_data, X_data_flat, y_data
+
+
 def train_inet(lambda_net_train_dataset,
               lambda_net_valid_dataset,
               lambda_net_test_dataset, 
-              current_jobs,
-              callback_names = [],
-              save_string = None):
+              config,
+              callback_names):
     
-   
-    global optimizer
-    global loss
-    global data_reshape_version
-    
-    paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
     ############################## DATA PREPARATION ###############################
     
-    base_model = generate_base_model()
-    random_evaluation_dataset = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n))
-            
-    weights_structure = base_model.get_weights()
-    dims = [np_arrays.shape for np_arrays in weights_structure]         
-
-    (X_train, X_train_flat, y_train, normalization_parameter_train_dict) = generate_inet_train_data(lambda_net_train_dataset, data_reshape_version=data_reshape_version)
-    (X_valid, X_valid_flat, y_valid, normalization_parameter_valid_dict) = generate_inet_train_data(lambda_net_valid_dataset, data_reshape_version=data_reshape_version)
-    (X_test, X_test_flat, y_test, normalization_parameter_test_dict) = generate_inet_train_data(lambda_net_test_dataset, data_reshape_version=data_reshape_version)
+    random_model = generate_base_model(config)
+    random_evaluation_dataset = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
+        
+    random_network_parameters = random_model.get_weights()
+    network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]         
+    print('1')
+    (X_train, X_train_flat, y_train) = generate_inet_train_data(lambda_net_train_dataset, config)
+    (X_valid, X_valid_flat, y_valid) = generate_inet_train_data(lambda_net_valid_dataset, config)
+    (X_test, X_test_flat, y_test) = generate_inet_train_data(lambda_net_test_dataset, config)
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     metrics = []
-    if consider_labels_training:
-        if (not evaluate_with_real_function and sample_sparsity is not None) or sparse_poly_representation_version==1:
-            raise SystemExit('No coefficient-based optimization possible with reduced output monomials - Please change settings')         
-        loss_function = inet_coefficient_loss_wrapper(inet_loss, list_of_monomial_identifiers)
-        
-        for inet_metric in list(flatten([inet_metrics, inet_loss])):
-            #metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model))     
-            metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
-    else:
-        if evaluate_with_real_function:
-            loss_function = inet_poly_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)
-            #for inet_metric in inet_metrics:
-                #metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
-            for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
+    loss_function = None
+    
+    if config['i_net']['function_value_loss']:
+        metrics.append(tf.keras.losses.get('mae'))
+        if config['i_net']['optimize_decision_function']:
+            loss_function = inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config)
+            #metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
+            for metric in config['i_net']['metrics']:
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))  
+                metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config))  
         else:
-            loss_function = inet_lambda_fv_loss_wrapper(inet_loss, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)
-            for inet_metric in inet_metrics:
-                metrics.append(inet_lambda_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims)) 
-            #for inet_metric in list(flatten([inet_metrics, inet_loss])):
-                #COEFFICIENT LOSS NOT POSSIBLE IF sample_sparsity is not None --> LSTSQ POLY FÜR VEGLEICH HAT NICHT DIE GLEICHE STRUKTUR
-                #metrics.append(inet_coefficient_loss_wrapper(inet_metric, list_of_monomial_identifiers))            
-                #metrics.append(inet_poly_fv_loss_wrapper(inet_metric, random_evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model)) 
+            #loss_function = inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config)
+            metrics.append(inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))
+            for metric in config['i_net']['metrics']:
+                metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))  
+            #raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
+    else:
+        #metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
+        metrics.append(inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))
+        if config['i_net']['optimize_decision_function']:
+            raise SystemExit('Coefficient Loss not implemented for selected function representation')
+        else:
+            if config['i_net']['function_representation_type'] is None:
+                loss_function = tf.keras.losses.get('mae') #inet_coefficient_loss_wrapper(inet_loss)
                 
-    if convolution_layers != None or lstm_layers != None or (nas and nas_type != 'SEQUENTIAL'):
+    if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL'):
         y_train_model = np.hstack((y_train, X_train_flat))   
         valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
     else:
         y_train_model = np.hstack((y_train, X_train))   
         valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
               
-
+    loss_function = inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config)
+    metrics = []
         
     ############################## BUILD MODEL ###############################
-    if train_model:
-        if nas:
+    if not config['computation']['load_model']:
+        if config['i_net']['nas']:
             from tensorflow.keras.utils import CustomObjectScope
 
             custom_object_dict = {}
             loss_function_name = loss_function.__name__
             custom_object_dict[loss_function_name] = loss_function
             metric_names = []
-            for metric in  metrics:
+            for metric in  config['i_net']['metrics']:
                 metric_name = metric.__name__
                 metric_names.append(metric_name)
                 custom_object_dict[metric_name] = metric  
@@ -697,11 +545,11 @@ def train_inet(lambda_net_train_dataset,
                         outputs_coeff = RegressionDenseInet()(hidden_node)  
                         outputs_list = [outputs_coeff]
 
-                        if sparse_poly_representation_version == 1:
+                        if config['i_net']['function_representation_type'] == 1:
                             for outputs_index in range(interpretation_net_output_monomials):
                                 outputs_identifer =  ClassificationDenseInet()(hidden_node)
                                 outputs_list.append(outputs_identifer)                                    
-                        elif sparse_poly_representation_version == 2:
+                        elif config['i_net']['function_representation_type'] == 2:
                             for outputs_index in range(interpretation_net_output_monomials):
                                 for var_index in range(n):
                                     outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
@@ -811,7 +659,7 @@ def train_inet(lambda_net_train_dataset,
 
                         output_node = CombinedOutputInet()(outputs_list)            
 
-                directory = './data/autokeras/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string
+                directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + nas_type + '_' + str(data_reshape_version)
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -831,8 +679,8 @@ def train_inet(lambda_net_train_dataset,
                     x=X_train,
                     y=y_train_model,
                     validation_data=valid_data,
-                    epochs=epochs,
-                    batch_size=batch_size,
+                    epochs=config['i_net']['epochs'],
+                    batch_size=config['i_net']['batch_size'],
                     callbacks=return_callbacks_from_string('early_stopping'),
                     )
 
@@ -840,51 +688,39 @@ def train_inet(lambda_net_train_dataset,
                 history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
                 model = auto_model.export_model()
 
-                model.save('./data/saved_models/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
+                model.save('./data/saved_models/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'])
 
         else: 
             inputs = Input(shape=X_train.shape[1], name='input')
 
-            #hidden = Dense(dense_layers[0], activation='relu', name='hidden1_' + str(dense_layers[0]))(inputs)
-            hidden = tf.keras.layers.Dense(dense_layers[0], name='hidden1_' + str(dense_layers[0]))(inputs)
+            hidden = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], name='hidden1_' + str(config['i_net']['dense_layers'][0]))(inputs)
             hidden = tf.keras.layers.Activation(activation='relu', name='activation1_' + 'relu')(hidden)
 
-            if dropout > 0:
-                #hidden = Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
-                hidden = tf.keras.layers.Dropout(dropout, name='dropout1_' + str(dropout))(hidden)
+            if config['i_net']['dropout'][0] > 0:
+                hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][0], name='dropout1_' + str(config['i_net']['dropout'][0]))(hidden)
 
-            for layer_index, neurons in enumerate(dense_layers[1:]):
-                if dropout > 0 and layer_index > 0:
-                    #hidden = Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)  
-                    hidden = tf.keras.layers.Dropout(dropout, name='dropout' + str(layer_index+2) + '_' + str(dropout))(hidden)
-
-                #hidden = Dense(neurons, activation='relu', name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+            for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
                 hidden = tf.keras.layers.Dense(neurons, name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
                 hidden = tf.keras.layers.Activation(activation='relu', name='activation'  + str(layer_index+2) + '_relu')(hidden)
+                
+                if config['i_net']['dropout'][layer_index+1] > 0:
+                    hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
 
-            if dropout_output > 0:
-                #hidden = Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)            
-                hidden = tf.keras.layers.Dropout(dropout_output, name='dropout_output_' + str(dropout_output))(hidden)
-
-            if interpretation_net_output_monomials == None:
-                #outputs = Dense(sparsity, name='output_' + str(neurons))(hidden)
-                outputs = tf.keras.layers.Dense(sparsity, name='output_' + str(neurons))(hidden)
+            if True:
+                outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], name='output_' + str(config['function_family']['function_representation_length']))(hidden)
             else:
-                #outputs_coeff = Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
                 outputs_coeff = tf.keras.layers.Dense(interpretation_net_output_monomials, name='output_coeff_' + str(interpretation_net_output_monomials))(hidden)
 
                 outputs_list = [outputs_coeff]
 
                 if sparse_poly_representation_version == 1:
                     for outputs_index in range(interpretation_net_output_monomials):
-                        #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
                         outputs_identifer = tf.keras.layers.Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
                         outputs_list.append(outputs_identifer)
 
                 elif sparse_poly_representation_version == 2:
                     for outputs_index in range(interpretation_net_output_monomials):
                         for var_index in range(n):
-                            #outputs_identifer = Dense(sparsity, activation='softmax', name='output_identifier' + str(outputs_index+1) + '_' + str(sparsity))(hidden)
                             outputs_identifer = tf.keras.layers.Dense(d+1, activation='softmax', name='output_identifier' + '_mon' +  str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(sparsity))(hidden)
                             outputs_list.append(outputs_identifer)       
 
@@ -896,6 +732,7 @@ def train_inet(lambda_net_train_dataset,
 
             callbacks = return_callbacks_from_string(callback_names)            
 
+            optimizer = config['i_net']['optimizer']
             if optimizer == "custom":
                 optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
 
@@ -909,15 +746,15 @@ def train_inet(lambda_net_train_dataset,
             ############################## PREDICTION ###############################
             history = model.fit(X_train,
                       y_train_model,
-                      epochs=epochs, 
-                      batch_size=batch_size, 
+                      epochs=config['i_net']['epochs'], 
+                      batch_size=config['i_net']['batch_size'], 
                       validation_data=valid_data,
                       callbacks=callbacks,
                       verbose=verbosity)
 
             history = history.history
             
-            model.save('./data/saved_models/' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'] + save_string)
+            model.save('./data/saved_models/' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net'])
     else:
         history = None
         
@@ -1334,7 +1171,7 @@ def reduce_polynomials(polynomial_list):
     
 def generate_history_plots(history_list, by='epochs'):
     
-    paths_dict = generate_paths(path_type = 'interpretation_net')
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
     for i, history in enumerate(history_list):  
         
@@ -1371,7 +1208,7 @@ def generate_history_plots(history_list, by='epochs'):
             
 def save_results(history_list=None, scores_list=None, by='epochs'):
     
-    paths_dict = generate_paths(path_type = 'interpretation_net')
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
     if history_list is not None:
         if by == 'epochs':
             path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
@@ -1389,106 +1226,10 @@ def save_results(history_list=None, scores_list=None, by='epochs'):
             pickle.dump(scores_list, f, protocol=2)  
         
 
-def generate_inet_comparison_plot(scores_list, plot_metric_list, ylim=None):
-        
-    paths_dict = generate_paths(path_type = 'interpretation_net')
-    
-    
-    keys = ['target_polynomials', 'lstsq_target_polynomials', 'lstsq_lambda_pred_polynomials', 'inet_polynomials', 'per_network_polynomials',  'metamodel_poly', 'metamodel_functions', 'metamodel_functions_no_GD', 'symbolic_regression_functions']
-    
-    evaluation_key_list = []
-    for combination in itertools.combinations(keys, r=2):
-        key_1 = combination[0]
-        key_2 = combination[1]
-        
-        evaluation_key = key_1 + '_VS_' + key_2
-        
-        if evaluation_key in scores_list.index:
-            evaluation_key_list.append(evaluation_key)
-    
-    epochs_save_range_lambda = range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda) if each_epochs_save_lambda == 1 else range(epoch_start//each_epochs_save_lambda, epochs_lambda//each_epochs_save_lambda+1) if multi_epoch_analysis else range(1,2)
-
-
-    if samples_list == None:
-        x_axis_steps = [(i+1)*each_epochs_save_lambda if each_epochs_save_lambda==1 else i*each_epochs_save_lambda if i > 1 else each_epochs_save_lambda if i==1 else 1 for i in epochs_save_range_lambda]
-        x_max = epochs_lambda
-    else:
-        x_axis_steps = samples_list
-        x_max = samples_list[-1]
-
-    #Plot Polynom, lamdba net, and Interpration net
-    length_plt = len(plot_metric_list)
-    if length_plt >= 2:
-        fig, ax = plt.subplots(length_plt//2, 2, figsize=(30,20))
-    else:
-        fig, ax = plt.subplots(1, 1, figsize=(20,10))
-
-    for index, metric in enumerate(plot_metric_list):
-        
-        plot_scores_dict = {}
-        for key in evaluation_key_list:
-            try:
-                scores_list[-1][metric].loc[key]
-                plot_scores_dict[key] = []
-            except:
-                #print(key + 'not in scores_list')
-                continue
-            
-        
-        for scores in scores_list:
-            for key in evaluation_key_list:
-                try:
-                    plot_scores_dict[key].append(scores[metric].loc[key])
-                except:
-                    #print(key + 'not in scores_list')
-                    continue
-                                        
-            
-        plot_df = pd.DataFrame(data=np.vstack(plot_scores_dict.values()).T, 
-                               index=x_axis_steps,
-                               columns=plot_scores_dict.keys())
-
-        if length_plt >= 2:
-            ax[index//2, index%2].set_title(metric)
-            sns.set(font_scale = 1.25)
-            p = sns.lineplot(data=plot_df, ax=ax[index//2, index%2])
-        else:
-            ax.set_title(metric)
-            sns.set(font_scale = 1.25)
-            p = sns.lineplot(data=plot_df, ax=ax)
-
-        if ylim != None:
-            p.set(ylim=ylim)
-
-        p.set_yticklabels(np.round(p.get_yticks(), 2), size = 20)
-        p.set_xticklabels(p.get_xticks(), size = 20)     
-        
-        #p.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        p.legend(loc='upper center', bbox_to_anchor=(0.47, -0.1),
-          fancybox=False, shadow=False, ncol=2, fontsize=12)   
-        
-    plt.subplots_adjust(wspace=0.1, hspace=0.75)
-    
-    location = './data/plotting/'
-    folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
-    if samples_list == None:
-        file = 'multi_epoch' + '.pdf'
-    else:
-        file = 'sample_list' + '-'.join([str(samples_list[0]), str(samples_list[-1])]) + '.pdf'
-
-    path = location + folder + file
-
-    plt.savefig(path, format='pdf')
-    plt.show()
-
-
-
-
-
 
 def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_dataset_list, function_values_test_list, polynomial_dict_test_list, rand_index=1, plot_type=2):
     
-    paths_dict = generate_paths(path_type = 'interpretation_net')
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
     x_vars = ['x' + str(i) for i in range(1, n+1)]
 
@@ -1635,16 +1376,17 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         print(tab)
 
             
-def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
+def restructure_data_cnn_lstm(X_data, config, subsequences=None):
 
     #version == 0: one sequence for biases and one sequence for weights per layer (padded to maximum size)
     #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
     #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
     
-    base_model = generate_base_model()
+    base_model = generate_base_model(config)
        
     X_data_flat = X_data
 
+    
     shaped_weights_list = []
     for data in tqdm(X_data):
         shaped_weights = shape_flat_weights(data, base_model.get_weights())
@@ -1655,7 +1397,7 @@ def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
         max_size = max(max_size, max(weights.shape))      
 
 
-    if version == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
+    if config['i_net']['data_reshape_version'] == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
         X_data_list = []
         for shaped_weights in tqdm(shaped_weights_list):
             padded_network_parameters_list = []
@@ -1670,7 +1412,7 @@ def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
             X_data_list.append(padded_network_parameters_list)
         X_data = np.array(X_data_list)    
 
-    elif version == 1 or version == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
+    elif config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
         lambda_net_structure = list(flatten([n, lambda_network_layers, 1]))                    
         number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
 
@@ -1714,7 +1456,7 @@ def restructure_data_cnn_lstm(X_data, version=2, subsequences=None):
             X_data_list.append(network_parameters_sequence_list)
         X_data = np.array(X_data_list)          
         
-        if version == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
+        if config['i_net']['data_reshape_version'] == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
             X_data = np.transpose(X_data, (0, 2, 1))
 
     if lstm_layers != None and cnn_layers != None: #generate subsequences for cnn-lstm

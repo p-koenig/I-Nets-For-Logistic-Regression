@@ -32,6 +32,8 @@ import random
 from utilities.LambdaNet import *
 #from utilities.metrics import *
 from utilities.utility_functions import *
+from utilities.DecisionTree_BASIC import *
+
 
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
@@ -75,6 +77,139 @@ def initialize_metrics_config_from_curent_notebook(config):
 #######################################################################################################################################################
 ######################Manual TF Loss function for comparison with lambda-net prediction based (predictions made in loss function)######################
 #######################################################################################################################################################
+
+
+def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
+
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
+ 
+    def inet_target_function_fv_loss(function_true_with_network_parameters, function_pred):    
+        
+        #network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+          
+        if config['i_net']['nas']:
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            
+        #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
+        function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
+        function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
+        
+        #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        
+        function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)
+        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        
+        loss_function = tf.keras.losses.get(config['i_net']['loss'])
+        loss_per_sample = tf.vectorized_map(loss_function, (function_values_array_function_true, function_values_array_function_pred))
+                                                                                                 
+        loss_value = tf.math.reduce_mean(loss_per_sample)
+        
+        return loss_value
+    
+    inet_target_function_fv_loss.__name__ = config['i_net']['loss'] + '_' + inet_target_function_fv_loss.__name__        
+
+
+    return inet_target_function_fv_loss
+
+
+
+
+def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lambda_placeholder, network_parameters_structure, config):
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
+    tf.print('START')
+    
+    
+    def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):    
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+          
+        if config['i_net']['nas']:
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            
+        network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
+        function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
+        function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
+        
+        assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        
+        tf.print('GO function_values_array_function_true')
+        function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)
+        tf.print(function_values_array_function_true)
+        
+        tf.print(function_pred.numpy())
+        #function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        #tf.print(function_values_array_function_pred)
+        
+        #loss_function = tf.keras.losses.get(config['i_net']['loss'])
+        #loss_per_sample = tf.vectorized_map(loss_function, (function_values_array_function_true, function_values_array_function_pred))
+                                                                                                 
+        #loss_value = tf.math.reduce_mean(loss_per_sample)
+    
+        loss_value = tf.math.reduce_mean(function_true - function_pred)
+    
+        return loss_value
+    
+    inet_decision_function_fv_loss.__name__ = config['i_net']['loss'] + '_' + inet_decision_function_fv_loss.__name__        
+
+
+    return inet_decision_function_fv_loss
+
+
+
+
+def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder):
+    def calculate_function_value_from_lambda_net_parameters(network_parameters):
+
+        #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
+        # build models
+        start = 0
+        for i in range(len(network_parameters_structure)//2):
+
+            # set weights of layer
+            index = i*2
+            size = np.product(network_parameters_structure[index])
+            weights_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+            start += size
+
+            # set biases of layer
+            index += 1
+            size = np.product(network_parameters_structure[index])
+            biases_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+            model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+            start += size
+
+
+
+        lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_evaluation_dataset))
+        
+        return lambda_fv
+    return calculate_function_value_from_lambda_net_parameters
+
+
+def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
+    def calculate_function_value_from_decision_tree_parameters(function_array):
+
+        sdt_model = generate_decision_tree_from_array(function_array, config)
+        
+        sdt_fv = sdt_model.predict(random_evaluation_dataset)
+        
+        return sdt_fv
+    return calculate_function_value_from_decision_tree_parameters
+#######################################################################################################################################################
+#######################################################################################################################################################
+#######################################################################################################################################################
+#######################################################################################################################################################
+#######################################################################################################################################################
+#######################################################################################################################################################
+
+
+
 
 #GENERAL LOSS UTILITY FUNCTIONS 
 def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, current_monomial_degree, force_complete_poly_representation=False, config=None):
@@ -782,104 +917,6 @@ def mean_frechet_dist_function_values(y_true, y_pred):
     
     return np.mean(np.array(result_list))
 
-
-#######################################################################################################################################################
-#######################################################LAMBDA-NET EVALUATION FUNCTION##################################################################
-#######################################################################################################################################################
-
-def evaluate_lambda_net(identifier, 
-                        X_data_real_lambda, 
-                        y_data_real_lambda, 
-                        y_data_pred_lambda, 
-                        y_data_pred_lambda_poly_lstsq, 
-                        y_data_real_lambda_poly_lstsq):
-        
-    X_data_real_lambda = np.nan_to_num(X_data_real_lambda)
-    y_data_real_lambda = np.nan_to_num(y_data_real_lambda)
-    y_data_pred_lambda = np.nan_to_num(y_data_pred_lambda)
-    y_data_pred_lambda_poly_lstsq = np.nan_to_num(y_data_pred_lambda_poly_lstsq) 
-    y_data_real_lambda_poly_lstsq = np.nan_to_num(y_data_real_lambda_poly_lstsq)  
-    
-    mae_real_VS_predLambda = np.round(mean_absolute_error(y_data_real_lambda, y_data_pred_lambda), 4)
-    mae_real_VS_predPolyLstsq = np.round(mean_absolute_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
-    mae_predLambda_VS_predPolyLstsq = np.round(mean_absolute_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
-    mae_real_VS_realPolyLstsq = np.round(mean_absolute_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)    
-
-    rmse_real_VS_predLambda = np.round(root_mean_squared_error(y_data_real_lambda, y_data_pred_lambda), 4)    
-    rmse_real_VS_predPolyLstsq = np.round(root_mean_squared_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)    
-    rmse_predLambda_VS_predPolyLstsq = np.round(root_mean_squared_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)    
-    rmse_real_VS_realPolyLstsq = np.round(root_mean_squared_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)    
-
-    mape_real_VS_predLambda = np.round(mean_absolute_percentage_error_keras(y_data_real_lambda, y_data_pred_lambda), 4)    
-    mape_real_VS_predPolyLstsq = np.round(mean_absolute_percentage_error_keras(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)    
-    mape_predLambda_VS_predPolyLstsq = np.round(mean_absolute_percentage_error_keras(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)    
-    mape_real_VS_realPolyLstsq = np.round(mean_absolute_percentage_error_keras(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)            
-
-    r2_real_VS_predLambda = np.round(r2_score(y_data_real_lambda, y_data_pred_lambda), 4)
-    r2_real_VS_predPolyLstsq = np.round(r2_score(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
-    r2_predLambda_VS_predPolyLstsq = np.round(r2_score(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
-    r2_real_VS_realPolyLstsq = np.round(r2_score(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)
-
-    raae_real_VS_predLambda = np.round(relative_absolute_average_error(y_data_real_lambda, y_data_pred_lambda), 4)
-    raae_real_VS_predPolyLstsq = np.round(relative_absolute_average_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
-    raae_predLambda_VS_predPolyLstsq = np.round(relative_absolute_average_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
-    raae_real_VS_realPolyLstsq = np.round(relative_absolute_average_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)
-
-    rmae_real_VS_predLambda = np.round(relative_maximum_average_error(y_data_real_lambda, y_data_pred_lambda), 4)
-    rmae_real_VS_predPolyLstsq = np.round(relative_maximum_average_error(y_data_real_lambda, y_data_pred_lambda_poly_lstsq), 4)
-    rmae_predLambda_VS_predPolyLstsq = np.round(relative_maximum_average_error(y_data_pred_lambda_poly_lstsq, y_data_pred_lambda), 4)
-    rmae_real_VS_realPolyLstsq = np.round(relative_maximum_average_error(y_data_real_lambda, y_data_real_lambda_poly_lstsq), 4)
-        
-    std_data_real_lambda = np.round(np.std(y_data_real_lambda), 4) 
-    std_data_pred_lambda = np.round(np.std(y_data_pred_lambda), 4) 
-    std_data_pred_lambda_poly_lstsq = np.round(np.std(y_data_pred_lambda_poly_lstsq), 4) 
-    std_data_real_lambda_poly_lstsq = np.round(np.std(y_data_real_lambda_poly_lstsq), 4) 
-
-    mean_data_real_lambda = np.round(np.mean(y_data_real_lambda), 4) 
-    mean_data_pred_lambda = np.round(np.mean(y_data_pred_lambda), 4) 
-    mean_data_pred_lambda_poly_lstsq = np.round(np.mean(y_data_pred_lambda_poly_lstsq), 4) 
-    mean_data_real_lambda_poly_lstsq = np.round(np.mean(y_data_real_lambda_poly_lstsq), 4) 
-
-    return [{
-             'MAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': mae_real_VS_predLambda,
-             'MAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': mae_real_VS_predPolyLstsq,
-             'MAE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': mae_predLambda_VS_predPolyLstsq,
-             'MAE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': mae_real_VS_realPolyLstsq,
-             'RMSE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': rmse_real_VS_predLambda,
-             'RMSE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': rmse_real_VS_predPolyLstsq,
-             'RMSE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': rmse_predLambda_VS_predPolyLstsq,
-             'RMSE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': rmse_real_VS_realPolyLstsq,
-             'MAPE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': mape_real_VS_predLambda,
-             'MAPE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': mape_real_VS_predPolyLstsq,
-             'MAPE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': mape_predLambda_VS_predPolyLstsq,
-             'MAPE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': mape_real_VS_realPolyLstsq,
-             'R2 FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': r2_real_VS_predLambda,
-             'R2 FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': r2_real_VS_predPolyLstsq,
-             'R2 FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': r2_predLambda_VS_predPolyLstsq,
-             'R2 FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': r2_real_VS_realPolyLstsq,
-             'RAAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': raae_real_VS_predLambda,
-             'RAAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': raae_real_VS_predPolyLstsq,
-             'RAAE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': raae_predLambda_VS_predPolyLstsq,
-             'RAAE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': raae_real_VS_realPolyLstsq,
-             'RMAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA': rmae_real_VS_predLambda,
-             'RMAE FV ' + identifier + ' REAL LAMBDA VS PRED LAMBDA POLY LSTSQ': rmae_real_VS_predPolyLstsq,
-             'RMAE FV ' + identifier + ' PRED LAMBDA VS PRED LAMBDA POLY LSTSQ': rmae_predLambda_VS_predPolyLstsq,
-             'RMAE FV ' + identifier + ' REAL LAMBDA VS REAL LAMBDA POLY LSTSQ': rmae_real_VS_realPolyLstsq,
-            },
-            {
-             'STD FV ' + identifier + ' REAL LAMBDA': std_data_real_lambda,
-             'STD FV ' + identifier + ' PRED LAMBDA': std_data_pred_lambda, 
-             'STD FV ' + identifier + ' PRED LAMBDA POLY LSTSQ': std_data_pred_lambda_poly_lstsq, 
-             'STD FV ' + identifier + ' REAL LAMBDA POLY LSTSQ': std_data_real_lambda_poly_lstsq, 
-            },
-            {
-             'MEAN FV ' + identifier + ' REAL LAMBDA': mean_data_real_lambda,
-             'MEAN FV ' + identifier + ' PRED LAMBDA': mean_data_pred_lambda, 
-             'MEAN FV ' + identifier + ' PRED LAMBDA POLY LSTSQ': mean_data_pred_lambda_poly_lstsq, 
-             'MEAN FV ' + identifier + ' REAL LAMBDA POLY LSTSQ': mean_data_real_lambda_poly_lstsq, 
-            }]
-    
-        
 
 
 #######################################################################################################################################################

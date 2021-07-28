@@ -11,6 +11,8 @@ from anytree.exporter import DotExporter
 import itertools
 from IPython.display import Image
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 
 
 #################################################################################################################################################################################################################################
@@ -20,6 +22,12 @@ import tensorflow as tf
 #################################################################################################################################################################################################################################
 #################################################################################################################################################################################################################################
  
+
+def batch(iterable, size):
+    it = iter(iterable)
+    while item := list(itertools.islice(it, size)):
+        yield item
+    
     
 class SDT(nn.Module):
     """Fast implementation of soft decision tree in PyTorch.
@@ -124,7 +132,7 @@ class SDT(nn.Module):
             print('_mu, _penalty', _mu, _penalty)
             
         if self.maximum_path_probability:
-            cond = torch.eq(_mu, torch.max(_mu))
+            cond = torch.eq(_mu, torch.max(_mu, axis=1).values.reshape(-1,1))
             _mu = torch.where(cond, _mu, torch.zeros_like(_mu))
             
         y_pred = self.leaf_nodes(_mu)
@@ -175,11 +183,21 @@ class SDT(nn.Module):
             _penalty = _penalty + self._cal_penalty(layer_idx, _mu, _path_prob)
             _mu = _mu.view(batch_size, -1, 1).repeat(1, 1, 2)
 
+            if self.verbosity > 0:
+                #print('_penalty loop', _penalty)    
+                print('_mu updated loop', _mu) 
+                
             _mu = _mu * _path_prob  # update path probabilities
 
+            if self.verbosity > 0:
+                #print('_penalty loop', _penalty)    
+                print('_mu updated loop', _mu)      
+                
             begin_idx = end_idx
             end_idx = begin_idx + 2 ** (layer_idx + 1)
 
+        if self.verbosity > 0:
+            print('_mu updated', _mu)
         mu = _mu.view(batch_size, self.leaf_node_num_)
         if self.verbosity > 0:
             print('mu', mu)
@@ -308,19 +326,62 @@ class SDT(nn.Module):
         
         return accuracy
     
+    def predict_proba(self, X):
+        if self.output_dim == 2:
+            self.eval()
+
+            data = torch.FloatTensor(X).to(self.device)
+            output = F.softmax(self.forward(data), dim=1)
+            if self.verbosity > 0:
+                print('output', output)
+
+            pred = output[:,1:].reshape(1,-1)#output.data.max(1)[1]
+            if self.verbosity > 0:
+                print('pred', pred)        
+
+            predictions = pred
+
+
+
+            return predictions            
+        
+        return None
+            
+            
+    
     def predict(self, X):
         self.eval()
         
         data = torch.FloatTensor(X).to(self.device)
-        
         output = F.softmax(self.forward(data), dim=1)
         if self.verbosity > 0:
             print('output', output)
-                        
+
         pred = output.data.max(1)[1]
         if self.verbosity > 0:
-            print('pred', pred)
-        return pred
+            print('pred', pred)        
+        
+        predictions = pred
+        
+        if False:
+            predictions = np.full(X.shape[0], np.nan)
+            for index, data_point in enumerate(X):
+
+                data_point = torch.FloatTensor([data_point]).to(self.device)
+
+                output = F.softmax(self.forward(data_point), dim=1)
+                if self.verbosity > 0:
+                    print('output', output)
+
+                pred = output.data.max(1)[1]
+                if self.verbosity > 0:
+                    print('pred', pred)
+                predictions[index] = pred
+            
+            
+            
+        return predictions
+        
     
     def get_parameters(self):
         pass
@@ -369,25 +430,32 @@ class SDT(nn.Module):
         return Image(path)
     
     def to_array(self):
-        weights = self.inner_nodes[0].weight.detach().numpy()
+        filters = self.inner_nodes[0].weight.detach().numpy()
         biases = self.inner_nodes[0].bias.detach().numpy()
         
         leaf_probabilities = self.leaf_nodes.weight.detach().numpy().T
         
-        return np.hstack([weights.flatten(), biases.flatten(), leaf_probabilities.flatten()])
+        return np.hstack([filters.flatten(), biases.flatten(), leaf_probabilities.flatten()])
         
     def initialize_from_parameter_array(self, parameters):
+        
         weights = parameters[:self.input_dim*self.internal_node_num_]
-        weights = weights.reshape(self.internal_node_num_, self.input_dim)
+        if ('tensorflow' in str(type(parameters))):
+            weights = tf.reshape(weights, (self.internal_node_num_, self.input_dim))
+        else:
+            weights = weights.reshape(self.internal_node_num_, self.input_dim)
         
         biases = parameters[self.input_dim*self.internal_node_num_:(self.input_dim+1)*self.internal_node_num_]
         
         leaf_probabilities = parameters[(self.input_dim+1)*self.internal_node_num_:]
-        leaf_probabilities = leaf_probabilities.reshape(self.leaf_node_num_, self.output_dim).T
+        if ('tensorflow' in str(type(parameters))):
+            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (self.leaf_node_num_, self.output_dim)))
+        else:
+            leaf_probabilities = leaf_probabilities.reshape(self.leaf_node_num_, self.output_dim).T
+
         
         self.inner_nodes[0].weight = torch.nn.Parameter(torch.FloatTensor(weights))
         self.inner_nodes[0].bias = torch.nn.Parameter(torch.FloatTensor(biases))
-        
         self.leaf_nodes.weight = torch.nn.Parameter(torch.FloatTensor(leaf_probabilities))
         
 def batch(iterable, size):

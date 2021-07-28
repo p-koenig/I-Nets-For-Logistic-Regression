@@ -43,6 +43,7 @@ import pickle
 #udf import
 from utilities.LambdaNet import *
 from utilities.metrics import *
+from utilities.DecisionTree_BASIC import *
 #from utilities.utility_functions import *
 
 from scipy.optimize import minimize
@@ -58,46 +59,6 @@ from numba import jit, njit
 import itertools 
 
 from interruptingcow import timeout
-
-#######################################################################################################################################################
-#############################################################Setting relevant parameters from current config###########################################
-#######################################################################################################################################################
-
-def initialize_utility_functions_config_from_curent_notebook(config):
-       
-    try:
-        globals().update(config['data'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['lambda_net'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['i_net'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['evaluation'])
-    except KeyError:
-        print(KeyError)
-        
-    try:
-        globals().update(config['computation'])
-    except KeyError:
-        print(KeyError)
-    
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)
-    if int(tf.__version__[0]) >= 2:
-        tf.random.set_seed(RANDOM_SEED)
-    else:
-        tf.set_random_seed(RANDOM_SEED)
-        
-
                                     
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
@@ -194,145 +155,133 @@ def arreq_in_list(myarr, list_arrays):
     return next((True for elem in list_arrays if np.array_equal(elem, myarr)), False)
 
 
-def flatten(l):
-    for el in l:
-        if isinstance(el, Iterable) and not isinstance(el, (str, bytes)):
-            yield from flatten(el)
-        else:
-            yield el
+def flatten_list(l):
+    
+    def flatten(l):
+        for el in l:
+            if isinstance(el, Iterable) and not isinstance(el, (str, bytes)):
+                yield from flatten(el)
+            else:
+                yield el
+                
+    flat_l = flatten(l)
+    
+    return list(flat_l)
 
 
 #######################################################################################################################################################
 ###########################Manual calculations for comparison of polynomials based on function values (no TF!)#########################################
 #######################################################################################################################################################
 
+    
+def generate_paths(config, path_type='interpretation_net'):
 
-    
-def generate_paths(path_type='interpretation_net'):
-    
-    noise_path = noise  
-    RANDOM_SEED_path = RANDOM_SEED
-    
-    if path_type=='interpretation_net_no_noise':
-        lambda_nets_total_path = 50000
-        noise_path = 0
-        RANDOM_SEED_path = 42
-    
     paths_dict = {}
     
-        
-    training_string = '_sameX' if same_training_all_lambda_nets else '_diffX'
-        
-    laurent_str = '_laurent' if laurent else ''
-    monomial_vars_str = '_monvars_' + str(monomial_vars) if monomial_vars != None else ''
-    neg_d_str = '_negd_' + str(neg_d) + '_prob_' + str(neg_d_prob) if neg_d != None else ''
+                
 
         
-    dataset_description_string = ('_var_' + str(n) + 
-                                  '_d_' + str(d) + 
-                                   laurent_str + 
-                                   monomial_vars_str + 
-                                   neg_d_str + 
-                                   '_spars_' + str(sample_sparsity) + 
-                                   '_amin_' + str(a_min) + 
-                                   '_amax_' + str(a_max) + 
-                                   #'_xmin_' + str(x_min) + 
-                                   #'_xmax_' + str(x_max) + 
-                                   '_xdist_' + str(x_distrib) + 
-                                   '_noise_' + str(noise_distrib) + '_' + str(noise_path))
-        
-        
-    adjusted_dataset_string = ('bmin' + str(border_min) +
-                                'bmax' + str(border_max) +
-                                'lowd' + str(lower_degree_prob) +
-                                'azero' + str(a_zero_prob) +
-                                'arand' + str(a_random_prob))
+    data_specification_string = ('_var' + str(config['data']['number_of_variables']) +
+                                  '_class' + str(config['data']['num_classes']) +
+                                  '_' + str(config['data']['function_generation_type']) +
+                                  #'_' + str(config['data']['objective']) +
+                                  '_xMax' + str(config['data']['x_max']) +
+                                  '_xMin' + str(config['data']['x_min']) +
+                                  '_xDist' + str(config['data']['x_distrib']) +
+                                  
+                                  '_depth' + str(config['function_family']['maximum_depth']) +
+                                  '_' + ('fullyGrown' if config['function_family']['fully_grown'] else 'partiallyGrown')
+                                 )
+
         
         
 
     if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
   
-        path_identifier_polynomial_data = ('poly_' + str(polynomial_data_size) + 
-                                           '_train_' + str(lambda_dataset_size) + 
-                                           dataset_description_string + 
-                                           adjusted_dataset_string +
-                                           training_string)            
+        path_identifier_function_data = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
+                                         '_numDatasets' + str(config['data']['number_of_generated_datasets']) +
+                                         data_specification_string)            
 
-        paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
+        paths_dict['path_identifier_function_data'] = path_identifier_function_data
     
-    if path_type == 'lambda_net' or path_type == 'interpretation_net' or path_type == 'interpretation_net_no_noise': #Lambda-Net
-        
-        if path_type == 'lambda_net' or path_type == 'interpretation_net':
-            lambda_nets_total_path = lambda_nets_total
-        
-        if fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
-        elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
-            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
-        elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
-        elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
-            seed_init_string = '_NoFixSeedInit'
-
+    if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
             
-        early_stopping_string = '_ES' + str(early_stopping_min_delta_lambda) + '_' if early_stopping_lambda else ''
+        
             
-        lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
-        lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + early_stopping_string + str(batch_lambda) + 'b' + '_' + optimizer_lambda + '_' + loss_lambda
+        lambda_layer_str = '-'.join([str(neurons) for neurons in config['lambda_net']['lambda_network_layers']])
+        
+        early_stopping_string = 'ES' + str(config['lambda_net']['early_stopping_min_delta_lambda']) if config['lambda_net']['early_stopping_lambda'] else ''
+        lambda_init_string = 'noFixedInit' if config['lambda_net']['number_initializations_lambda'] == -1 else 'fixedInit' + str(config['lambda_net']['number_initializations_lambda']) + '-seed' + str(config['computation']['RANDOM_SEED'])
+        lambda_noise_string = '_noise-' + config['data']['noise_injected_type'] + str(config['data']['noise_injected_level']) if config['data']['noise_injected_level'] > 0 else ''
+        
+        
+        lambda_net_identifier = (
+                                 lambda_layer_str + 
+                                 '_e' + str(config['lambda_net']['epochs_lambda']) + early_stopping_string + 
+                                 '_b' + str(config['lambda_net']['batch_lambda']) + 
+                                 '_drop' + str(config['lambda_net']['dropout_lambda']) + 
+                                 '_' + config['lambda_net']['optimizer_lambda'] + 
+                                 '_' + config['lambda_net']['loss_lambda'] +
+                                 '_' + lambda_init_string + 
+                                 lambda_noise_string
+                                )
 
-        path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total_path) +
-                                           lambda_net_identifier + 
-                                           '_train_' + str(lambda_dataset_size) + 
-                                           training_string + 
-                                           seed_init_string + '_' + str(RANDOM_SEED_path) +
+        path_identifier_lambda_net_data = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
+                                           '_numLNets' + str(config['lambda_net']['number_of_trained_lambda_nets']) +
+                                           data_specification_string + 
+                                           
                                            '/' +
-                                           dataset_description_string[1:] + 
-                                           adjusted_dataset_string)        
+                                           lambda_net_identifier)
+                                           
 
         paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
     
     
-    if path_type == 'interpretation_net' or path_type == 'interpretation_net_no_noise': #Interpretation-Net   
+    if path_type == 'interpretation_net': #Interpretation-Net   
             
-        interpretation_network_layers_string = 'dense' + ''.join([str(neurons) + '-' for neurons in dense_layers])
-        
-        if convolution_layers != None:
-            interpretation_network_layers_string += 'conv' + str(convolution_layers)
-        if lstm_layers != None:
-            interpretation_network_layers_string += 'lstm' + str(lstm_layers)
+        interpretation_network_layers_string = 'dense' + '-'.join([str(neurons) for neurons in config['i_net']['dense_layers']])
 
-        interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(interpretation_net_output_shape) + '_drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + optimizer
+        if config['i_net']['convolution_layers'] != None:
+            interpretation_network_layers_string += 'conv' + '-'.join([str(neurons) for neurons in config['i_net']['convolution_layers']])
+        if config['i_net']['lstm_layers'] != None:
+            interpretation_network_layers_string += 'lstm' + '-'.join([str(neurons) for neurons in config['i_net']['lstm_layers']])
+
+        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer']
         
-        path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier +
-                                                   '/lnets_' + str(interpretation_dataset_size) +
-                                                   lambda_net_identifier + 
-                                                   '_train_' + str(lambda_dataset_size) + 
-                                                   training_string + 
-                                                   seed_init_string + '_' + str(RANDOM_SEED_path) +
+        path_identifier_interpretation_net = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
+                                                   '_numLNets' + str(config['lambda_net']['number_of_trained_lambda_nets']) +
+                                                   data_specification_string + 
+
                                                    '/' +
-                                                   dataset_description_string[1:] + 
-                                                   adjusted_dataset_string)       
+                                                   lambda_net_identifier +
+            
+                                                   '/' +
+                                                   'inet' + interpretation_net_identifier)
         
         
-        paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
+        paths_dict['path_identifier_interpretation_net'] = path_identifier_interpretation_net
         
     return paths_dict
+
+
+
+
+
+def create_folders_inet(config):
     
-def create_folders_inet():
-    
-    paths_dict = generate_paths(path_type = 'interpretation_net')
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
     try:
         # Create target Directory
-        os.makedirs('./data/plotting/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
-        os.makedirs('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/')
+        os.makedirs('./data/plotting/' + paths_dict['path_identifier_interpretation_net'] + '/')
+        os.makedirs('./data/results/' + paths_dict['path_identifier_interpretation_net'] + '/')
     except FileExistsError:
         pass
     
 
 def generate_directory_structure():
     
-    directory_names = ['parameters', 'plotting', 'saved_polynomial_lists', 'results', 'saved_models', 'weights', 'weights_training']
+    directory_names = ['parameters', 'plotting', 'saved_function_lists', 'results', 'saved_models', 'weights', 'weights_training']
     if not os.path.exists('./data'):
         os.makedirs('./data')
         
@@ -346,9 +295,9 @@ def generate_directory_structure():
             os.makedirs(path)
             
             
-def generate_lambda_net_directory():
+def generate_lambda_net_directory(config):
     
-    paths_dict = generate_paths(path_type = 'lambda_net')
+    paths_dict = generate_paths(config, path_type = 'lambda_net')
     
     #clear files
     try:
@@ -377,7 +326,7 @@ def generate_lambda_net_directory():
 ########################################################################################  RANDOM FUNCTION GENERATION FROM ############################################################################################ 
 ######################################################################################################################################################################################################################
 
-
+######################################################################################################################################################################################################################
 def generate_random_data_points(low, high, size, variables, distrib='uniform'):
     if distrib=='normal':
         list_of_data_points = []
@@ -392,7 +341,239 @@ def generate_random_data_points(low, high, size, variables, distrib='uniform'):
         list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
         
     return list_of_data_points
+######################################################################################################################################################################################################################
 
+
+
+
+
+def generate_decision_tree_from_array(parameter_array, config):
+    tree = SDT(input_dim=config['data']['number_of_variables'],
+               output_dim=config['data']['num_classes'],
+               depth=config['function_family']['maximum_depth'],
+               use_cuda=False,
+               verbosity=0)
+    
+    tree.initialize_from_parameter_array(parameter_array)
+    
+    return tree
+
+
+def generate_random_decision_tree(config, seed):
+    
+    #random.seed(seed)
+    #np.random.seed(seed)
+    
+    if config['function_family']['fully_grown']:
+        tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
+                   output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
+                   depth=config['function_family']['maximum_depth'],
+                   random_seed=seed,
+                   use_cuda=False,
+                   verbosity=0)#
+        
+    else: 
+        raise SystemExit('Partially Grown Trees not implemented yet')
+        
+    
+    return tree
+
+
+def generate_random_data_points(config, seed):
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    
+    if config['data']['x_distrib']=='normal':
+        list_of_data_points = []
+        x_range = config['data']['x_max']-config['data']['x_min']
+        for _ in range(config['data']['lambda_dataset_size']):
+            random_data_point = np.random.normal(loc=x_range/2, scale=x_range/4, size=config['data']['number_of_variables'])
+            while max(random_data_point) > config['data']['x_max'] or min(random_data_point) < config['data']['x_min']:
+                random_data_point = np.random.normal(loc=x_range/2, scale=x_range, size=config['data']['number_of_variables'])
+            list_of_data_points.append(random_data_point)
+        list_of_data_points = np.array(list_of_data_points)
+        
+    elif config['data']['x_distrib']=='uniform':
+        list_of_data_points = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['data']['lambda_dataset_size'], config['data']['number_of_variables']))
+        
+    return list_of_data_points 
+
+
+def generate_decision_tree_data(config, seed=42):
+    
+    decision_tree = generate_random_decision_tree(config, seed)
+    
+    X_data = generate_random_data_points(config, seed)
+    
+    y_data = decision_tree.predict(X_data)
+    counter = 1
+    
+    while np.unique(y_data).shape[0] == 1 or np.min(np.unique(y_data, return_counts=True)[1]) < config['data']['lambda_dataset_size']/20:
+        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+        counter += 1
+        
+        decision_tree = generate_random_decision_tree(config, seed)
+        y_data = decision_tree.predict(X_data)    
+    
+    return decision_tree.to_array(), X_data, y_data
+
+
+def generate_decision_tree_identifier(config):
+    num_internal_nodes = 2 ** config['function_family']['maximum_depth'] - 1
+    num_leaf_nodes = 2 ** config['function_family']['maximum_depth']
+    
+    filter_shape = (num_internal_nodes, config['data']['number_of_variables'])
+    bias_shape = (num_internal_nodes, 1)
+    
+    leaf_probabilities_shape = (num_leaf_nodes, config['data']['num_classes'])
+    
+    decision_tree_identifier_list = []
+    for filter_number in range(filter_shape[0]):
+        for variable_number in range(filter_shape[1]):
+            decision_tree_identifier_list.append('f' + str(filter_number) + 'v' + str(variable_number))
+            
+    for bias_number in range(bias_shape[0]):
+        decision_tree_identifier_list.append('b' + str(bias_number))
+            
+    for leaf_probabilities_number in range(leaf_probabilities_shape[0]):
+        for class_number in range(leaf_probabilities_shape[1]):
+            decision_tree_identifier_list.append('lp' + str(leaf_probabilities_number) + 'c' + str(class_number))       
+            
+    return decision_tree_identifier_list
+
+
+
+######################################################################################################################################################################################################################
+###########################################################################################  LAMBDA NET UTILITY ################################################################################################ 
+######################################################################################################################################################################################################################
+
+
+        
+def split_LambdaNetDataset(dataset, test_split, random_seed=42):
+    
+    from utilities.LambdaNet import LambdaNetDataset
+    
+    assert isinstance(dataset, LambdaNetDataset) 
+    
+    lambda_nets_list = dataset.lambda_net_list
+    
+    if isinstance(test_split, int) or isinstance(test_split, float):
+        lambda_nets_train_list, lambda_nets_test_list = train_test_split(lambda_nets_list, test_size=test_split, random_state=random_seed)     
+    elif isinstance(test_split, list):
+        lambda_nets_test_list = [lambda_nets_list[i] for i in test_split]
+        lambda_nets_train_list = list(set(lambda_nets_list) - set(lambda_nets_test_list))
+        #lambda_nets_train_list = lambda_nets_list.copy()
+        #for i in sorted(test_split, reverse=True):
+        #    del lambda_nets_train_list[i]           
+    assert len(lambda_nets_list) == len(lambda_nets_train_list) + len(lambda_nets_test_list)
+    
+    return LambdaNetDataset(lambda_nets_train_list), LambdaNetDataset(lambda_nets_test_list)
+                                                                                                 
+def generate_base_model(config): #without dropout
+    
+    output_neurons = 1 if config['data']['num_classes']==2 else config['data']['num_classes']
+    output_activation = 'sigmoid' if config['data']['num_classes']==2 else 'softmax'
+    
+    model = Sequential()
+        
+    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
+    model.add(Dense(config['lambda_net']['lambda_network_layers'][0], activation='relu', input_dim=config['data']['number_of_variables'], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), bias_initializer='zeros'))
+   
+    if config['lambda_net']['dropout_lambda'] > 0:
+        model.add(Dropout(config['lambda_net']['dropout_lambda']))
+
+    for neurons in config['lambda_net']['lambda_network_layers'][1:]:
+        model.add(Dense(neurons, 
+                        activation='relu', 
+                        kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                        bias_initializer='zeros'))
+        
+        if config['lambda_net']['dropout_lambda'] > 0:
+            model.add(Dropout(config['lambda_net']['dropout_lambda']))   
+    
+    model.add(Dense(output_neurons, 
+                    activation=output_activation, 
+                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                    bias_initializer='zeros'))    
+    
+    return model
+
+
+
+
+def shape_flat_network_parameters(flat_network_parameters, target_network_parameters):
+    
+    #äfrom utilities.utility_functions import flatten_list
+    
+    #def recursive_len(item):
+    #    if type(item) == list:
+    #        return sum(recursive_len(subitem) for subitem in item)
+    #    else:
+    #        return 1      
+        
+    shaped_network_parameters =[]
+    start = 0  
+    
+    for parameters in target_network_parameters:
+        target_shape = parameters.shape
+        size = np.prod(target_shape)#recursive_len(el)#len(list(flatten_list(el)))
+        shaped_parameters = np.reshape(flat_network_parameters[start:start+size], target_shape)
+        shaped_network_parameters.append(shaped_parameters)
+        start += size
+
+    return shaped_network_parameters
+
+def network_parameters_to_pred(weights, x, config, base_model=None):
+
+    if base_model is None:
+        base_model = generate_base_model(config)
+    base_model_network_parameters = base_model.get_weights()
+    
+    # Shape weights (flat) into correct model structure
+    shaped_network_parameters = shape_flat_network_parameters(weights, base_model_weights)
+    
+    model = tf.keras.models.clone_model(base_model)
+    
+    # Make prediction
+    model.set_weights(shaped_network_parameters)
+    y = model.predict(x).ravel()
+    return y
+
+    
+def network_parameters_to_network(network_parameters, config, base_model=None):
+    
+    if base_model is None:
+        model = generate_base_model(config)    
+    else:
+        model = tf.keras.models.clone_model(base_model)
+    
+    model_network_parameters = model.get_weights()    
+ 
+
+    # Shape weights (flat) into correct model structure
+    shaped_network_parameters = shape_flat_network_parameters(network_parameters, model_network_parameters)
+    
+    model.set_weights(shaped_network_parameters)
+    
+    model.compile(optimizer=config['lambda_net']['optimizer_lambda'],
+                  loss='binary_crossentropy',#tf.keras.losses.get(config['lambda_net']['loss_lambda']),
+                  metrics=[tf.keras.metrics.get("binary_accuracy"), tf.keras.metrics.get("accuracy")]
+                 )
+    
+    return model  
+
+
+def shaped_network_parameters_to_array(shaped_network_parameters, config):
+    network_parameter_list = []
+    for layer_weights, biases in pairwise(shaped_network_parameters):    #clf.get_weights()
+        for neuron in layer_weights:
+            for weight in neuron:
+                network_parameter_list.append(weight)
+        for bias in biases:
+                network_parameter_list.append(bias)
+                
+    return np.array(network_parameter_list)
 
 
 
