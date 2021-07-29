@@ -27,6 +27,7 @@ from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
 import tensorflow as tf
 import keras
 import random 
+import tensorflow_addons as tfa
 
 #udf import
 from utilities.LambdaNet import *
@@ -79,6 +80,7 @@ def initialize_metrics_config_from_curent_notebook(config):
 #######################################################################################################################################################
 
 
+
 def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
 
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
@@ -99,11 +101,24 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
         assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
         
-        function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)
+        function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
         function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         
-        loss_function = tf.keras.losses.get(config['i_net']['loss'])
-        loss_per_sample = tf.vectorized_map(loss_function, (function_values_array_function_true, function_values_array_function_pred))
+        def loss_function_wrapper(loss_function_name):
+            def loss_function(input_list):
+                
+                function_values_true = input_list[0]
+                function_values_pred = input_list[1]
+                
+                loss = tf.keras.losses.get(loss_function_name)
+                
+                loss_value = loss(function_values_true, function_values_pred)
+                
+                return loss_value
+                
+            return loss_function
+        
+        loss_per_sample = tf.vectorized_map(loss_function_wrapper(config['i_net']['loss']), (function_values_array_function_true, function_values_array_function_pred))
                                                                                                  
         loss_value = tf.math.reduce_mean(loss_per_sample)
         
@@ -119,7 +134,7 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
 
 def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lambda_placeholder, network_parameters_structure, config):
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
-    tf.print('START')
+    #tf.print('START')
     
     
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):    
@@ -137,21 +152,35 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
         
-        tf.print('GO function_values_array_function_true')
+        #tf.print('GO function_values_array_function_true')
         function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)
-        tf.print(function_values_array_function_true)
+        #tf.print(function_values_array_function_true)
         
-        tf.print(function_pred.numpy())
-        #function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         #tf.print(function_values_array_function_pred)
+                
+        def loss_function_wrapper(loss_function_name):
+            def loss_function(input_list):
+                
+                function_values_true = input_list[0]
+                function_values_pred = input_list[1]
+                
+                loss = tf.keras.losses.get(loss_function_name)
+                
+                loss_value = loss(function_values_true, function_values_pred)
+                
+                return loss_value
+                
+            return loss_function
         
-        #loss_function = tf.keras.losses.get(config['i_net']['loss'])
-        #loss_per_sample = tf.vectorized_map(loss_function, (function_values_array_function_true, function_values_array_function_pred))
-                                                                                                 
-        #loss_value = tf.math.reduce_mean(loss_per_sample)
+        loss_per_sample = tf.vectorized_map(loss_function_wrapper(config['i_net']['loss']), (function_values_array_function_true, function_values_array_function_pred))
+        #tf.print(loss_per_sample)
+        loss_value = tf.math.reduce_mean(loss_per_sample)
+        #tf.print(loss_value)
     
-        loss_value = tf.math.reduce_mean(function_true - function_pred)
-    
+        #loss_value = tf.math.reduce_mean(function_true - function_pred)
+        #tf.print(loss_value)
+        
         return loss_value
     
     inet_decision_function_fv_loss.__name__ = config['i_net']['loss'] + '_' + inet_decision_function_fv_loss.__name__        
@@ -192,21 +221,194 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
     return calculate_function_value_from_lambda_net_parameters
 
 
-def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
-    def calculate_function_value_from_decision_tree_parameters(function_array):
+def calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth):
+    def calculate_function_value_from_decision_tree_parameter_single_sample(evaluation_entry):
+        
+        path_prob = tf.expand_dims(tf.sigmoid(tf.add(tf.reduce_sum(tf.multiply(weights, evaluation_entry), axis=1), biases)), axis=0)
+        #tf.print(path_prob)
+        path_prob = tf.expand_dims(path_prob, axis=2)
+        #tf.print(path_prob)
+        path_prob = tf.concat((path_prob, 1 - path_prob), axis=2)
+        #tf.print(path_prob)        
 
-        sdt_model = generate_decision_tree_from_array(function_array, config)
+        begin_idx = 0
+        end_idx = 1 
+
+        _mu = tf.fill((1,1,1), 1.0)
+
+        for layer_idx in range(0, maximum_depth):
+            _path_prob = path_prob[:, begin_idx:end_idx, :]
+            _mu =  tf.repeat(tf.reshape(_mu, (1,-1,1)), 2, axis=2)
+            #tf.print('_mu', _mu)
+            _mu = _mu * _path_prob
+            #tf.print('_mu', _mu)
+            begin_idx = end_idx
+            end_idx = begin_idx + 2 ** (layer_idx + 1)    
+
+        _mu = tf.reshape(_mu, (1, leaf_node_num_))
+        #tf.print(_mu)   
+
+        cond = tf.equal(_mu, tf.reduce_max(_mu))
+        _mu = tf.where(cond, _mu, tf.zeros_like(_mu))
+        #tf.print(_mu)
+
+        y_pred = tf.reduce_max(_mu * leaf_probabilities, axis=1)
+        #tf.print(y_pred)
+        y_pred = tf.nn.softmax(y_pred)[1]
         
-        sdt_fv = sdt_model.predict(random_evaluation_dataset)
+        return y_pred
+    
+    return calculate_function_value_from_decision_tree_parameter_single_sample
         
-        return sdt_fv
+def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
+    
+    maximum_depth = config['function_family']['maximum_depth']
+    leaf_node_num_ = 2 ** maximum_depth
+    
+    def calculate_function_value_from_decision_tree_parameters(function_array):
+        
+        weights, biases, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+        
+        function_values_sdt = tf.vectorized_map(calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth), random_evaluation_dataset)
+        
+        return function_values_sdt
     return calculate_function_value_from_decision_tree_parameters
+
+
+
+#######################################################################################################################################################
+#######################################################################################################################################################
+#######################################################################################################################################################
+
+
+def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, metric):
+
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
+ 
+    def inet_target_function_fv_metric(function_true_with_network_parameters, function_pred):    
+        
+        #network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+          
+        if config['i_net']['nas']:
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            
+        #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
+        function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
+        function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
+        
+        #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        
+        function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
+        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        
+        def loss_function_wrapper(metric_name):
+            def loss_function(input_list):
+                
+                function_values_true = input_list[0]
+                function_values_pred = input_list[1]
+                
+                if metric_name == 'f1_score':
+                    loss = f1
+                else:
+                    loss = tf.keras.metrics.get(metric_name)
+                    
+                loss_value = loss(function_values_true, function_values_pred)
+                
+                return loss_value
+                
+            return loss_function
+        
+        loss_per_sample = tf.vectorized_map(loss_function_wrapper(metric), (function_values_array_function_true, function_values_array_function_pred))
+                                                                                                 
+        loss_value = tf.math.reduce_mean(loss_per_sample)
+        
+        return loss_value
+    
+    inet_target_function_fv_metric.__name__ = metric + '_' + inet_target_function_fv_metric.__name__        
+
+
+    return inet_target_function_fv_metric
+
+
+
+
+def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_lambda_placeholder, network_parameters_structure, config, metric):
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
+    #tf.print('START')
+    
+    
+    def inet_decision_function_fv_metric(function_true_with_network_parameters, function_pred):    
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+          
+        if config['i_net']['nas']:
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            
+        network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
+        function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
+        function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
+        
+        assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        
+        #tf.print('GO function_values_array_function_true')
+        function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)
+        #tf.print(function_values_array_function_true)
+        
+        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        #tf.print(function_values_array_function_pred)
+                
+        def loss_function_wrapper(metric_name):
+            def loss_function(input_list):
+                
+                function_values_true = input_list[0]
+                function_values_pred = input_list[1]
+                
+                if metric_name == 'f1_score':
+                    loss = f1
+                else:
+                    loss = tf.keras.metrics.get(metric_name)
+                
+                loss_value = loss(function_values_true, function_values_pred)
+                
+                return loss_value
+                
+            return loss_function
+        
+        loss_per_sample = tf.vectorized_map(loss_function_wrapper(metric), (function_values_array_function_true, function_values_array_function_pred))
+        #tf.print(loss_per_sample)
+        loss_value = tf.math.reduce_mean(loss_per_sample)
+        #tf.print(loss_value)
+    
+        #loss_value = tf.math.reduce_mean(function_true - function_pred)
+        #tf.print(loss_value)
+        
+        return loss_value
+    
+    inet_decision_function_fv_metric.__name__ = metric + '_' + inet_decision_function_fv_metric.__name__        
+
+
+    return inet_decision_function_fv_metric
+
 #######################################################################################################################################################
 #######################################################################################################################################################
 #######################################################################################################################################################
 #######################################################################################################################################################
 #######################################################################################################################################################
 #######################################################################################################################################################
+
+
+
+
+
+
+
+
+
 
 
 

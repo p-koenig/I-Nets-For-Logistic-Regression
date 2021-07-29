@@ -59,6 +59,8 @@ from numba import jit, njit
 import itertools 
 
 from interruptingcow import timeout
+from livelossplot import PlotLossesKerasTF
+
                                     
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
@@ -141,11 +143,14 @@ def return_callbacks_from_string(callback_string_list):
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
     if 'reduce_lr_loss' in callback_string_list:
-        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=min(50, epochs//10), verbose=0, min_delta=0, mode='min') #epsilon
+        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=25, verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=min(50, epochs//10), min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=25, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
+    if 'plot_losses' in callback_string_list:
+        plotLosses = PlotLossesKerasTF()
+        callbacks.append(plotLosses) 
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
     return callbacks
@@ -344,7 +349,25 @@ def generate_random_data_points(low, high, size, variables, distrib='uniform'):
 ######################################################################################################################################################################################################################
 
 
+def get_shaped_parameters_for_decision_tree(flat_parameters, config):
+    
+    input_dim = config['data']['number_of_variables']
+    output_dim = config['data']['num_classes']
+    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
 
+    
+    weights = flat_parameters[:input_dim*internal_node_num_]
+    weights = tf.reshape(weights, (internal_node_num_, input_dim))
+
+
+    biases = flat_parameters[input_dim*internal_node_num_:(input_dim+1)*internal_node_num_]
+
+    leaf_probabilities = flat_parameters[(input_dim+1)*internal_node_num_:]
+    leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+
+    return weights, biases, leaf_probabilities
+    
 
 
 def generate_decision_tree_from_array(parameter_array, config):

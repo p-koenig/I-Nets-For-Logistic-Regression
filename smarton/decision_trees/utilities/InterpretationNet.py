@@ -143,7 +143,11 @@ def interpretation_net_training(lambda_net_train_dataset,
     print('----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------')
     start = time.time() 
     
-    result = train_inet(lambda_net_train_dataset,
+    (history, 
+     (X_valid, y_valid), 
+     (X_test, y_test), 
+     loss_function, 
+     metrics) = train_inet(lambda_net_train_dataset,
                         lambda_net_valid_dataset,
                         lambda_net_test_dataset,
                         config,
@@ -155,33 +159,20 @@ def interpretation_net_training(lambda_net_train_dataset,
     hours, minutes = divmod(minutes, 60)        
     print('Training Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')    
            
-    if not config['computation']['load_model']:
-        history = result[0]
-    else:
+    if config['computation']['load_model']:
         paths_dict = generate_paths(config, path_type = 'interpretation_net')
 
         path = './data/results/' + paths_dict['path_identifier_interpretation_net'] + '/history' + '.pkl'
         with open(path, 'rb') as f:
             history = pickle.load(f)  
                 
-    valid_data = result[1]
-    X_valid = valid_data[0]
-    y_valid = valid_data[1]
-
-    test_data = result[2]
-    X_test = test_data[0]
-    y_test = test_data[1]
-
-
-    loss_function = result[3]
-    metrics = result[4]
 
     print('---------------------------------------------------------------------------------------------------------------------------')
     print('------------------------------------------------------ LOADING MODELS -----------------------------------------------------')
 
     start = time.time() 
 
-    model_list = load_inet(loss_function=loss_function, metrics=metrics)
+    model = load_inet(loss_function=loss_function, metrics=metrics, config=config)
 
     end = time.time()     
     inet_load_time = (end - start) 
@@ -189,44 +180,28 @@ def interpretation_net_training(lambda_net_train_dataset,
     hours, minutes = divmod(minutes, 60)        
     print('Loading Time: ' +  f'{hours:d}:{minutes:02d}:{seconds:02d}')     
        
-    if not nas:
-        generate_history_plots(history_list, by=identifier_type)
-        #save_results(history_list, scores_test_list, by=identifier_type)    
-        save_results(history_list=history_list, by=identifier_type)    
+    if not config['i_net']['nas']:
+        generate_history_plots(history, config)
+        save_results(history, config)    
     
 
             
-    return ((X_valid_list, y_valid_list), 
-            (X_test_list, y_test_list),
+    return ((X_valid, y_valid), 
+            (X_test, y_test),
             
-            history_list, 
+            history, 
             
-            #scores_valid_list
-            #scores_test_list, 
-            
-            #function_values_valid_list, 
-            #function_values_test_list, 
-            
-            #polynomial_dict_valid_list,
-            #polynomial_dict_test_list,
-            
-            #distrib_dict_valid_list,
-            #distrib_dict_test_list,
-            
-            model_list)
+            model)
     
     
 #######################################################################################################################################################
 ######################################################################I-NET TRAINING###################################################################
 #######################################################################################################################################################
 
-def load_inet(loss_function_list, metrics_list):
-    
+def load_inet(loss_function, metrics, config):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
-    
-    path = paths_dict['path_identifier_interpretation_net_data'] + '/model'
-    
+    path = './data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'] #paths_dict['path_identifier_interpretation_net_data'] + '/model'
 
     model = []
     from tensorflow.keras.utils import CustomObjectScope
@@ -239,7 +214,6 @@ def load_inet(loss_function_list, metrics_list):
     for metric in  metrics:
         custom_object_dict[metric.__name__] = metric        
     model = tf.keras.models.load_model(path, custom_objects=custom_object_dict) # #, compile=False
-    model_list.append(model)
         
     return model
 
@@ -463,7 +437,7 @@ def train_inet(lambda_net_train_dataset,
         
     random_network_parameters = random_model.get_weights()
     network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]         
-    print('1')
+
     (X_train, X_train_flat, y_train) = generate_inet_train_data(lambda_net_train_dataset, config)
     (X_valid, X_valid_flat, y_valid) = generate_inet_train_data(lambda_net_valid_dataset, config)
     (X_test, X_test_flat, y_test) = generate_inet_train_data(lambda_net_test_dataset, config)
@@ -477,19 +451,19 @@ def train_inet(lambda_net_train_dataset,
         metrics.append(tf.keras.losses.get('mae'))
         if config['i_net']['optimize_decision_function']:
             loss_function = inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config)
-            #metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
+            metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
             for metric in config['i_net']['metrics']:
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))  
-                metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, metric))  
+                metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, metric))  
         else:
-            #loss_function = inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config)
+            loss_function = inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config)
             metrics.append(inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))
             for metric in config['i_net']['metrics']:
-                metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config))  
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))  
-            #raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
+                metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, metric))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, metric))  
+            raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
     else:
-        #metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
+        metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
         metrics.append(inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))
         if config['i_net']['optimize_decision_function']:
             raise SystemExit('Coefficient Loss not implemented for selected function representation')
@@ -505,7 +479,7 @@ def train_inet(lambda_net_train_dataset,
         valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
               
     loss_function = inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config)
-    metrics = []
+    metrics = [inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, 'binary_accuracy')]
         
     ############################## BUILD MODEL ###############################
     if not config['computation']['load_model']:
@@ -659,7 +633,7 @@ def train_inet(lambda_net_train_dataset,
 
                         output_node = CombinedOutputInet()(outputs_list)            
 
-                directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + nas_type + '_' + str(data_reshape_version)
+                directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + nas_type + '_' + str(config['i_net']['data_reshape_version'])
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -688,7 +662,7 @@ def train_inet(lambda_net_train_dataset,
                 history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
                 model = auto_model.export_model()
 
-                model.save('./data/saved_models/' + nas_type + '_' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data'])
+                model.save('./data/saved_models/' + nas_type + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'])
 
         else: 
             inputs = Input(shape=X_train.shape[1], name='input')
@@ -730,6 +704,9 @@ def train_inet(lambda_net_train_dataset,
 
             model = Model(inputs=inputs, outputs=outputs)
 
+            if config['i_net']['early_stopping']:
+                callback_names.append('early_stopping')
+            
             callbacks = return_callbacks_from_string(callback_names)            
 
             optimizer = config['i_net']['optimizer']
@@ -754,7 +731,7 @@ def train_inet(lambda_net_train_dataset,
 
             history = history.history
             
-            model.save('./data/saved_models/' + str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net'])
+            model.save('./data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'])
     else:
         history = None
         
@@ -1169,62 +1146,37 @@ def reduce_polynomials(polynomial_list):
 #######################################################################################################################################################    
     
     
-def generate_history_plots(history_list, by='epochs'):
+def generate_history_plots(history, config):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
-    for i, history in enumerate(history_list):  
-        
-        if by == 'epochs':
-            index= (i+1)*each_epochs_save_lambda if each_epochs_save_lambda==1 else i*each_epochs_save_lambda if i > 1 else each_epochs_save_lambda if i==1 else 1
-        elif by == 'samples':
-            index = i
-        
-        plt.plot(history[list(history.keys())[1]])
-        plt.plot(history[list(history.keys())[len(history.keys())//2+1]])
-        plt.title('model ' + list(history.keys())[len(history.keys())//2+1])
-        plt.ylabel('metric')
-        plt.xlabel('epoch')
-        plt.legend(['train', 'valid'], loc='upper left')
-        if by == 'epochs':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] + '_epoch_' + str(index).zfill(3) + '.png')
-        elif by == 'samples':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/' + list(history.keys())[len(history.keys())//2+1] + '_samples_' + str(samples_list[index]).zfill(5) + '.png')
-        plt.clf()
-        
-        plt.plot(history['loss'])
-        plt.plot(history['val_loss'])
-        plt.title('model loss')
-        plt.ylabel('loss')
-        plt.xlabel('epoch')
-        plt.legend(['train', 'valid'], loc='upper left')
-        if by == 'epochs':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + '_epoch_' + str(index).zfill(3) + '.png')    
-        elif by == 'samples':
-            plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/loss_' + '_samples_' + str(samples_list[index]).zfill(5) + '.png')    
-        if i < len(history_list)-1:
-            plt.clf() 
+    plt.plot(history[list(history.keys())[1]])
+    plt.plot(history[list(history.keys())[len(history.keys())//2+1]])
+    plt.title('model ' + list(history.keys())[len(history.keys())//2+1])
+    plt.ylabel('metric')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'valid'], loc='upper left')
+    plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net'] + '/' + list(history.keys())[len(history.keys())//2+1] + '.png')
+    plt.clf()
+
+    plt.plot(history['loss'])
+    plt.plot(history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'valid'], loc='upper left')
+    plt.savefig('./data/results/' + paths_dict['path_identifier_interpretation_net'] + '/loss_' + '.png')   
+    
+    plt.clf() 
             
             
-def save_results(history_list=None, scores_list=None, by='epochs'):
+def save_results(history, config):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
-    if history_list is not None:
-        if by == 'epochs':
-            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
-        elif by == 'samples':
-            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
-        with open(path, 'wb') as f:
-            pickle.dump(history_list, f, protocol=2)   
-        
-    if scores_list is not None: 
-        if by == 'epochs':
-            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_epochs' + '.pkl'
-        elif by == 'samples':
-            path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/scores_samples' + '.pkl'    
-        with open(path, 'wb') as f:
-            pickle.dump(scores_list, f, protocol=2)  
-        
+    
+    path = './data/results/' + paths_dict['path_identifier_interpretation_net'] + '/history' + '.pkl'
+    with open(path, 'wb') as f:
+        pickle.dump(history, f, protocol=2)   
 
 
 def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_dataset_list, function_values_test_list, polynomial_dict_test_list, rand_index=1, plot_type=2):
@@ -1304,7 +1256,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
      
     
     location = './data/plotting/'
-    folder = paths_dict['path_identifier_interpretation_net_data'] + '/'
+    folder = paths_dict['path_identifier_interpretation_net'] + '/'
         
     if plot_type == 1:
         

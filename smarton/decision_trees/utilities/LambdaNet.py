@@ -29,6 +29,7 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+import tensorflow_addons as tfa
 
 #udf import
 #from utilities.LambdaNet import *
@@ -401,7 +402,7 @@ def train_lambda_net(config,
         
     model.compile(optimizer=config['lambda_net']['optimizer_lambda'],
                   loss='binary_crossentropy',#tf.keras.losses.get(config['lambda_net']['loss_lambda']),
-                  metrics=[tf.keras.metrics.get("binary_accuracy"), tf.keras.metrics.get("accuracy")]
+                  metrics=[tf.keras.metrics.get("binary_accuracy")]
                  )
         
     if config['lambda_net']['early_stopping_lambda']:
@@ -459,7 +460,7 @@ def train_lambda_net(config,
             text_file.write(', ' + str(current_seed))
             for value in function: 
                 text_file.write(', ' + str(value))  
-            for value in shaped_network_parameters_to_array(model.get_weights()): 
+            for value in shaped_network_parameters_to_array(model.get_weights(), config): 
                 text_file.write(', ' + str(value))                 
             #for layer_weights, biases in pairwise(model.get_weights()):   
             #    for neuron in layer_weights:
