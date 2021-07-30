@@ -437,7 +437,7 @@ def generate_decision_tree_data(config, seed=42):
         counter += 1
         
         decision_tree = generate_random_decision_tree(config, seed)
-        y_data = decision_tree.predict(X_data)    
+        y_data = decision_tree.predict(X_data)    #predict_proba
     
     return decision_tree.to_array(), X_data, y_data
 
