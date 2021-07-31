@@ -323,59 +323,19 @@ def train_inet(lambda_net_train_dataset,
                 if nas_type == 'SEQUENTIAL':
                     input_node = ak.Input()
 
-                    if nas_type =='SEQUENTIAL-NORM':
-                        hidden_node = ak.Normalization()(input_node)
-                        hidden_node = ak.DenseBlock()(hidden_node)
-                    else:
-                        hidden_node = ak.DenseBlock()(input_node)
+                    hidden_node = ak.DenseBlock()(input_node)
 
                     #print('interpretation_net_output_monomials', interpretation_net_output_monomials)
 
-                    if interpretation_net_output_monomials == None:
-                        output_node = ak.RegressionHead()(hidden_node)  
-                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                    else:
-                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                        outputs_coeff = RegressionDenseInet()(hidden_node)  
-                        outputs_list = [outputs_coeff]
-
-                        if config['i_net']['function_representation_type'] == 1:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                                outputs_list.append(outputs_identifer)                                    
-                        elif config['i_net']['function_representation_type'] == 2:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                for var_index in range(n):
-                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                    outputs_list.append(outputs_identifer)
-                        #print('outputs_list', outputs_list)
-
-                        #output_node = CombinedOutputInet(output_dim=interpretation_net_output_shape)(outputs_list)
-                        output_node = CombinedOutputInet()(outputs_list)
+                    output_node = ak.RegressionHead()(hidden_node)
+                    
 
                 elif nas_type == 'CNN': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
 
-                    if interpretation_net_output_monomials == None:
-                        output_node = ak.RegressionHead()(hidden_node)  
-                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                    else:
-                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                        outputs_coeff = RegressionDenseInet()(hidden_node)  
-                        outputs_list = [outputs_coeff]
-                        if sparse_poly_representation_version == 1:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                                outputs_list.append(outputs_identifer)                                    
-                        elif sparse_poly_representation_version == 2:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                for var_index in range(n):
-                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                    outputs_list.append(outputs_identifer)
-
-                        output_node = CombinedOutputInet()(outputs_list)
+                    output_node = ak.RegressionHead()(hidden_node)  
 
 
                 elif nas_type == 'LSTM':
@@ -383,24 +343,7 @@ def train_inet(lambda_net_train_dataset,
                     hidden_node = ak.RNNBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
 
-                    if interpretation_net_output_monomials == None:
-                        output_node = ak.RegressionHead()(hidden_node)  
-                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                    else:
-                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                        outputs_coeff = RegressionDenseInet()(hidden_node)  
-                        outputs_list = [outputs_coeff]
-                        if sparse_poly_representation_version == 1:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                                outputs_list.append(outputs_identifer)                                    
-                        elif sparse_poly_representation_version == 2:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                for var_index in range(n):
-                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                    outputs_list.append(outputs_identifer)
-
-                        output_node = CombinedOutputInet()(outputs_list)            
+                    output_node = ak.RegressionHead()(hidden_node)  
 
                 elif nas_type == 'CNN-LSTM': 
                     input_node = ak.Input()
@@ -408,24 +351,7 @@ def train_inet(lambda_net_train_dataset,
                     hidden_node = ak.RNNBlock()(hidden_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
 
-                    if interpretation_net_output_monomials == None:
-                        output_node = ak.RegressionHead()(hidden_node)  
-                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                    else:
-                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                        outputs_coeff = RegressionDenseInet()(hidden_node)  
-                        outputs_list = [outputs_coeff]
-                        if sparse_poly_representation_version == 1:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                                outputs_list.append(outputs_identifer)                                    
-                        elif sparse_poly_representation_version == 2:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                for var_index in range(n):
-                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                    outputs_list.append(outputs_identifer)
-
-                        output_node = CombinedOutputInet()(outputs_list)           
+                    output_node = ak.RegressionHead()(hidden_node)  
 
                 elif nas_type == 'CNN-LSTM-parallel':                         
                     input_node = ak.Input()
@@ -434,24 +360,7 @@ def train_inet(lambda_net_train_dataset,
                     hidden_node = ak.Merge()([hidden_node1, hidden_node2])
                     hidden_node = ak.DenseBlock()(hidden_node)
 
-                    if interpretation_net_output_monomials == None:
-                        output_node = ak.RegressionHead()(hidden_node)  
-                        #output_node = ak.RegressionHead(output_dim=sparsity)(hidden_node)  
-                    else:
-                        #outputs_coeff = ak.RegressionHead(output_dim=interpretation_net_output_monomials)(hidden_node)  
-                        outputs_coeff = RegressionDenseInet()(hidden_node)  
-                        outputs_list = [outputs_coeff]
-                        if sparse_poly_representation_version == 1:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                outputs_identifer =  ClassificationDenseInet()(hidden_node)
-                                outputs_list.append(outputs_identifer)                                    
-                        elif sparse_poly_representation_version == 2:
-                            for outputs_index in range(interpretation_net_output_monomials):
-                                for var_index in range(n):
-                                    outputs_identifer =  ClassificationDenseInetDegree()(hidden_node)
-                                    outputs_list.append(outputs_identifer)
-
-                        output_node = CombinedOutputInet()(outputs_list)            
+                    output_node = ak.RegressionHead()(hidden_node)  
 
                 directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + nas_type + '_' + str(config['i_net']['data_reshape_version'])
 

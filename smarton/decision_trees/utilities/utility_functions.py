@@ -143,10 +143,10 @@ def return_callbacks_from_string(callback_string_list):
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
     if 'reduce_lr_loss' in callback_string_list:
-        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=25, verbose=0, min_delta=0, mode='min') #epsilon
+        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=50, verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=25, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=50, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     if 'plot_losses' in callback_string_list:
         plotLosses = PlotLossesKerasTF()
@@ -423,6 +423,47 @@ def generate_random_data_points(config, seed):
     return list_of_data_points 
 
 
+def generate_decision_tree_data_trained_make_classification(config, seed=42):
+    
+    decision_tree = generate_random_decision_tree(config, seed)
+    
+    X_data = generate_random_data_points(config, seed)
+    
+    y_data_tree = sklearn.datasets.make_classification(n_samples=X_data.shape[0], 
+                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                       n_informative=config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                       n_redundant=0, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                       n_repeated=0, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                       n_classes=config['data']['number_of_classes'], 
+                                                       n_clusters_per_class=2, 
+                                                       flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       scale=1.0, #Multiply features by the specified value. 
+                                                       shuffle=True, 
+                                                       random_state=seed) 
+    
+    decision_tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
+                   output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
+                   depth=config['function_family']['maximum_depth'],
+                   random_seed=seed,
+                   use_cuda=False,
+                   verbosity=0)
+    
+    decision_tree.fit(X_data, y_data_tree, epochs=50)    
+    
+    y_data = decision_tree.predict_proba(X_data)
+    counter = 1
+    
+    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+        counter += 1
+        
+        decision_tree = generate_random_decision_tree(config, seed)
+        y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict    
+    
+    return decision_tree.to_array(), X_data, np.round(y_data), y_data 
 
 
 def generate_decision_tree_data_trained(config, seed=42):
