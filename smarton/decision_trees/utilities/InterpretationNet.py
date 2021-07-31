@@ -217,188 +217,8 @@ def load_inet(loss_function, metrics, config):
         
     return model
 
-
-def normalize_lambda_net(flat_weights, random_evaluation_dataset, base_model=None, config=None): 
-        
-    if base_model is None:
-        base_model = generate_base_model()
-    else:
-        base_model = dill.loads(base_model)
-        
-    from utilities.LambdaNet import weights_to_model
-                
-    model = weights_to_model(flat_weights, config=config, base_model=base_model)
-            
-    model_preds_random_data = model.predict(random_evaluation_dataset)
+ 
     
-    min_preds = model_preds_random_data.min()
-    max_preds = model_preds_random_data.max()
-
-    
-    model_preds_random_data_normalized = (model_preds_random_data-min_preds)/(max_preds-min_preds)
-
-    shaped_weights = model.get_weights()
-
-    normalization_factor = (max_preds-min_preds)#0.01
-    #print(normalization_factor)
-
-    normalization_factor_per_layer = normalization_factor ** (1/(len(shaped_weights)/2))
-    #print(normalization_factor_per_layer)
-
-    numer_of_layers = int(len(shaped_weights)/2)
-    #print(numer_of_layers)
-
-    shaped_weights_normalized = []
-    current_bias_normalization_factor = normalization_factor_per_layer
-    current_bias_normalization_factor_reverse = normalization_factor_per_layer ** (len(shaped_weights)/2)
-    
-    for index, (weights, biases) in enumerate(pairwise(shaped_weights)):
-        #print('current_bias_normalization_factor', current_bias_normalization_factor)
-        #print('current_bias_normalization_factor_reverse', current_bias_normalization_factor_reverse)
-        #print('normalization_factor_per_layer', normalization_factor_per_layer)          
-        if index == numer_of_layers-1:
-            weights = weights/normalization_factor_per_layer#weights * normalization_factor_per_layer
-            biases = biases/current_bias_normalization_factor - min_preds/normalization_factor #biases * current_bias_normalization_factor            
-        else:
-            weights = weights/normalization_factor_per_layer#weights * normalization_factor_per_layer
-            biases = biases/current_bias_normalization_factor#biases * current_bias_normalization_factor            
-
-        #weights = (weights-min_preds/current_bias_normalization_factor_reverse)/normalization_factor_per_layer#weights * normalization_factor_per_layer
-        #biases = (biases-min_preds/current_bias_normalization_factor_reverse)/normalization_factor_per_layer#biases * current_bias_normalization_factor
-        shaped_weights_normalized.append(weights)
-        shaped_weights_normalized.append(biases)
-
-        current_bias_normalization_factor = current_bias_normalization_factor * normalization_factor_per_layer
-        current_bias_normalization_factor_reverse = current_bias_normalization_factor_reverse / normalization_factor_per_layer  
-    flat_weights_normalized = list(flatten(shaped_weights_normalized))  
-    
-    return flat_weights_normalized, (min_preds, max_preds)
-    
-def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda_trained_normalized=False, inet_training_normalized=False, normalization_parameter_dict=None):
-    
-    global list_of_monomial_identifiers
-        
-    if inet_training_normalized:
-        if network_data is None:
-            network_data = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n)) 
-
-        inet_predictions_denormalized = [] 
-
-        networks_to_interpret = return_numpy_representation(networks_to_interpret)
-
-        if len(networks_to_interpret.shape) == 1:
-            networks_to_interpret = np.array([networks_to_interpret]) 
-
-        for network_index, network_to_interpret in enumerate(networks_to_interpret):
-
-            print(network_to_interpret.shape)
-            
-            
-            if not lambda_trained_normalized:    
-                network_to_interpret_normalized, (network_to_interpret_min, network_to_interpret_max) = normalize_lambda_net(network_to_interpret, network_data)
-            else:
-                network_to_interpret_normalized = network_to_interpret
-                network_to_interpret_min = normalization_parameter_dict['min'][network_index]
-                network_to_interpret_max = normalization_parameter_dict['max'][network_index]
-
-            inet_prediction_normalized = model.predict(np.array([network_to_interpret_normalized]))[0][:interpretation_net_output_shape]
-
-            #print(inet_prediction_normalized)
-
-            normalization_factor = network_to_interpret_max-network_to_interpret_min
-            #print('normalization_factor', normalization_factor)
-            #print('min', network_to_interpret_min)
-            #print('max', network_to_interpret_max)
-
-
-            if interpretation_net_output_monomials == None:
-                inet_prediction_denormalized = []
-                for monomial_identifier, monomial in zip(list_of_monomial_identifiers, inet_prediction_normalized):
-
-                    #print(monomial)
-
-                    if np.sum(np.abs(monomial_identifier)) == 0:
-                        #print(monomial_identifier, monomial)
-                        monomial = monomial * normalization_factor + network_to_interpret_min
-                        #print(monomial_identifier, monomial)
-                    else:
-                        #print(monomial_identifier, monomial)
-                        monomial = monomial * normalization_factor
-                        #print(monomial_identifier, monomial)
-                    #print(monomial)
-                    inet_prediction_denormalized.append(monomial)
-                #print(inet_prediction_denormalized)
-
-
-            else:
-                # ACHTUNG: WENN interpretation_net_output_monomials != None MUSS SICHERGESTELLT WERDEN, DASS COEFFICIENT IN POLYNOM-REPRÄSENTATION ENTHALTEN IST ODER HINZUGEFÜGT WERDEN
-
-                constant_monomial = None
-                for index, monomial_identifier in enumerate(list_of_monomial_identifiers):
-                    if np.sum(np.abs(monomial_identifier)) == 0:
-                        constant_monomial = index
-
-
-                inet_prediction_normalized_coefficients = inet_prediction_normalized[:interpretation_net_output_monomials]
-                inet_prediction_normalized_index_array = inet_prediction_normalized[interpretation_net_output_monomials:]
-
-                inet_prediction_normalized_index_list = np.split(inet_prediction_normalized_index_array, interpretation_net_output_monomials)
-
-                inet_prediction_normalized_indices = np.argmax(inet_prediction_normalized_index_list, axis=1) 
-
-                inet_prediction_denormalized = None
-
-                if False:
-                    if constant_monomial in inet_prediction_normalized_indices:
-                        inet_prediction_denormalized_coefficients = []
-                        for monomial_index, monomial_coefficient in zip(inet_prediction_normalized_indices, inet_prediction_normalized_coefficients):
-                            if monomial_index != constant_monomial:
-                                denormalized_coefficient = monomial_coefficient * normalization_factor
-                                inet_prediction_denormalized_coefficients.append(denormalized_coefficient)
-                            else:
-                                denormalized_coefficient = monomial_coefficient * normalization_factor + network_to_interpret_min
-                                inet_prediction_denormalized_coefficients.append(denormalized_coefficient)          
-
-                        inet_prediction_denormalized = np.hstack([inet_prediction_denormalized_coefficients, inet_prediction_normalized_index_array])         
-                    else:
-                        inet_prediction_denormalized_coefficients = np.multiply(inet_prediction_normalized_coefficients, normalization_factor)
-                        inet_prediction_denormalized_coefficients = np.hstack([inet_prediction_denormalized_coefficients, network_to_interpret_min])
-
-                        constant_monomial_identifier = [0 for i in range(len(list_of_monomial_identifiers))]
-                        constant_monomial_identifier[constant_monomial] = 1
-
-                        inet_prediction_normalized_index_array = np.hstack([inet_prediction_normalized_index_array, constant_monomial_identifier])
-
-                        inet_prediction_denormalized = np.hstack([inet_prediction_denormalized_coefficients, inet_prediction_normalized_index_array])
-
-                inet_prediction_denormalized_coefficients = np.multiply(inet_prediction_normalized_coefficients, normalization_factor)
-                inet_prediction_denormalized_coefficients = np.hstack([inet_prediction_denormalized_coefficients, network_to_interpret_min])
-
-                constant_monomial_identifier = [0 for i in range(len(list_of_monomial_identifiers))]
-                constant_monomial_identifier[constant_monomial] = 1
-
-                inet_prediction_normalized_index_array = np.hstack([inet_prediction_normalized_index_array, constant_monomial_identifier])
-
-                inet_prediction_denormalized = np.hstack([inet_prediction_denormalized_coefficients, inet_prediction_normalized_index_array])
-
-
-            inet_predictions_denormalized.append(inet_prediction_denormalized)
-
-        if len(inet_predictions_denormalized) == 1:
-            return np.array(inet_predictions_denormalized[0])
-
-        return np.array(inet_predictions_denormalized)
-
-    elif not lambda_trained_normalized:
-        if len(networks_to_interpret.shape) == 1:
-            network_to_interpret = np.array([networks_to_interpret])         
-            inet_prediction = model.predict(np.array([network_to_interpret]))[0][:interpretation_net_output_shape]
-            return inet_prediction
-        else:
-            inet_predictions = model.predict(networks_to_interpret)[:,:interpretation_net_output_shape]
-            return inet_predictions
-    else: #(if not inet_training_normalized and lambda_trained_normalized)
-        return None
         
 def generate_inet_train_data(lambda_net_dataset, config):
     #X_data = None
@@ -736,7 +556,73 @@ def train_inet(lambda_net_train_dataset,
         history = None
         
     return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics) 
-     
+
+
+
+
+
+def normalize_lambda_net(flat_weights, random_evaluation_dataset, base_model=None, config=None): 
+        
+    if base_model is None:
+        base_model = generate_base_model()
+    else:
+        base_model = dill.loads(base_model)
+        
+    from utilities.LambdaNet import weights_to_model
+                
+    model = weights_to_model(flat_weights, config=config, base_model=base_model)
+            
+    model_preds_random_data = model.predict(random_evaluation_dataset)
+    
+    min_preds = model_preds_random_data.min()
+    max_preds = model_preds_random_data.max()
+
+    
+    model_preds_random_data_normalized = (model_preds_random_data-min_preds)/(max_preds-min_preds)
+
+    shaped_weights = model.get_weights()
+
+    normalization_factor = (max_preds-min_preds)#0.01
+    #print(normalization_factor)
+
+    normalization_factor_per_layer = normalization_factor ** (1/(len(shaped_weights)/2))
+    #print(normalization_factor_per_layer)
+
+    numer_of_layers = int(len(shaped_weights)/2)
+    #print(numer_of_layers)
+
+    shaped_weights_normalized = []
+    current_bias_normalization_factor = normalization_factor_per_layer
+    current_bias_normalization_factor_reverse = normalization_factor_per_layer ** (len(shaped_weights)/2)
+    
+    for index, (weights, biases) in enumerate(pairwise(shaped_weights)):
+        #print('current_bias_normalization_factor', current_bias_normalization_factor)
+        #print('current_bias_normalization_factor_reverse', current_bias_normalization_factor_reverse)
+        #print('normalization_factor_per_layer', normalization_factor_per_layer)          
+        if index == numer_of_layers-1:
+            weights = weights/normalization_factor_per_layer#weights * normalization_factor_per_layer
+            biases = biases/current_bias_normalization_factor - min_preds/normalization_factor #biases * current_bias_normalization_factor            
+        else:
+            weights = weights/normalization_factor_per_layer#weights * normalization_factor_per_layer
+            biases = biases/current_bias_normalization_factor#biases * current_bias_normalization_factor            
+
+        #weights = (weights-min_preds/current_bias_normalization_factor_reverse)/normalization_factor_per_layer#weights * normalization_factor_per_layer
+        #biases = (biases-min_preds/current_bias_normalization_factor_reverse)/normalization_factor_per_layer#biases * current_bias_normalization_factor
+        shaped_weights_normalized.append(weights)
+        shaped_weights_normalized.append(biases)
+
+        current_bias_normalization_factor = current_bias_normalization_factor * normalization_factor_per_layer
+        current_bias_normalization_factor_reverse = current_bias_normalization_factor_reverse / normalization_factor_per_layer  
+    flat_weights_normalized = list(flatten(shaped_weights_normalized))  
+    
+    return flat_weights_normalized, (min_preds, max_preds)
+    
+
+    
+
+
+
+
 def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
           
     n_jobs_parallel_fv = n_jobs
@@ -874,6 +760,7 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
     
     return scores_dict, distrib_dicts
 
+
 def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', backend='loky'): 
         
     printing = True if n_jobs == 1 else False
@@ -1003,144 +890,98 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
         
     return per_network_optimization_polynomials
 
-def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
     
-    #backend='multiprocessing'
+def restructure_data_cnn_lstm(X_data, config, subsequences=None):
+
+    #version == 0: one sequence for biases and one sequence for weights per layer (padded to maximum size)
+    #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
+    #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
     
-    symbolic_regression_hyperparams = {
-        'dataset_size': per_network_optimization_dataset_size,
-    }
-    #backend='sequential'
+    base_model = generate_base_model(config)
+       
+    X_data_flat = X_data
 
     
-    config = {
-            'n': n,
-            'd': d,
-            'inet_loss': inet_loss,
-            'sparsity': sparsity,
-            'sample_sparsity': sample_sparsity,
-            'lambda_network_layers': lambda_network_layers,
-            'interpretation_net_output_shape': interpretation_net_output_shape,
-            'RANDOM_SEED': RANDOM_SEED,
-            'nas': nas,
-            'number_of_lambda_weights': number_of_lambda_weights,
-            'interpretation_net_output_monomials': interpretation_net_output_monomials,
-            'fixed_initialization_lambda_training': fixed_initialization_lambda_training,
-            'dropout': dropout,
-            'lambda_network_layers': lambda_network_layers,
-            'optimizer_lambda': optimizer_lambda,
-            'loss_lambda': loss_lambda,        
-             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
-             'x_min': x_min,
-             'x_max': x_max,
-             'sparse_poly_representation_version': sparse_poly_representation_version,
-            'max_optimization_minutes': max_optimization_minutes,
-             }
+    shaped_weights_list = []
+    for data in tqdm(X_data):
+        shaped_weights = shape_flat_weights(data, base_model.get_weights())
+        shaped_weights_list.append(shaped_weights)
 
-    parallel_symbolic_regression = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
-
-    return_error = False
-    
-    result_list_symbolic_regression = parallel_symbolic_regression(delayed(symbolic_regression)(lambda_net, 
-                                                                                  config,
-                                                                                  symbolic_regression_hyperparams,
-                                                                                  #printing = printing,
-                                                                                  return_error = return_error) for lambda_net in lambda_net_dataset.lambda_net_list)      
-
-    del parallel_symbolic_regression  
-    
-    if return_error:
-        symbolic_regression_errors = [result[0] for result in result_list_symbolic_regression]
-        symbolic_regression_functions = [result[1] for result in result_list_symbolic_regression]   
-    else:
-        return result_list_symbolic_regression
-    
-    return symbolic_regression_errors, symbolic_regression_functions
+    max_size = 0
+    for weights in shaped_weights:
+        max_size = max(max_size, max(weights.shape))      
 
 
-def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):
+    if config['i_net']['data_reshape_version'] == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
+        X_data_list = []
+        for shaped_weights in tqdm(shaped_weights_list):
+            padded_network_parameters_list = []
+            for layer_weights, biases in pairwise(shaped_weights):
+                padded_weights_list = []
+                for weights in layer_weights:
+                    padded_weights = np.pad(weights, (int(np.floor((max_size-weights.shape[0])/2)), int(np.ceil((max_size-weights.shape[0])/2))), 'constant')
+                    padded_weights_list.append(padded_weights)
+                padded_biases = np.pad(biases, (int(np.floor((max_size-biases.shape[0])/2)), int(np.ceil((max_size-biases.shape[0])/2))), 'constant')
+                padded_network_parameters_list.append(padded_biases)
+                padded_network_parameters_list.extend(padded_weights_list)   
+            X_data_list.append(padded_network_parameters_list)
+        X_data = np.array(X_data_list)    
+
+    elif config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
+        lambda_net_structure = list(flatten([n, lambda_network_layers, 1]))                    
+        number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
+
+        X_data_list = []
+        for shaped_weights in tqdm(shaped_weights_list):        
+            network_parameters_sequence_list = np.array([]).reshape(number_of_paths, 0)    
+            for layer_index, (weights, biases) in zip(range(1, len(lambda_net_structure)), pairwise(shaped_weights)):
+
+                layer_neurons = lambda_net_structure[layer_index]    
+                previous_layer_neurons = lambda_net_structure[layer_index-1]
+
+                assert biases.shape[0] == layer_neurons
+                assert weights.shape[0]*weights.shape[1] == previous_layer_neurons*layer_neurons
+
+                bias_multiplier = number_of_paths//layer_neurons
+                weight_multiplier = number_of_paths//(previous_layer_neurons * layer_neurons)
+
+                extended_bias_list = []
+                for bias in biases:
+                    extended_bias = np.tile(bias, (bias_multiplier,1))
+                    extended_bias_list.extend(extended_bias)
+
+
+                extended_weights_list = []
+                for weight in weights.flatten():
+                    extended_weights = np.tile(weight, (weight_multiplier,1))
+                    extended_weights_list.extend(extended_weights)      
+
+                network_parameters_sequence = np.concatenate([extended_weights_list, extended_bias_list], axis=1)
+                network_parameters_sequence_list = np.hstack([network_parameters_sequence_list, network_parameters_sequence])
+
+
+            number_of_paths = network_parameters_sequence_list.shape[0]
+            number_of_unique_paths = np.unique(network_parameters_sequence_list, axis=0).shape[0]
+            number_of_nonUnique_paths = number_of_paths-number_of_unique_paths
+
+            if number_of_nonUnique_paths > 0:
+                print("Number of non-unique rows: " + str(number_of_nonUnique_paths))
+                print(network_parameters_sequence_list)
+
+            X_data_list.append(network_parameters_sequence_list)
+        X_data = np.array(X_data_list)          
         
-    metamodeling_hyperparams = {
-        'num_iter': 10,#500,
-        'batch_size': None,
-        'learning_rate': 0.01,        
-        'dataset_size': per_network_optimization_dataset_size,
-    }
+        if config['i_net']['data_reshape_version'] == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
+            X_data = np.transpose(X_data, (0, 2, 1))
 
-    #list_of_monomial_identifiers_numbers = np.array([list(monomial_identifiers) for monomial_identifiers in list_of_monomial_identifiers]).astype(float)  
+    if lstm_layers != None and cnn_layers != None: #generate subsequences for cnn-lstm
+        subsequences = 1 #for each bias+weights
+        timesteps = X_train.shape[1]//subsequences
 
-    #printing = True if n_jobs == 1 else False
+        X_data = X_data.reshape((X_data.shape[0], subsequences, timesteps, X_data.shape[2]))
 
-    #lambda_network_weights_list = np.array(lambda_net_dataset.weight_list)
-    #print('HERE')
-    #backend = 'sequential'
+    return X_data, X_data_flat
 
-    config = {
-            'n': n,
-            'd': d,
-            'inet_loss': inet_loss,
-            'sparsity': sparsity,
-            'lambda_network_layers': lambda_network_layers,
-            'interpretation_net_output_shape': interpretation_net_output_shape,
-            'RANDOM_SEED': RANDOM_SEED,
-            'nas': nas,
-            'number_of_lambda_weights': number_of_lambda_weights,
-            'interpretation_net_output_monomials': interpretation_net_output_monomials,
-            'fixed_initialization_lambda_training': fixed_initialization_lambda_training,
-            'dropout': dropout,
-            'lambda_network_layers': lambda_network_layers,
-            'optimizer_lambda': optimizer_lambda,
-            'loss_lambda': loss_lambda,        
-             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
-             'x_min': x_min,
-             'x_max': x_max,
-            'sparse_poly_representation_version': sparse_poly_representation_version,
-            'max_optimization_minutes': max_optimization_minutes,
-             }
-
-    parallel_metamodeling = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
-
-    return_error = False 
-    
-    if adjusted_symbolic_metamodeling_code:
-    
-        result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling)(lambda_net, 
-                                                                                      config,
-                                                                                      metamodeling_hyperparams,
-                                                                                      #printing = printing,
-                                                                                      return_error = return_error,
-                                                                                      return_expression=return_expression,
-                                                                                      function_metamodeling=function_metamodeling,
-                                                                                      force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)      
-
-    else:
-        
-        result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling_original)(lambda_net, 
-                                                                                      config,
-                                                                                      metamodeling_hyperparams,
-                                                                                      #printing = printing,
-                                                                                      return_error = return_error,
-                                                                                      return_expression=return_expression,
-                                                                                      function_metamodeling=function_metamodeling,
-                                                                                      force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)          
-        
-        print(result_list_metamodeling)
-    del parallel_metamodeling  
-    
-    if return_error:
-        metamodeling_errors = [result[0] for result in result_list_metamodeling]
-        metamodeling_polynomials = [result[1] for result in result_list_metamodeling]   
-    else:
-        return result_list_metamodeling
-    
-    return metamodeling_errors, metamodeling_polynomials
-    
-    
-    
-def reduce_polynomials(polynomial_list):
-    
-    return
-    
 #######################################################################################################################################################
 ################################################################SAVING AND PLOTTING RESULTS############################################################
 #######################################################################################################################################################    
@@ -1328,93 +1169,3 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         print(tab)
 
             
-def restructure_data_cnn_lstm(X_data, config, subsequences=None):
-
-    #version == 0: one sequence for biases and one sequence for weights per layer (padded to maximum size)
-    #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
-    #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
-    
-    base_model = generate_base_model(config)
-       
-    X_data_flat = X_data
-
-    
-    shaped_weights_list = []
-    for data in tqdm(X_data):
-        shaped_weights = shape_flat_weights(data, base_model.get_weights())
-        shaped_weights_list.append(shaped_weights)
-
-    max_size = 0
-    for weights in shaped_weights:
-        max_size = max(max_size, max(weights.shape))      
-
-
-    if config['i_net']['data_reshape_version'] == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
-        X_data_list = []
-        for shaped_weights in tqdm(shaped_weights_list):
-            padded_network_parameters_list = []
-            for layer_weights, biases in pairwise(shaped_weights):
-                padded_weights_list = []
-                for weights in layer_weights:
-                    padded_weights = np.pad(weights, (int(np.floor((max_size-weights.shape[0])/2)), int(np.ceil((max_size-weights.shape[0])/2))), 'constant')
-                    padded_weights_list.append(padded_weights)
-                padded_biases = np.pad(biases, (int(np.floor((max_size-biases.shape[0])/2)), int(np.ceil((max_size-biases.shape[0])/2))), 'constant')
-                padded_network_parameters_list.append(padded_biases)
-                padded_network_parameters_list.extend(padded_weights_list)   
-            X_data_list.append(padded_network_parameters_list)
-        X_data = np.array(X_data_list)    
-
-    elif config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
-        lambda_net_structure = list(flatten([n, lambda_network_layers, 1]))                    
-        number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
-
-        X_data_list = []
-        for shaped_weights in tqdm(shaped_weights_list):        
-            network_parameters_sequence_list = np.array([]).reshape(number_of_paths, 0)    
-            for layer_index, (weights, biases) in zip(range(1, len(lambda_net_structure)), pairwise(shaped_weights)):
-
-                layer_neurons = lambda_net_structure[layer_index]    
-                previous_layer_neurons = lambda_net_structure[layer_index-1]
-
-                assert biases.shape[0] == layer_neurons
-                assert weights.shape[0]*weights.shape[1] == previous_layer_neurons*layer_neurons
-
-                bias_multiplier = number_of_paths//layer_neurons
-                weight_multiplier = number_of_paths//(previous_layer_neurons * layer_neurons)
-
-                extended_bias_list = []
-                for bias in biases:
-                    extended_bias = np.tile(bias, (bias_multiplier,1))
-                    extended_bias_list.extend(extended_bias)
-
-
-                extended_weights_list = []
-                for weight in weights.flatten():
-                    extended_weights = np.tile(weight, (weight_multiplier,1))
-                    extended_weights_list.extend(extended_weights)      
-
-                network_parameters_sequence = np.concatenate([extended_weights_list, extended_bias_list], axis=1)
-                network_parameters_sequence_list = np.hstack([network_parameters_sequence_list, network_parameters_sequence])
-
-
-            number_of_paths = network_parameters_sequence_list.shape[0]
-            number_of_unique_paths = np.unique(network_parameters_sequence_list, axis=0).shape[0]
-            number_of_nonUnique_paths = number_of_paths-number_of_unique_paths
-
-            if number_of_nonUnique_paths > 0:
-                print("Number of non-unique rows: " + str(number_of_nonUnique_paths))
-                print(network_parameters_sequence_list)
-
-            X_data_list.append(network_parameters_sequence_list)
-        X_data = np.array(X_data_list)          
-        
-        if config['i_net']['data_reshape_version'] == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
-            X_data = np.transpose(X_data, (0, 2, 1))
-
-    if lstm_layers != None and cnn_layers != None: #generate subsequences for cnn-lstm
-        subsequences = 1 #for each bias+weights
-        timesteps = X_train.shape[1]//subsequences
-
-        X_data = X_data.reshape((X_data.shape[0], subsequences, timesteps, X_data.shape[2]))
-
-    return X_data, X_data_flat

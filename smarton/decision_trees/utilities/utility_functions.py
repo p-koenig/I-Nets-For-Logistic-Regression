@@ -382,7 +382,7 @@ def generate_decision_tree_from_array(parameter_array, config):
     return tree
 
 
-def generate_random_decision_tree(config, seed):
+def generate_random_decision_tree(config, seed=42):
     
     #random.seed(seed)
     #np.random.seed(seed)
@@ -423,23 +423,56 @@ def generate_random_data_points(config, seed):
     return list_of_data_points 
 
 
+
+
+def generate_decision_tree_data_trained(config, seed=42):
+    
+    decision_tree = generate_random_decision_tree(config, seed)
+    
+    X_data = generate_random_data_points(config, seed)
+    
+    y_data_tree = np.random.randint(0,2,X_data.shape[0])
+    
+    decision_tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
+                   output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
+                   depth=config['function_family']['maximum_depth'],
+                   random_seed=seed,
+                   use_cuda=False,
+                   verbosity=0)
+    
+    decision_tree.fit(X_data, y_data_tree, epochs=50)    
+    
+    y_data = decision_tree.predict_proba(X_data)
+    counter = 1
+    
+    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+        counter += 1
+        
+        decision_tree = generate_random_decision_tree(config, seed)
+        y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
+    
+    return decision_tree.to_array(), X_data, np.round(y_data), y_data 
+
+
+
 def generate_decision_tree_data(config, seed=42):
     
     decision_tree = generate_random_decision_tree(config, seed)
     
     X_data = generate_random_data_points(config, seed)
     
-    y_data = decision_tree.predict(X_data)
+    y_data = decision_tree.predict_proba(X_data)
     counter = 1
     
-    while np.unique(y_data).shape[0] == 1 or np.min(np.unique(y_data, return_counts=True)[1]) < config['data']['lambda_dataset_size']/20:
+    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
         seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
         counter += 1
         
         decision_tree = generate_random_decision_tree(config, seed)
-        y_data = decision_tree.predict(X_data)    #predict_proba
+        y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
     
-    return decision_tree.to_array(), X_data, y_data
+    return decision_tree.to_array(), X_data, np.round(y_data), y_data 
 
 
 def generate_decision_tree_identifier(config):

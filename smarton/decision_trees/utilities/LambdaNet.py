@@ -76,9 +76,9 @@ class LambdaNetDataset():
         self.shape = (self.network_parameters_array.shape[0], 1 + 1 + self.network_parameters_array.shape[1] + self.target_function_parameters_array.shape[1])
     
     def __repr__(self):
-        return str(self.as_pandas().head())
+        return str(self.as_pandas(config).head())
     def __str__(self):
-        return str(self.as_pandas().head())
+        return str(self.as_pandas(config).head())
     
     def __len__(self):
         return len(self.lambda_net_list)

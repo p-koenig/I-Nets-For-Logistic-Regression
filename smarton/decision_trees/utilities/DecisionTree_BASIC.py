@@ -332,18 +332,20 @@ class SDT(nn.Module):
 
             data = torch.FloatTensor(X).to(self.device)
             output = F.softmax(self.forward(data), dim=1)
+            #print(output[:,1:].data)
+            #print(output[:,1:].data.reshape(1,-1))
             if self.verbosity > 0:
                 print('output', output)
 
-            pred = output[:,1:].reshape(1,-1)#output.data.max(1)[1]
+            pred = output[:,1:].data#output.data.max(1)[1]
             if self.verbosity > 0:
                 print('pred', pred)        
 
-            predictions = pred
+            predictions = pred.numpy()
 
 
 
-            return predictions            
+            return predictions       
         
         return None
             
@@ -356,7 +358,7 @@ class SDT(nn.Module):
         output = F.softmax(self.forward(data), dim=1)
         if self.verbosity > 0:
             print('output', output)
-
+        
         pred = output.data.max(1)[1]
         if self.verbosity > 0:
             print('pred', pred)        
@@ -440,18 +442,12 @@ class SDT(nn.Module):
     def initialize_from_parameter_array(self, parameters):
         
         weights = parameters[:self.input_dim*self.internal_node_num_]
-        if ('tensorflow' in str(type(parameters))):
-            weights = tf.reshape(weights, (self.internal_node_num_, self.input_dim))
-        else:
-            weights = weights.reshape(self.internal_node_num_, self.input_dim)
+        weights = weights.reshape(self.internal_node_num_, self.input_dim)
         
         biases = parameters[self.input_dim*self.internal_node_num_:(self.input_dim+1)*self.internal_node_num_]
         
         leaf_probabilities = parameters[(self.input_dim+1)*self.internal_node_num_:]
-        if ('tensorflow' in str(type(parameters))):
-            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (self.leaf_node_num_, self.output_dim)))
-        else:
-            leaf_probabilities = leaf_probabilities.reshape(self.leaf_node_num_, self.output_dim).T
+        leaf_probabilities = leaf_probabilities.reshape(self.leaf_node_num_, self.output_dim).T
 
         
         self.inner_nodes[0].weight = torch.nn.Parameter(torch.FloatTensor(weights))
