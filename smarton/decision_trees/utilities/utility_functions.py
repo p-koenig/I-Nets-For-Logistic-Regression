@@ -60,6 +60,7 @@ import itertools
 
 from interruptingcow import timeout
 from livelossplot import PlotLossesKerasTF
+from sklearn.datasets import make_classification
 
                                     
 #######################################################################################################################################################
@@ -429,7 +430,7 @@ def generate_decision_tree_data_trained_make_classification(config, seed=42):
     
     X_data = generate_random_data_points(config, seed)
     
-    y_data_tree = sklearn.datasets.make_classification(n_samples=X_data.shape[0], 
+    y_data_tree = make_classification(n_samples=X_data.shape[0], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=0, #The number of redundant features. These features are generated as random linear combinations of the informative features.
