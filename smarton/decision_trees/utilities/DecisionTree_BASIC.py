@@ -75,11 +75,13 @@ class SDT(nn.Module):
             lamda=1e-3,
             lr=1e-2,
             weight_decaly=5e-4,
+            beta=1, #temperature
+            decision_sparsity=-1, #number of variables in each split (-1 means all variables)
             criterion=nn.CrossEntropyLoss(),
             maximum_path_probability = True,
             random_seed=42,
             use_cuda=False,
-            verbosity=1): #0=no verbosity, 1= epoch lvl verbosity, 2=batch lvl verbosity
+            verbosity=1): #0=no verbosity, 1= epoch lvl verbosity, 2=batch lvl verbosity, 3=additional prints
         super(SDT, self).__init__()
         
         torch.manual_seed(random_seed)
@@ -90,6 +92,8 @@ class SDT(nn.Module):
         self.maximum_path_probability = maximum_path_probability
 
         self.depth = depth
+        self.beta = beta
+        self.decision_sparsity = decision_sparsity
         self.lamda = lamda
         self.device = torch.device("cuda" if use_cuda else "cpu")
         
@@ -109,7 +113,7 @@ class SDT(nn.Module):
         # internal nodes is added by 1, serving as the bias.
         self.inner_nodes = nn.Sequential(
             nn.Linear(self.input_dim, self.internal_node_num_, bias=True),
-            nn.Sigmoid(),
+            #nn.Sigmoid(),
         )
 
         self.leaf_nodes = nn.Linear(self.leaf_node_num_,
@@ -128,7 +132,7 @@ class SDT(nn.Module):
         
         #maximum_path_probability
         
-        if self.verbosity:
+        if self.verbosity >= 3:
             print('_mu, _penalty', _mu, _penalty)
             
         if self.maximum_path_probability:
@@ -137,7 +141,7 @@ class SDT(nn.Module):
             
         y_pred = self.leaf_nodes(_mu)
         
-        if self.verbosity:
+        if self.verbosity>= 3:
             print('y_pred', y_pred)
         # When `X` is the training data, the model also returns the penalty
         # to compute the training loss.
@@ -151,23 +155,23 @@ class SDT(nn.Module):
 
         batch_size = X.size()[0]
         #X = self._data_augment(X)
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('X', X)
-        path_prob = self.inner_nodes(X)
-        if self.verbosity > 0:
+        path_prob = nn.Sigmoid()(self.beta*self.inner_nodes(X))
+        if self.verbosity>= 3:
             print('path_prob', path_prob)
         path_prob = torch.unsqueeze(path_prob, dim=2)
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('path_prob', path_prob)
         path_prob = torch.cat((path_prob, 1 - path_prob), dim=2)
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('path_prob', path_prob)
         
             
         
         _mu = X.data.new(batch_size, 1, 1).fill_(1.0)
         _penalty = torch.tensor(0.0).to(self.device)
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('_mu', _mu)
             print('_penalty', _penalty)
         # Iterate through internal odes in each layer to compute the final path
@@ -183,23 +187,23 @@ class SDT(nn.Module):
             _penalty = _penalty + self._cal_penalty(layer_idx, _mu, _path_prob)
             _mu = _mu.view(batch_size, -1, 1).repeat(1, 1, 2)
 
-            if self.verbosity > 0:
+            if self.verbosity>= 3:
                 #print('_penalty loop', _penalty)    
                 print('_mu updated loop', _mu) 
                 
             _mu = _mu * _path_prob  # update path probabilities
 
-            if self.verbosity > 0:
+            if self.verbosity>= 3:
                 #print('_penalty loop', _penalty)    
                 print('_mu updated loop', _mu)      
                 
             begin_idx = end_idx
             end_idx = begin_idx + 2 ** (layer_idx + 1)
 
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('_mu updated', _mu)
         mu = _mu.view(batch_size, self.leaf_node_num_)
-        if self.verbosity > 0:
+        if self.verbosity >= 3:
             print('mu', mu)
         return mu, _penalty
 
@@ -269,11 +273,25 @@ class SDT(nn.Module):
 
                 loss += penalty
 
+                #print(self.inner_nodes[0].weight)
+                
                 self.optimizer.zero_grad()
                 loss.backward()
-                self.optimizer.step()        
+                self.optimizer.step()     
+                
 
-                if self.verbosity > 0:
+                
+                if self.decision_sparsity != -1:
+                    vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+
+                    weights = torch.zeros_like(self.inner_nodes[0].weight)
+                    for i, idx in enumerate(idx_list):
+                        weights[i][idx] = self.inner_nodes[0].weight[i][idx]
+                    self.inner_nodes[0].weight = torch.nn.Parameter(weights)                          
+                
+                #print(self.inner_nodes[0].weight)
+                
+                if self.verbosity >= 1:
                     pred = output.data.max(1)[1]
                     correct = pred.eq(target.view(-1).data).sum()
                     batch_idx = (index+1)*batch_size
@@ -291,7 +309,7 @@ class SDT(nn.Module):
             if self.verbosity >= 1:
                 pred = output.data.max(1)[1]
                 correct = pred.eq(target.view(-1).data).sum()
-                batch_idx = (index+1)*batch_size
+                #batch_idx = (index+1)*batch_size
                 msg = (
                     "Epoch: {:02d} | Loss: {:.5f} |"
                     " Correct: {:03d}/{:03d}"
@@ -312,7 +330,7 @@ class SDT(nn.Module):
 
         accuracy = float(correct) / target.shape[0]
         
-        if self.verbosity:
+        if self.verbosity >= 1:
             msg = (
                 "\nTesting Accuracy: {}/{} ({:.3f}%)\n"
             )
@@ -334,11 +352,11 @@ class SDT(nn.Module):
             output = F.softmax(self.forward(data), dim=1)
             #print(output[:,1:].data)
             #print(output[:,1:].data.reshape(1,-1))
-            if self.verbosity > 0:
+            if self.verbosity>= 3:
                 print('output', output)
 
             pred = output[:,1:].data#output.data.max(1)[1]
-            if self.verbosity > 0:
+            if self.verbosity>= 3:
                 print('pred', pred)        
 
             predictions = pred.numpy()
@@ -356,11 +374,11 @@ class SDT(nn.Module):
         
         data = torch.FloatTensor(X).to(self.device)
         output = F.softmax(self.forward(data), dim=1)
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('output', output)
         
         pred = output.data.max(1)[1]
-        if self.verbosity > 0:
+        if self.verbosity>= 3:
             print('pred', pred)        
         
         predictions = pred
@@ -372,22 +390,17 @@ class SDT(nn.Module):
                 data_point = torch.FloatTensor([data_point]).to(self.device)
 
                 output = F.softmax(self.forward(data_point), dim=1)
-                if self.verbosity > 0:
+                if self.verbosity>= 3:
                     print('output', output)
 
                 pred = output.data.max(1)[1]
-                if self.verbosity > 0:
+                if self.verbosity>= 3:
                     print('pred', pred)
                 predictions[index] = pred
             
             
             
         return predictions
-        
-    
-    def get_parameters(self):
-        pass
-
     
     
     
@@ -423,6 +436,8 @@ class SDT(nn.Module):
         for leaf_index in range(2**(self.depth)):
             variable_name = str(self.depth) + '-' + str(leaf_index)
             parent_name = str(self.depth-1) + '-' + str(leaf_index//2)
+            print('variable_name', variable_name)
+            print('parent_name', parent_name)
             
             data = leaf_data[leaf_index]    
             locals().update({variable_name: Node(data, parent=locals()[parent_name])})
@@ -458,3 +473,6 @@ def batch(iterable, size):
     it = iter(iterable)
     while item := list(itertools.islice(it, size)):
         yield item
+        
+        
+    

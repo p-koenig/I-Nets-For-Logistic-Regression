@@ -234,7 +234,7 @@ def generate_inet_train_data(lambda_net_dataset, config):
     else:
         y_data = np.zeros_like(lambda_net_dataset.target_function_parameters_array)
         
-    if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['nas_type']['convolution_layers'] != 'SEQUENTIAL'):
+    if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL'):
         X_data, X_data_flat = restructure_data_cnn_lstm(X_data, config, subsequences=None)
 
 
@@ -310,7 +310,7 @@ def train_inet(lambda_net_train_dataset,
             loss_function_name = loss_function.__name__
             custom_object_dict[loss_function_name] = loss_function
             metric_names = []
-            for metric in  config['i_net']['metrics']:
+            for metric in metrics:
                 metric_name = metric.__name__
                 metric_names.append(metric_name)
                 custom_object_dict[metric_name] = metric  
@@ -320,7 +320,7 @@ def train_inet(lambda_net_train_dataset,
             #print(loss_function_name)
 
             with CustomObjectScope(custom_object_dict):
-                if nas_type == 'SEQUENTIAL':
+                if config['i_net']['nas_type'] == 'SEQUENTIAL':
                     input_node = ak.Input()
 
                     hidden_node = ak.DenseBlock()(input_node)
@@ -330,7 +330,7 @@ def train_inet(lambda_net_train_dataset,
                     output_node = ak.RegressionHead()(hidden_node)
                     
 
-                elif nas_type == 'CNN': 
+                elif config['i_net']['nas_type'] == 'CNN': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
@@ -338,14 +338,14 @@ def train_inet(lambda_net_train_dataset,
                     output_node = ak.RegressionHead()(hidden_node)  
 
 
-                elif nas_type == 'LSTM':
+                elif config['i_net']['nas_type'] == 'LSTM':
                     input_node = ak.Input()
                     hidden_node = ak.RNNBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
 
                     output_node = ak.RegressionHead()(hidden_node)  
 
-                elif nas_type == 'CNN-LSTM': 
+                elif config['i_net']['nas_type'] == 'CNN-LSTM': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
                     hidden_node = ak.RNNBlock()(hidden_node)
@@ -353,7 +353,7 @@ def train_inet(lambda_net_train_dataset,
 
                     output_node = ak.RegressionHead()(hidden_node)  
 
-                elif nas_type == 'CNN-LSTM-parallel':                         
+                elif config['i_net']['nas_type'] == 'CNN-LSTM-parallel':                         
                     input_node = ak.Input()
                     hidden_node1 = ak.ConvBlock()(input_node)
                     hidden_node2 = ak.RNNBlock()(input_node)
@@ -362,7 +362,7 @@ def train_inet(lambda_net_train_dataset,
 
                     output_node = ak.RegressionHead()(hidden_node)  
 
-                directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + nas_type + '_' + str(config['i_net']['data_reshape_version'])
+                directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version'])
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -371,9 +371,9 @@ def train_inet(lambda_net_train_dataset,
                                     objective='val_loss',
                                     overwrite=True,
                                     tuner='greedy',#'hyperband',#"bayesian",
-                                    max_trials=nas_trials,
+                                    max_trials=config['i_net']['nas_trials'],
                                     directory=directory,
-                                    seed=RANDOM_SEED+1)
+                                    seed=config['computation']['RANDOM_SEED'])
 
                 ############################## PREDICTION ###############################
 
@@ -388,10 +388,10 @@ def train_inet(lambda_net_train_dataset,
                     )
 
 
-                history = auto_model.tuner.oracle.get_best_trials(min(nas_trials, 5))
+                history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
                 model = auto_model.export_model()
 
-                model.save('./data/saved_models/' + nas_type + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'])
+                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'])
 
         else: 
             inputs = Input(shape=X_train.shape[1], name='input')

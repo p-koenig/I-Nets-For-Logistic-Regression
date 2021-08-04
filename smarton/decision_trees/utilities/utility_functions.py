@@ -196,6 +196,8 @@ def generate_paths(config, path_type='interpretation_net'):
                                   '_xDist' + str(config['data']['x_distrib']) +
                                   
                                   '_depth' + str(config['function_family']['maximum_depth']) +
+                                  '_beta' + str(config['function_family']['beta']) +
+                                  '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
                                   '_' + ('fullyGrown' if config['function_family']['fully_grown'] else 'partiallyGrown')
                                  )
 
@@ -375,6 +377,8 @@ def generate_decision_tree_from_array(parameter_array, config):
     tree = SDT(input_dim=config['data']['number_of_variables'],
                output_dim=config['data']['num_classes'],
                depth=config['function_family']['maximum_depth'],
+               beta=config['function_family']['beta'],
+               decision_sparsity=config['function_family']['decision_sparsity'],
                use_cuda=False,
                verbosity=0)
     
@@ -392,6 +396,8 @@ def generate_random_decision_tree(config, seed=42):
         tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
                    output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
                    depth=config['function_family']['maximum_depth'],
+                   beta=config['function_family']['beta'],
+                   decision_sparsity=config['function_family']['decision_sparsity'],
                    random_seed=seed,
                    use_cuda=False,
                    verbosity=0)#
@@ -446,6 +452,8 @@ def generate_decision_tree_data_trained_make_classification(config, seed=42):
     decision_tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
                    output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
                    depth=config['function_family']['maximum_depth'],
+                   beta=config['function_family']['beta'],
+                   decision_sparsity=config['function_family']['decision_sparsity'],
                    random_seed=seed,
                    use_cuda=False,
                    verbosity=0)
@@ -476,6 +484,8 @@ def generate_decision_tree_data_trained(config, seed=42):
     decision_tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
                    output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
                    depth=config['function_family']['maximum_depth'],
+                   beta=config['function_family']['beta'],
+                   decision_sparsity=config['function_family']['decision_sparsity'],
                    random_seed=seed,
                    use_cuda=False,
                    verbosity=0)
