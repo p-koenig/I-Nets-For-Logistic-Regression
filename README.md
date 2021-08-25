@@ -2,12 +2,6 @@
 
 ## Structure of the Project
 
-#### Important Folders
-* `_baselib` - Contains fundamental python modules that implement basic functions imported by higher-level jupyter notebooks.
-* `_setup` - Contains information regarding the required python packages to successfully execute code.
-* `lahoffma` - Subrepository: contains resources managed exclusively by Lars Hoffmann. 
-* `smarton` - Subrepository: contains resources managed exclusively by Sascha Marton.
-
 
 ## Setup
 
@@ -22,7 +16,7 @@ The easiest way to setup Python with a lot of commonly used packages is the inst
 #### Python Packages
 
 Before a code execution additional python packages are required. For a fast installation the concept of requirements files is used. More information can be found here: https://pip.readthedocs.io/en/1.1/requirements.html 
-The folder `_setup` contains two different requirements files:
+The folder `99_helper_functions` contains two different requirements files:
 
 * `official_project_requirements.txt` - created with the python package pipreqsnb (https://github.com/ivanlen/pipreqsnb). It only contains the specific packages required by the XAI project.
 
