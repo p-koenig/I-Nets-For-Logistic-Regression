@@ -409,9 +409,9 @@ def train_inet(lambda_net_train_dataset,
                 if config['i_net']['dropout'][layer_index+1] > 0:
                     hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
 
-            if function_representation_type == 1:
+            if config['i_net']['function_representation_type'] == 1:
                 outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], name='output_' + str(config['function_family']['function_representation_length']))(hidden)
-            elif function_representation_type == 2:
+            elif config['i_net']['function_representation_type'] == 2:
                 
                 #input_dim = config['data']['number_of_variables']
                 #output_dim = config['data']['num_classes']
@@ -427,7 +427,7 @@ def train_inet(lambda_net_train_dataset,
                 outputs_list = [outputs_leaf_nodes, outputs_coeff, outputs_bias]
 
                 for outputs_index in range(internal_node_num_):
-                    for var_index in range(config['function_family']['decision_sparsity'])
+                    for var_index in range(config['function_family']['decision_sparsity']):
                         output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
                         outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
                         outputs_list.append(outputs_identifer)    

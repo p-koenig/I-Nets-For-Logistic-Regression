@@ -198,7 +198,6 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
         # build models
         start = 0
         for i in range(len(network_parameters_structure)//2):
-
             # set weights of layer
             index = i*2
             size = np.product(network_parameters_structure[index])
@@ -212,8 +211,6 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
             biases_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
             model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
             start += size
-
-
 
         lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_evaluation_dataset))
         

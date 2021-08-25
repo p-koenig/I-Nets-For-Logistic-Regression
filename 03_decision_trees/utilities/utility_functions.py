@@ -441,6 +441,9 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
 
 
 def generate_decision_tree_from_array(parameter_array, config):
+    
+    from utilities.DecisionTree_BASIC import SDT
+    
     tree = SDT(input_dim=config['data']['number_of_variables'],
                output_dim=config['data']['num_classes'],
                depth=config['function_family']['maximum_depth'],
@@ -456,6 +459,7 @@ def generate_decision_tree_from_array(parameter_array, config):
 
 def generate_random_decision_tree(config, seed=42):
     
+    from utilities.DecisionTree_BASIC import SDT    
     #random.seed(seed)
     #np.random.seed(seed)
     
@@ -744,7 +748,7 @@ def shaped_network_parameters_to_array(shaped_network_parameters, config):
             for weight in neuron:
                 network_parameter_list.append(weight)
         for bias in biases:
-                network_parameter_list.append(bias)
+            network_parameter_list.append(bias)
                 
     return np.array(network_parameter_list)
 
