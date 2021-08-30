@@ -143,8 +143,8 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
-        tf.print('network_parameters', network_parameters)
-        tf.print('function_true', function_true)
+        #tf.print('network_parameters', network_parameters)
+        #tf.print('function_true', function_true)
         
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
@@ -182,9 +182,9 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
             return loss_function
         
         loss_per_sample = tf.vectorized_map(loss_function_wrapper(config['i_net']['loss']), (function_values_array_function_true, function_values_array_function_pred))
-        #tf.print(loss_per_sample)
+        tf.print(loss_per_sample)
         loss_value = tf.math.reduce_mean(loss_per_sample)
-        #tf.print(loss_value)
+        tf.print(loss_value)
     
         #loss_value = tf.math.reduce_mean(function_true - function_pred)
         #tf.print(loss_value)
@@ -316,14 +316,18 @@ def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_
             split_value_list_per_layer = []
             for j in range(num_nodes_current_layer):
                 zero_identifier = tf.not_equal(weights_split[start_index:start_index+number_of_variables*(j+1)], tf.zeros_like(weights_split[start_index:start_index+number_of_variables*(j+1)]))
+                tf.print('zero_identifier', zero_identifier)
                 split_complete = tf.greater(evaluation_entry, weights_split[start_index:start_index+number_of_variables*(j+1)])
+                tf.print('split_complete', weights_split[start_index:start_index+number_of_variables*(j+1)])
+                tf.print('split_complete', evaluation_entry)
+                tf.print('split_complete', split_complete)
                 split_value = tf.reduce_any(tf.logical_and(zero_identifier, split_complete))
-                split_value = False
+                tf.print('split_value', split_value)
                 split_value_filled = tf.fill( [(2**(maximum_depth-(i)))] , split_value)
                 split_value_neg_filled = tf.fill( [(2**(maximum_depth-(i)))], tf.logical_not(split_value))
                 split_value_list_per_layer.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                #tf.print(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-            #tf.print(split_value_list_per_layer)
+                tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+            tf.print('split_value_list_per_layer', split_value_list_per_layer)
             
             start_index = end_index
             split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_layer)))
@@ -346,12 +350,14 @@ def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(rando
 
     
     def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
-        tf.print('function_array', function_array)
+        #tf.print('function_array', function_array)
         weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
-        tf.print('weights', weights)
-        tf.print('leaf_probabilities', leaf_probabilities)
+        #tf.print('weights', weights)
+        #tf.print('leaf_probabilities', leaf_probabilities)
         
         function_values_sdt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
+        tf.print('function_values_sdt', function_values_sdt)
+        
         
         return function_values_sdt
     return calculate_function_value_from_vanilla_decision_tree_parameters
@@ -442,7 +448,7 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
         function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
         #tf.print(function_values_array_function_true)
         
-        tf.print('function_pred', function_pred)
+        #tf.print('function_pred', function_pred)
         if config['i_net']['function_representation_type'] <= 2:
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         elif config['i_net']['function_representation_type'] >= 3:
