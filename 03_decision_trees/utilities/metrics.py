@@ -88,22 +88,26 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
     def inet_target_function_fv_loss(function_true_with_network_parameters, function_pred):    
         
         #network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
             
         #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
         #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
+        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
         
-        function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
-        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
-        
+        if config['i_net']['function_representation_type'] <= 2:
+            function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        elif config['i_net']['function_representation_type'] >= 3:
+            function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+            
         def loss_function_wrapper(loss_function_name):
             def loss_function(input_list):
                 
@@ -133,30 +137,34 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
 
 
 def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lambda_placeholder, network_parameters_structure, config):
-    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
-    #tf.print('START')
-    
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
     
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):    
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
+        tf.print('network_parameters', network_parameters)
+        tf.print('function_true', function_true)
+        
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
             
         network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
-        assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
+        assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)  
+        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
         
         #tf.print('GO function_values_array_function_true')
         function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
         #tf.print(function_values_array_function_true)
         
-        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        if config['i_net']['function_representation_type'] <= 2:
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        elif config['i_net']['function_representation_type'] >= 3:
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         #tf.print(function_values_array_function_pred)
                 
         def loss_function_wrapper(loss_function_name):
@@ -258,7 +266,7 @@ def calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(
     return calculate_function_value_from_decision_tree_parameter_single_sample
         
 def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
-    
+        
     maximum_depth = config['function_family']['maximum_depth']
     leaf_node_num_ = 2 ** maximum_depth
     
@@ -270,6 +278,83 @@ def calculate_function_value_from_decision_tree_parameters_wrapper(random_evalua
         
         return function_values_sdt
     return calculate_function_value_from_decision_tree_parameters
+
+
+
+
+
+
+def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, number_of_variables):
+    def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample(evaluation_entry):
+        
+        
+        #tf.print(weights)
+        #tf.print(leaf_probabilities)
+        
+        weights_split = tf.split(weights, internal_node_num_)
+        weights_split_new = []
+        for tensor in weights_split:
+            weights_split_new.append(tf.squeeze(tensor, axis=0))
+        weights_split = weights_split_new
+        
+        #tf.print(weights_split)
+        leaf_probabilities_split = tf.split(leaf_probabilities, leaf_node_num_)
+        #tf.print(leaf_probabilities_split)
+        #TDOD if multiclass, take index of min and max of leaf_proba to generate classes
+        leaf_classes_list = []
+        for leaf_probability in leaf_probabilities_split:
+            leaf_classes = tf.stack([tf.argmax(leaf_probability), tf.argmin(leaf_probability)])
+            leaf_classes_list.append(leaf_classes)
+        leaf_classes = tf.keras.backend.flatten(tf.stack(leaf_classes_list))
+        
+        start_index = 0
+        split_value_list = []
+        for i in range(maximum_depth):
+            num_nodes_current_layer = 2**i
+            end_index = start_index + num_nodes_current_layer
+            
+            split_value_list_per_layer = []
+            for j in range(num_nodes_current_layer):
+                zero_identifier = tf.not_equal(weights_split[start_index:start_index+number_of_variables*(j+1)], tf.zeros_like(weights_split[start_index:start_index+number_of_variables*(j+1)]))
+                split_complete = tf.greater(evaluation_entry, weights_split[start_index:start_index+number_of_variables*(j+1)])
+                split_value = tf.reduce_any(tf.logical_and(zero_identifier, split_complete))
+                split_value = False
+                split_value_filled = tf.fill( [(2**(maximum_depth-(i)))] , split_value)
+                split_value_neg_filled = tf.fill( [(2**(maximum_depth-(i)))], tf.logical_not(split_value))
+                split_value_list_per_layer.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+                #tf.print(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+            #tf.print(split_value_list_per_layer)
+            
+            start_index = end_index
+            split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_layer)))
+        #tf.print(split_value_list)
+        #tf.print(tf.stack(split_value_list))
+        split_values = tf.cast(tf.reduce_all(tf.stack(split_value_list), axis=0), tf.float32)    
+        leaf_classes = tf.cast(leaf_classes, tf.float32)
+        final_class = tf.reduce_max(tf.multiply(leaf_classes, split_values))                                                                 
+        #tf.print(final_class)                                                                
+                                                                           
+        return final_class#y_pred
+    
+    return calculate_function_value_from_vanilla_decision_tree_parameter_single_sample
+        
+def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
+    
+    maximum_depth = config['function_family']['maximum_depth']
+    leaf_node_num_ = 2 ** maximum_depth
+    internal_node_num_ = 2 ** maximum_depth - 1
+
+    
+    def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
+        tf.print('function_array', function_array)
+        weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+        tf.print('weights', weights)
+        tf.print('leaf_probabilities', leaf_probabilities)
+        
+        function_values_sdt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
+        
+        return function_values_sdt
+    return calculate_function_value_from_vanilla_decision_tree_parameters
 
 
 
@@ -285,21 +370,25 @@ def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, me
     def inet_target_function_fv_metric(function_true_with_network_parameters, function_pred):    
         
         #network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
             
         #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
         #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
-        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
-        function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
-        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        if config['i_net']['function_representation_type'] <= 2:
+            function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        elif config['i_net']['function_representation_type'] >= 3:
+            function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         
         def loss_function_wrapper(metric_name):
             def loss_function(input_list):
@@ -335,27 +424,30 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
     
     
     def inet_decision_function_fv_metric(function_true_with_network_parameters, function_pred):    
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['function_representation_length']]
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
+        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
             
         network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
         assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-        assert function_true.shape[1] == config['function_family']['function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
-        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
         #tf.print('GO function_values_array_function_true')
         function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
         #tf.print(function_values_array_function_true)
         
-        function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
-        #tf.print(function_values_array_function_pred)
-                
+        tf.print('function_pred', function_pred)
+        if config['i_net']['function_representation_type'] <= 2:
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+        elif config['i_net']['function_representation_type'] >= 3:
+            function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)            
+            
         def loss_function_wrapper(metric_name):
             def loss_function(input_list):
                 
@@ -397,411 +489,6 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
 
 
 
-
-
-
-
-
-
-
-#GENERAL LOSS UTILITY FUNCTIONS 
-def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, current_monomial_degree, force_complete_poly_representation=False, config=None):
-
-    if config != None:
-        globals().update(config)
-
-    #@tf.function(experimental_compile=True)
-    def calculate_poly_fv_tf(evaluation_entry):  
-                
-        def limit_monomial_to_degree_wrapper(monomial_degrees_by_variable, current_monomial_degree):
-            #global current_monomial_degree
-            current_monomial_degree.assign(0) #= tf.Variable(0, dtype=tf.int64)
-
-            def limit_monomial_to_degree(index):
-                #global current_monomial_degree   
-                #nonlocal current_monomial_degree   
-                additional_degree = tf.gather(monomial_degrees_by_variable, index)
-                
-                if tf.math.greater(current_monomial_degree + additional_degree, d):
-                    adjusted_additional_degree = tf.cast(0, tf.int64)
-                else:
-                    adjusted_additional_degree = additional_degree
-                #tf.print('current_monomial_degree', current_monomial_degree, summarize=-1)
-                current_monomial_degree.assign(current_monomial_degree + adjusted_additional_degree)
-                
-                #tf.print('monomial_degrees_by_variable', monomial_degrees_by_variable, summarize=-1)
-                #tf.print('index', index, summarize=-1)
-                #tf.print('adjusted_additional_degree', adjusted_additional_degree, summarize=-1)
-                
-                return tf.stack([index, adjusted_additional_degree])
-
-
-            return limit_monomial_to_degree            
-        
-        def calculate_monomial_with_coefficient_degree_by_var_wrapper(evaluation_entry):
-            def calculate_monomial_with_coefficient_degree_by_var(input_list):                     
-                degree_by_var_per_monomial = input_list[0]
-                coefficient = input_list[1]
-                
-                #degree_by_var_per_monomial = gewählter degree für jede variable in monomial
-                monomial_value_without_coefficient = tf.math.reduce_prod(tf.vectorized_map(lambda x: x[0]**tf.dtypes.cast(x[1], tf.float32), (evaluation_entry, degree_by_var_per_monomial)))                
-                return coefficient*monomial_value_without_coefficient
-            return calculate_monomial_with_coefficient_degree_by_var
-        
-        
-        if interpretation_net_output_monomials == None or force_complete_poly_representation:
-            monomials_without_coefficient = tf.vectorized_map(calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry), (list_of_monomial_identifiers))      
-            monomial_values = tf.vectorized_map(lambda x: x[0]*x[1], (monomials_without_coefficient, polynomial))
-        else: 
-            if sparse_poly_representation_version == 1:
-                monomials_without_coefficient = tf.vectorized_map(calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry), (list_of_monomial_identifiers))              
-                
-                coefficients = polynomial[:interpretation_net_output_monomials]
-                index_array = polynomial[interpretation_net_output_monomials:]
-
-                assert index_array.shape[0] == interpretation_net_output_monomials*sparsity, 'Shape of Coefficient Indices : ' + str(index_array.shape)
-
-                index_list = tf.split(index_array, interpretation_net_output_monomials)
-
-                assert len(index_list) == coefficients.shape[0] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(index_list))
-
-                indices = tf.argmax(index_list, axis=1) 
-
-                monomial_values = tf.vectorized_map(lambda x: tf.gather(monomials_without_coefficient, x[0])*x[1], (indices, coefficients)) 
-
-            elif sparse_poly_representation_version == 2:
-                coefficients = polynomial[:interpretation_net_output_monomials]
-                index_array = polynomial[interpretation_net_output_monomials:]
-                #tf.print('index_array.shape', index_array)
-                
-                assert index_array.shape[0] == interpretation_net_output_monomials*n*(d+1), 'Shape of Coefficient Indices : ' + str(index_array.shape)                  
-                    
-                index_list_by_monomial = tf.transpose(tf.split(index_array, interpretation_net_output_monomials))
-
-                index_list_by_monomial_by_var = tf.split(index_list_by_monomial, n, axis=0)
-                index_list_by_monomial_by_var_new = []
-                for tensor in index_list_by_monomial_by_var:
-                    index_list_by_monomial_by_var_new.append(tf.transpose(tensor))
-                index_list_by_monomial_by_var = index_list_by_monomial_by_var_new   
-                degree_by_var_per_monomial_list = tf.transpose(tf.argmax(index_list_by_monomial_by_var, axis=2))        
-
-                maximum_by_var_per_monomial_list = tf.transpose(tf.reduce_max(index_list_by_monomial_by_var, axis=2))
-                maximum_by_var_per_monomial_list_sort_index = tf.cast(tf.argsort(maximum_by_var_per_monomial_list, direction='DESCENDING'), tf.int64)
-
-
-                #degree_by_var_per_monomial_list_adjusted_with_index = tf.map_fn(fn=lambda x: tf.map_fn(fn=limit_monomial_to_degree_wrapper(x[0], current_monomial_degree),  elems=x[1], fn_output_signature=tf.TensorSpec([2], dtype=tf.int64)),  elems=(degree_by_var_per_monomial_list, maximum_by_var_per_monomial_list_sort_index), fn_output_signature=tf.TensorSpec([maximum_by_var_per_monomial_list_sort_index.shape[1], 2], dtype=tf.int64))
-                degree_by_var_per_monomial_list_adjusted_with_index = tf.vectorized_map(fn=lambda x: tf.vectorized_map(fn=limit_monomial_to_degree_wrapper(x[0], current_monomial_degree),  elems=x[1]),  elems=(degree_by_var_per_monomial_list, maximum_by_var_per_monomial_list_sort_index))
-
-                #degree_by_var_per_monomial_list_adjusted = tf.map_fn(fn=lambda x: tf.keras.backend.flatten(tf.gather(x[:,1:], tf.argsort(tf.keras.backend.flatten(x[:,:1])))), elems=degree_by_var_per_monomial_list_adjusted_with_index, fn_output_signature=tf.TensorSpec([degree_by_var_per_monomial_list_adjusted_with_index.shape[1]], dtype=tf.int64))
-                degree_by_var_per_monomial_list_adjusted = tf.vectorized_map(fn=lambda x: tf.keras.backend.flatten(tf.gather(x[:,1:], tf.argsort(tf.keras.backend.flatten(x[:,:1])))), elems=degree_by_var_per_monomial_list_adjusted_with_index)
-
-
-                monomial_values = tf.vectorized_map(calculate_monomial_with_coefficient_degree_by_var_wrapper(evaluation_entry), (degree_by_var_per_monomial_list, coefficients))
-                    
-        
-        polynomial_fv = tf.reduce_sum(monomial_values)         
-        return polynomial_fv
-    return calculate_poly_fv_tf
-
-#calculate intermediate term (without coefficient multiplication)
-def calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry):
-    def calculate_monomial_without_coefficient_tf(coefficient_multiplier_term):    
-        monomial_without_coefficient_list = tf.vectorized_map(lambda x: x[0]**x[1], (evaluation_entry, coefficient_multiplier_term))
-        monomial_without_coefficient = tf.math.reduce_prod(monomial_without_coefficient_list)
-        return monomial_without_coefficient
-    return calculate_monomial_without_coefficient_tf
-
-
-
-#def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, base_model):        
-def inet_lambda_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model, weights_structure, dims):        
-        
-    global nas
-            
-    evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(evaluation_dataset), tf.float32)#return_float_tensor_representation(evaluation_dataset)
-    list_of_monomial_identifiers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers)    
-    
-    model_lambda_placeholder = base_model#keras.models.clone_model(base_model)  
-
-    #weights_structure = base_model.get_weights()
-    #dims = [np_arrays.shape for np_arrays in weights_structure]
-    #@tf.function
-    def inet_lambda_fv_loss(polynomial_true_with_lambda_fv, polynomial_pred): 
-
-    
-        def calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder):
-                                        
-            def calculate_lambda_fv_error(input_list):
-
-                #single polynomials
-                #polynomial_true = input_list[0]
-                polynomial_pred = input_list[0]
-                network_parameters = input_list[1]
-                                
-                polynomial_pred_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial_pred, current_monomial_degree), (evaluation_dataset))
-                
-                #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
-                # build models
-                start = 0
-                for i in range(len(dims)//2):
-
-                    # set weights of layer
-                    index = i*2
-                    size = np.product(dims[index])
-                    weights_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                    model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
-                    start += size
-
-                    # set biases of layer
-                    index += 1
-                    size = np.product(dims[index])
-                    biases_tf_true = tf.reshape(network_parameters[start:start+size], dims[index])
-                    model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-                    start += size
-
-
-
-                lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(evaluation_dataset))
-                
-                ##### REMOVE NAN VALUES IN BOTH TENSORS #####
-                #lambda_fv = tf.boolean_mask(lambda_fv, tf.math.logical_and(tf.math.logical_not(tf.math.is_nan(lambda_fv)), tf.math.logical_not(tf.math.is_nan(polynomial_pred_fv_list))))
-                #polynomial_pred_fv_list = tf.boolean_mask(polynomial_pred_fv_list, tf.math.logical_and(tf.math.logical_not(tf.math.is_nan(polynomial_pred_fv_list)), tf.math.logical_not(tf.math.is_nan(lambda_fv))))
-                
-                
-                error = None
-                if loss == 'mae':
-                    error = tf.keras.losses.MAE(lambda_fv, polynomial_pred_fv_list)
-                elif loss == 'r2':
-                    error = r2_keras_loss(lambda_fv, polynomial_pred_fv_list)  
-                else:
-                    error = tf.keras.losses.MAE(lambda_fv, polynomial_pred_fv_list)
-                    #raise SystemExit('Unknown I-Net Metric: ' + loss)                
-                
-                
-                error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
-                #error = np.inf*tf.cast(tf.ones_like(error), tf.float64)
-                    
-
-                    
-                return error#tf.math.reduce_mean(tf.vectorized_map(error_function, (lambda_fv, polynomial_pred_fv_list)))
-
-            return calculate_lambda_fv_error            
-        
-        
-        network_parameters = polynomial_true_with_lambda_fv[:,sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
-        polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]
-          
-        if nas and polynomial_pred.shape[1] != interpretation_net_output_shape:
-            polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
-            
-        network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)#return_float_tensor_representation(network_parameters)
-        polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
-        polynomial_pred = tf.dtypes.cast(tf.convert_to_tensor(polynomial_pred), tf.float32)#return_float_tensor_representation(polynomial_pred)
-        
-        assert network_parameters.shape[1] == number_of_lambda_weights, 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)      
-        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of Pred Polynomial: ' + str(polynomial_pred.shape)   
-        
-        loss_value = tf.math.reduce_mean(tf.map_fn(calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters), fn_output_signature=tf.float32))
-        #loss_value = tf.math.reduce_mean(tf.vectorized_map(calculate_lambda_fv_error_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, dims, model_lambda_placeholder), (polynomial_pred, network_parameters)))  #NOT WORKING VDECTORIZED     
-        
-        return loss_value
-    
-    inet_lambda_fv_loss.__name__ = loss + '_' + inet_lambda_fv_loss.__name__
-    
-    return inet_lambda_fv_loss
-
-
-
-   
-
-def inet_poly_fv_loss_wrapper(loss, evaluation_dataset, list_of_monomial_identifiers, current_monomial_degree, base_model):   
-        
-    evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(evaluation_dataset), tf.float32)#return_float_tensor_representation(evaluation_dataset)
-    list_of_monomial_identifiers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers), tf.float32)#return_float_tensor_representation(list_of_monomial_identifiers)            
-    
-    def inet_poly_fv_loss(polynomial_true, polynomial_pred):
-        
-        def calculate_poly_fv_error_wrapper(evaluation_dataset, list_of_monomial_identifiers):
-            def calculate_poly_fv_error(input_list):
-
-                #single polynomials
-                polynomial_true = input_list[0]
-                polynomial_pred = input_list[1]
-                
-                polynomial_true_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial_true, current_monomial_degree, force_complete_poly_representation=True), (evaluation_dataset))
-                polynomial_pred_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial_pred, current_monomial_degree), (evaluation_dataset))
-
-                error = None
-                if loss == 'mae':
-                    error = tf.keras.losses.MAE(polynomial_true_fv_list, polynomial_pred_fv_list)
-                elif loss == 'r2':
-                    error = r2_keras_loss(polynomial_true_fv_list, polynomial_pred_fv_list)  
-                else:
-                    raise SystemExit('Unknown I-Net Metric: ' + loss)
-
-                error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
-                    
-                return error#tf.math.reduce_mean(tf.vectorized_map(calculate_mae_single_input, (polynomial_true_fv_list, polynomial_pred_fv_list)))
-
-            return calculate_poly_fv_error     
-        
-        if polynomial_true.shape[1] != sparsity:
-            network_parameters = polynomial_true[:,sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
-            polynomial_true = polynomial_true[:,:sparsity]
-            
-            assert network_parameters.shape[1] == number_of_lambda_weights, 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-            
-        polynomial_true = tf.dtypes.cast(tf.convert_to_tensor(polynomial_true), tf.float32)#return_float_tensor_representation(polynomial_true)
-        polynomial_pred = tf.dtypes.cast(tf.convert_to_tensor(polynomial_pred), tf.float32)#return_float_tensor_representation(polynomial_pred)
-        
-        if nas and polynomial_pred.shape[1] != interpretation_net_output_shape:
-            polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape]
-            
-        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape)      
-        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of Pred Polynomial: ' + str(polynomial_pred.shape) 
-   
-
-        #return tf.math.reduce_mean(tf.map_fn(calculate_poly_fv_error_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))    
-        return tf.math.reduce_mean(tf.vectorized_map(calculate_poly_fv_error_wrapper(evaluation_dataset, list_of_monomial_identifiers), (polynomial_true, polynomial_pred)))    
-                                         
-    
-    inet_poly_fv_loss.__name__ = loss + '_' + inet_poly_fv_loss.__name__
-    return inet_poly_fv_loss    
-
-
-
-
-def inet_coefficient_loss_wrapper(loss, list_of_monomial_identifiers):
-    def inet_coefficient_loss(polynomial_true_with_lambda_fv, polynomial_pred): 
-
-        
-        def calculate_coeff_error_sparse_wrapper(loss, list_of_monomial_identifiers):
-            
-            def calculate_coeff_error_sparse(input_list):
-                polynomial_true = input_list[0]
-                polynomial_pred = input_list[1]    
-                
-                #tf.print('polynomial_true', polynomial_true, summarize=-1)
-                #tf.print('polynomial_pred', polynomial_pred, summarize=-1)
-
-                polynomial_true_coeff = polynomial_true[polynomial_true!=0]
-                polynomial_true_monomial_indices = tf.keras.backend.flatten(tf.where(polynomial_true!=0))
-                
-                #polynomial_true_monomial_list = tf.map_fn(fn=lambda x: tf.gather(list_of_monomial_identifiers, x), elems=polynomial_true_monomial_indices, fn_output_signature=tf.TensorSpec([n], dtype=tf.int32))
-                polynomial_true_monomial_list = tf.vectorized_map(fn=lambda x: tf.gather(list_of_monomial_identifiers, x), elems=polynomial_true_monomial_indices)
-
-                #tf.print('polynomial_true_monomial_list', polynomial_true_monomial_list, summarize=-1)
-                polynomial_true_monomial_list_new_representation = tf.map_fn(fn=lambda x: tf.map_fn(fn=lambda x: tf.dtypes.cast(tf.sparse.to_dense(tf.SparseTensor([[x]], [1], [d+1])), tf.float32), elems=x, fn_output_signature=tf.TensorSpec([d+1], dtype=tf.float32)), elems=polynomial_true_monomial_list, fn_output_signature=tf.TensorSpec([n, d+1], dtype=tf.float32))
-                
-                #polynomial_true_monomial_list_new_representation = tf.map_fn(fn=lambda x: tf.vectorized_map(fn=lambda x: tf.dtypes.cast(tf.sparse.to_dense(tf.SparseTensor([[x]], [1], [d+1])), tf.float32), elems=x), elems=polynomial_true_monomial_list, fn_output_signature=tf.TensorSpec([n, d+1], dtype=tf.float32))
-                #polynomial_true_monomial_list_new_representation = tf.vectorized_map(fn=lambda x: tf.map_fn(fn=lambda x: tf.dtypes.cast(tf.sparse.to_dense(tf.SparseTensor([[x]], [1], [d+1])), tf.float32), elems=x, fn_output_signature=tf.TensorSpec([d+1], dtype=tf.float32)), elems=polynomial_true_monomial_list)
-                
-                #polynomial_true_monomial_list_new_representation = tf.vectorized_map(fn=lambda x: tf.vectorized_map(fn=lambda x: tf.dtypes.cast(tf.sparse.to_dense(tf.SparseTensor([[x]], [1], [d+1])), tf.float32), elems=x), elems=polynomial_true_monomial_list)
-                
-                polynomial_true_new_representation = tf.concat([polynomial_true_coeff, tf.keras.backend.flatten(polynomial_true_monomial_list_new_representation)], axis=0)
-                polynomial_true = polynomial_true_new_representation
-
-                
-                coefficients = polynomial_pred[:interpretation_net_output_monomials]
-                index_array = polynomial_pred[interpretation_net_output_monomials:]
-
-                assert index_array.shape[0] == interpretation_net_output_monomials*n*(d+1), 'Shape of Coefficient Indices : ' + str(index_array.shape)
-
-                                    
-
-                index_list_by_monomial = tf.split(index_array, interpretation_net_output_monomials)
-                index_list_by_monomial_by_var = []
-                for tensor in index_list_by_monomial:
-                    index_list_by_monomial_by_var.append(tf.split(tensor, n))
-
-                index_list_by_monomial_by_var = tf.stack(index_list_by_monomial_by_var)  
-                        
-                        
-                #tf.print('polynomial_true_monomial_list_new_representation', polynomial_true_monomial_list_new_representation, summarize=-1)
-                #tf.print('polynomial_true_coeff', polynomial_true_coeff, summarize=-1)
-                
-                #tf.print('index_list_by_monomial_by_var', index_list_by_monomial_by_var, summarize=-1)
-                #tf.print('coefficients', coefficients, summarize=-1)
-                
-                #tf.print('polynomial_true_monomial_list_new_representation.shape', polynomial_true_monomial_list_new_representation.shape, summarize=-1)
-                #tf.print('polynomial_true_coeff.shape', polynomial_true_coeff.shape, summarize=-1)
-
-                #tf.print('index_list_by_monomial_by_var.shape', index_list_by_monomial_by_var.shape, summarize=-1)
-                #tf.print('polynomial_true_coeff.coefficients', coefficients.shape, summarize=-1)
-                
-
-                error_class_list = tf.keras.losses.categorical_crossentropy(polynomial_true_monomial_list_new_representation, index_list_by_monomial_by_var)
-                error_class = tf.reduce_sum(error_class_list)
-             
-                error_reg = None
-                if loss == 'mae':
-                    error_reg = tf.keras.losses.MAE(coefficients, polynomial_true_coeff)
-                elif loss == 'r2':
-                    error_reg = r2_keras_loss(coefficients, polynomial_true_coeff)  
-                else:
-                    raise SystemExit('Unknown I-Net Metric: ' + loss)   
-
-                #TODO: AUFPASSEN WEGEN SCALING (MAE BASIERT AUF COEFFICIENT_SIZE) --> solution: durch a_max teilen!!!
-                error = tf.reduce_sum([error_reg/a_max, error_class])
-
-                return error
-            
-            return calculate_coeff_error_sparse
-        
-        
-        assert polynomial_true_with_lambda_fv.shape[1] == sparsity+number_of_lambda_weights or polynomial_true_with_lambda_fv.shape[1] == sparsity, 'Shape of Polynomial True with Lambda: ' + str(polynomial_true_with_lambda_fv.shape) 
-        
-        network_parameters = polynomial_true_with_lambda_fv[:,sparsity:] #sparsity here because true poly is always maximal, just prediction is reduced
-        polynomial_true = polynomial_true_with_lambda_fv[:,:sparsity]            
-        
-        if nas and polynomial_pred.shape[1] != interpretation_net_output_shape:
-            polynomial_pred = polynomial_pred[:,:interpretation_net_output_shape] 
-
-        assert polynomial_true.shape[1] == sparsity, 'Shape of True Polynomial: ' + str(polynomial_true.shape) 
-        assert polynomial_pred.shape[1] == interpretation_net_output_shape, 'Shape of Pred Polynomial: ' + str(polynomial_pred.shape) 
-        assert network_parameters.shape[1] == number_of_lambda_weights, 'Shape of Network Parameters: ' + str(network_parameters.shape)           
-        
-        if interpretation_net_output_monomials != None:
-            if sparse_poly_representation_version == 1:
-                #get relevant indices and compare just coefficients for those indices with predicted coefficients --> no good metric, just for consistency included
-                #TODO add 0 for all other indices?
-                #coefficient_indices_array = tf.map_fn(fn=lambda x: x[interpretation_net_output_monomials:], elems=polynomial_pred, fn_output_signature=tf.float32)
-                #polynomial_pred = tf.map_fn(fn=lambda x: x[:interpretation_net_output_monomials], elems=polynomial_pred, fn_output_signature=tf.float32) 
-                coefficient_indices_array = tf.vectorized_map(fn=lambda x: x[interpretation_net_output_monomials:], elems=polynomial_pred)
-                polynomial_pred = tf.vectorized_map(fn=lambda x: x[:interpretation_net_output_monomials], elems=polynomial_pred)                                           
-
-                assert coefficient_indices_array.shape[1] == interpretation_net_output_monomials*sparsity or coefficient_indices_array.shape[1] == interpretation_net_output_monomials*(d+1)*n, 'Shape of Coefficient Indices: ' + str(coefficient_indices_array.shape) 
-
-                coefficient_indices_list = tf.split(coefficient_indices_array, interpretation_net_output_monomials, axis=1)
-
-                assert len(coefficient_indices_list) == polynomial_pred.shape[1] == interpretation_net_output_monomials, 'Shape of Coefficient Indices Split: ' + str(len(coefficient_indices_list)) 
-
-                coefficient_indices = tf.transpose(tf.argmax(coefficient_indices_list, axis=2))
-
-                #polynomial_true = tf.map_fn(fn=lambda x: tf.gather(x[0], x[1]), elems=(polynomial_true, coefficient_indices), fn_output_signature=tf.float32)
-                polynomial_true = tf.vectorized_map(fn=lambda x: tf.gather(x[0], x[1]), elems=(polynomial_true, coefficient_indices))
-            elif sparse_poly_representation_version == 2:                
-                error = tf.math.reduce_mean(tf.map_fn(calculate_coeff_error_sparse_wrapper(loss, list_of_monomial_identifiers), (polynomial_true, polynomial_pred), fn_output_signature=tf.float32))
-                #error = tf.math.reduce_mean(tf.vectorized_map(calculate_coeff_error_sparse_wrapper(loss, list_of_monomial_identifiers), (polynomial_true, polynomial_pred)))                      
-                return error
-            
-    
-        
-        error = None
-        if loss == 'mae':
-            error = tf.keras.losses.MAE(polynomial_true, polynomial_pred)
-        elif loss == 'r2':
-            error = r2_keras_loss(polynomial_true, polynomial_pred)  
-        else:
-            raise SystemExit('Unknown I-Net Metric: ' + loss)
-            
-        error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)
-                
-        return error#tf.keras.losses.MAE(polynomial_true, polynomial_pred)
-
-    inet_coefficient_loss.__name__ = loss + '_' + inet_coefficient_loss.__name__
-    return inet_coefficient_loss   
 
 def r2_keras_loss(y_true, y_pred, epsilon=tf.keras.backend.epsilon()):
 

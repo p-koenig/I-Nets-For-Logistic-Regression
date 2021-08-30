@@ -433,10 +433,31 @@ def train_inet(lambda_net_train_dataset,
                         outputs_list.append(outputs_identifer)    
 
                 outputs = concatenate(outputs_list, name='output_combined')
+            elif config['i_net']['function_representation_type'] == 3:
+                #input_dim = config['data']['number_of_variables']
+                #output_dim = config['data']['num_classes']
+                internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+                
+                number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
+                
+                outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
+                outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, name='output_coeff_' + str(number_output_coefficients))(hidden)
+                
+                outputs_list = [outputs_leaf_nodes, outputs_coeff]
 
+                for outputs_index in range(internal_node_num_):
+                    for var_index in range(config['function_family']['decision_sparsity']):
+                        output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
+                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
+                        outputs_list.append(outputs_identifer)    
+
+                outputs = concatenate(outputs_list, name='output_combined')
+                
+                
 
             model = Model(inputs=inputs, outputs=outputs)
-
+            
             if config['i_net']['early_stopping']:
                 callback_names.append('early_stopping')
             
