@@ -430,58 +430,41 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
         #print('leaf_probabilities', leaf_probabilities)      
         
     elif config['i_net']['function_representation_type'] == 3:
-        weights_coeff = flat_parameters[:internal_node_num_ * config['function_family']['decision_sparsity']]
-        #print(weights_coeff.shape)
+        split_values_num_params = internal_node_num_ * config['function_family']['decision_sparsity']
+        split_index_num_params = config['data']['number_of_variables'] *  config['function_family']['decision_sparsity'] * internal_node_num_
+        leaf_classes_num_params = leaf_node_num_ * config['data']['num_classes']
         
-        weights_index_array = flat_parameters[internal_node_num_ * config['function_family']['decision_sparsity']:(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables'])]
-        #print(weights_index_array.shape)
-        leaf_probabilities = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']):]
-        #print(leaf_probabilities.shape)
-        #leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
-        #print(leaf_probabilities.shape)
-
-        #print('weights_coeff', weights_coeff)
-        weights_coeff_list_by_internal_node = tf.split(weights_coeff, internal_node_num_)
-        #print('weights_coeff_list_by_internal_node', weights_coeff_list_by_internal_node)
-         
-        weights_index_list_by_internal_node = tf.split(weights_index_array, internal_node_num_)
-        #print('weights_index_list_by_internal_node', weights_index_list_by_internal_node)
-        weights_index_list_by_internal_node_by_decision_sparsity = []
-        for tensor in weights_index_list_by_internal_node:
-            weights_index_list_by_internal_node_by_decision_sparsity.append(tf.split(tensor, config['function_family']['decision_sparsity']))
-        #print(weights_index_list_by_internal_node_by_decision_sparsity)
-        weights_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(weights_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
-        weights_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
-        for tensor in weights_index_list_by_internal_node_by_decision_sparsity_argmax:
-            weights_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tf.squeeze(tensor, axis=0))
-        weights_index_list_by_internal_node_by_decision_sparsity_argmax = weights_index_list_by_internal_node_by_decision_sparsity_argmax_new
-        #print(weights_index_list_by_internal_node_by_decision_sparsity_argmax)
+        split_values = flat_parameters[:split_values_num_params]
+        split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
         
+        split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
+        split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)
+        split_index_list_by_internal_node_by_decision_sparsity = []
+        for tensor in split_index_list_by_internal_node:
+            split_tensor = tf.split(tensor, config['function_family']['decision_sparsity'])
+            split_index_list_by_internal_node_by_decision_sparsity.append(split_tensor)
+        split_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(split_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
+        split_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
+        for tensor in split_index_list_by_internal_node_by_decision_sparsity_argmax:
+            tensor_squeeze = tf.squeeze(tensor, axis=0)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tensor_squeeze)
+        split_index_list_by_internal_node_by_decision_sparsity_argmax = split_index_list_by_internal_node_by_decision_sparsity_argmax_new    
         dense_tensor_list = []
-        for indices_node, values_node in zip(weights_index_list_by_internal_node_by_decision_sparsity_argmax,  weights_coeff_list_by_internal_node):
-            #print('indices_node', indices_node)
-            #print('values_node', values_node)            
-
+        for indices_node, values_node in zip(split_index_list_by_internal_node_by_decision_sparsity_argmax,  split_values_list_by_internal_node):
             sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
             dense_tensor = tf.sparse.to_dense(sparse_tensor)
-            dense_tensor_list.append(dense_tensor)
-        #print('dense_tensor_list', dense_tensor_list)
-        
-        weights = tf.stack(dense_tensor_list)
-        #print('weights', weights)
-        #print('leaf_probabilities', leaf_probabilities)      
-        
-        return weights, leaf_probabilities
-        
-        #weights_index_array_by_internal_node_by_var = tf.split(weights_index_array_by_internal_node, config['function_family']['decision_sparsity'], axis=0)
-        #weights_index_array_by_internal_node_by_var_new = []
-        #for tensor in weights_index_array_by_internal_node_by_var:
-        #    weights_index_array_by_internal_node_by_var_new.append(tf.transpose(tensor))
-        #weights_index_array_by_internal_node_by_var = weights_index_array_by_internal_node_by_var_new   
-        
-        #weights = tf.zeros((internal_node_num_, input_dim))
-        #for index_row, coef_indeices in enumerate(weights_index_array_by_internal_node_by_var):
-        #    weights[index_row][coef_indeices] = weights_coeff[index_row]
+            dense_tensor_list.append(dense_tensor) 
+        splits = tf.stack(dense_tensor_list)
+            
+        leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
+        split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
+        leaf_classes_list = []
+        for tensor in split_index_list_by_leaf_node:
+            argmax = tf.argmax(tensor)
+            leaf_classes_list.append(argmax)
+        leaf_classes= tf.stack(leaf_classes_list)
+        return splits, leaf_classes
+
        
 
 

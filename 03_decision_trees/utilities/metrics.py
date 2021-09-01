@@ -182,9 +182,9 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
             return loss_function
         
         loss_per_sample = tf.vectorized_map(loss_function_wrapper(config['i_net']['loss']), (function_values_array_function_true, function_values_array_function_pred))
-        tf.print(loss_per_sample)
+        #tf.print(loss_per_sample)
         loss_value = tf.math.reduce_mean(loss_per_sample)
-        tf.print(loss_value)
+        #tf.print(loss_value)
     
         #loss_value = tf.math.reduce_mean(function_true - function_pred)
         #tf.print(loss_value)
@@ -287,138 +287,60 @@ def calculate_function_value_from_decision_tree_parameters_wrapper(random_evalua
 def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, number_of_variables):
     def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample(evaluation_entry):
         
-        
-        #tf.print(weights)
-        #tf.print(leaf_probabilities)
-        
         weights_split = tf.split(weights, internal_node_num_)
-        #print(weights)
         weights_split_new = [[] for _ in range(maximum_depth)]
         for i, tensor in enumerate(weights_split):
-            #print('INITIAL LOOP', i)
             current_depth = np.ceil(np.log2((i+1)+1)).astype(np.int32)
-            #print('INITIAL LOOP D', current_depth)
-            #print(tf.squeeze(tensor, axis=0))
+
             weights_split_new[current_depth-1].append(tf.squeeze(tensor, axis=0))
             
         weights_split = weights_split_new
         
-        #tf.print(weights_split)
-        leaf_probabilities_split = tf.split(leaf_probabilities, leaf_node_num_)
-        #tf.print(leaf_probabilities_split)
         #TDOD if multiclass, take index of min and max of leaf_proba to generate classes
-        leaf_classes_list = []
-        for leaf_probability in leaf_probabilities_split:
-            leaf_classes = tf.stack([tf.argmax(leaf_probability), tf.argmin(leaf_probability)])
-            leaf_classes_list.append(leaf_classes)
-        leaf_classes = tf.keras.backend.flatten(tf.stack(leaf_classes_list))
+        #leaf_probabilities_split = tf.split(leaf_probabilities, leaf_node_num_)
+        #leaf_classes_list = []
+        #for leaf_probability in leaf_probabilities_split:
+        #    leaf_classes = tf.stack([tf.argmax(leaf_probability), tf.argmin(leaf_probability)])
+        #    leaf_classes_list.append(leaf_classes)
+        #leaf_classes = tf.keras.backend.flatten(tf.stack(leaf_classes_list))
         
-        if True:
-            split_value_list = []
-            #depth = 1
-            #node_index_in_layer = 0
-           # tf.print('WATCH weights_split', weights_split)
-            for i in range(maximum_depth):
-                #print('LOOP 1 ', i)
-                current_depth = i+1#np.ceil(np.log2((i+1)+1)).astype(np.int32)
-                num_nodes_current_layer = 2**current_depth - 1 - (2**(current_depth-1) - 1)
-                #print('current_depth', current_depth, 'num_nodes_current_layer', num_nodes_current_layer)
-                split_value_list_per_depth = []
-                for j in range(num_nodes_current_layer):
-                    #tf.print('weights_split[i][j]', weights_split[i][j])
-                    #print('LOOP 2 ', j)
-                    zero_identifier = tf.not_equal(weights_split[i][j], tf.zeros_like(weights_split[i][j]))
-                    #tf.print('zero_identifier', zero_identifier)
-                    split_complete = tf.greater(evaluation_entry, weights_split[i][j])
-                    #tf.print('split_complete', split_complete)
-                    split_value = tf.reduce_any(tf.logical_and(zero_identifier, split_complete))
-                    #tf.print('split_value', split_value)
-                    split_value_filled = tf.fill( [2**(maximum_depth-current_depth+1)] , split_value)
-                    split_value_neg_filled = tf.fill( [2**(maximum_depth-current_depth+1)], tf.logical_not(split_value))
-                    #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                    #print('LOOP 2 OUTPUT', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                    split_value_list_per_depth.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))        
-                    #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                #print('LOOP 1 OUTPUT', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
-                split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
-                tf.print('DT SPLITS ENCODED', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)), summarize=-1)
-                #node_index_in_layer += 1        
-        if False:
-            split_value_list = []
-            #depth = 1
-            #node_index_in_layer = 0
-            for i in range(internal_node_num_):
-                print('RUN ', i)
-                current_depth = np.ceil(np.log2((i+1)+1)).astype(np.int32)
-                #if current_depth > depth:
-                #    depth = current_depth
-                #    node_index_in_layer = 0  
-                    
-                #start_index = number_of_variables*(node_index_in_layer)
-                #end_index = number_of_variables*(node_index_in_layer+1)
-                
-                #print('weights_split', weights_split)
-                
-                #print('INDEICES ', start_index, end_index, number_of_variables)
-              
-                #for j in range(num_nodes_current_layer):
-                #tf.print('weights_split[start_index:start_index+number_of_variables*(j+1)]', weights_split[i])
-                #print('weights_split[start_index:start_index+number_of_variables*(j+1)]', weights_split[i])
-                #tf.print('evaluation_entry', evaluation_entry)
-                #print('evaluation_entry', evaluation_entry)
-                
-                #print('weights_split[start_index:end_index]', weights_split[i])
-                #print('weights_split[start_index:end_index]', tf.zeros_like(weights_split[i]))
-                zero_identifier = tf.not_equal(weights_split[i], tf.zeros_like(weights_split[i]))
+        split_value_list = []
+
+        for i in range(maximum_depth):
+            #print('LOOP 1 ', i)
+            current_depth = i+1#np.ceil(np.log2((i+1)+1)).astype(np.int32)
+            num_nodes_current_layer = 2**current_depth - 1 - (2**(current_depth-1) - 1)
+            #print('current_depth', current_depth, 'num_nodes_current_layer', num_nodes_current_layer)
+            split_value_list_per_depth = []
+            for j in range(num_nodes_current_layer):
+                #tf.print('weights_split[i][j]', weights_split[i][j])
+                #print('LOOP 2 ', j)
+                zero_identifier = tf.not_equal(weights_split[i][j], tf.zeros_like(weights_split[i][j]))
                 #tf.print('zero_identifier', zero_identifier)
-                #print('zero_identifier', zero_identifier)
-                split_complete = tf.greater(evaluation_entry, weights_split[i])
-                #tf.print('split_complete', split_complete)
-                #print('split_complete', split_complete)
+                split_complete = tf.greater(evaluation_entry, weights_split[i][j])
+                #tf.print('split_complete', split_complete, 'evaluation_entry', evaluation_entry, 'weights_split[i][j]', weights_split[i][j])
                 split_value = tf.reduce_any(tf.logical_and(zero_identifier, split_complete))
                 #tf.print('split_value', split_value)
-                #print('split_value', split_value)
                 split_value_filled = tf.fill( [2**(maximum_depth-current_depth)] , split_value)
                 split_value_neg_filled = tf.fill( [2**(maximum_depth-current_depth)], tf.logical_not(split_value))
-                #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_#filled])))
-                print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                split_value_list.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))        
-        
-        if False:
-            start_index = 0
-            split_value_list = []
-            for i in range(maximum_depth):
-                num_nodes_current_layer = 2**i
-                end_index = start_index + num_nodes_current_layer
-
-                split_value_list_per_layer = []
-                for j in range(num_nodes_current_layer):
-                    tf.print('weights_split[start_index:start_index+number_of_variables*(j+1)]', weights_split[start_index:start_index+number_of_variables*(j+1)])
-                    tf.print('evaluation_entry', evaluation_entry)
-
-                    zero_identifier = tf.not_equal(weights_split[start_index:start_index+number_of_variables*(j+1)], tf.zeros_like(weights_split[start_index:start_index+number_of_variables*(j+1)]))
-                    tf.print('zero_identifier', zero_identifier)
-                    split_complete = tf.greater(evaluation_entry, weights_split[start_index:start_index+number_of_variables*(j+1)])
-                    tf.print('split_complete', split_complete)
-                    split_value = tf.reduce_any(tf.logical_and(zero_identifier, split_complete))
-                    tf.print('split_value', split_value)
-                    split_value_filled = tf.fill( [(2**(maximum_depth-(i)))] , split_value)
-                    split_value_neg_filled = tf.fill( [(2**(maximum_depth-(i)))], tf.logical_not(split_value))
-                    split_value_list_per_layer.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                    tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                tf.print('split_value_list_per_layer', split_value_list_per_layer)
-
-                start_index = end_index
-                split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_layer)))
+                #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+                #print('LOOP 2 OUTPUT', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+                split_value_list_per_depth.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))        
+                #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+            #print('LOOP 1 OUTPUT', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
+            split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
+            #tf.print('DT SPLITS ENCODED', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)), summarize=-1)
+                #node_index_in_layer += 1        
         #tf.print(split_value_list)
         #tf.print(tf.stack(split_value_list))
-        tf.print('split_value_list', split_value_list, summarize=-1)
+        #tf.print('split_value_list', split_value_list, summarize=-1)
+        #tf.print('tf.stack(split_value_list)\n', tf.stack(split_value_list), summarize=-1)
         split_values = tf.cast(tf.reduce_all(tf.stack(split_value_list), axis=0), tf.float32)    
-        tf.print('split_values', split_values, summarize=-1)
-        leaf_classes = tf.cast(leaf_classes, tf.float32)
-        tf.print('leaf_classes', leaf_classes, summarize=-1)
+        #tf.print('split_values', split_values, summarize=-1)
+        leaf_classes = tf.cast(leaf_probabilities, tf.float32)
+        #tf.print('leaf_classes', leaf_classes, summarize=-1)
         final_class = tf.reduce_max(tf.multiply(leaf_classes, split_values))                                                                 
-        tf.print('final_class', final_class, summarize=-1)                                                                
+        #tf.print('final_class', final_class, summarize=-1)                                                                
                                                                            
         return final_class#y_pred
     
@@ -437,11 +359,11 @@ def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(rando
         #tf.print('weights', weights)
         #tf.print('leaf_probabilities', leaf_probabilities)
         
-        function_values_sdt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
-        tf.print('function_values_sdt', function_values_sdt)
+        function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
+        #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
         
         
-        return function_values_sdt
+        return function_values_vanilla_dt
     return calculate_function_value_from_vanilla_decision_tree_parameters
 
 
