@@ -281,11 +281,35 @@ def calculate_function_value_from_decision_tree_parameters_wrapper(random_evalua
 
 
 
+def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
+    
+    maximum_depth = config['function_family']['maximum_depth']
+    leaf_node_num_ = 2 ** maximum_depth
+    internal_node_num_ = 2 ** maximum_depth - 1
 
+    
+    def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
+        #tf.print('function_array', function_array)
+        weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+        #tf.print('weights', weights)
+        #tf.print('leaf_probabilities', leaf_probabilities)
+        
+        function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
+        #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
+        
+        
+        return function_values_vanilla_dt
+    return calculate_function_value_from_vanilla_decision_tree_parameters
 
 
 def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, number_of_variables):
+        
+    weights = tf.cast(weights, tf.float32)
+    leaf_probabilities = tf.cast(leaf_probabilities, tf.float32)   
+        
     def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample(evaluation_entry):
+     
+        evaluation_entry = tf.cast(evaluation_entry, tf.float32)
         
         weights_split = tf.split(weights, internal_node_num_)
         weights_split_new = [[] for _ in range(maximum_depth)]
@@ -346,25 +370,7 @@ def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_
     
     return calculate_function_value_from_vanilla_decision_tree_parameter_single_sample
         
-def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
-    
-    maximum_depth = config['function_family']['maximum_depth']
-    leaf_node_num_ = 2 ** maximum_depth
-    internal_node_num_ = 2 ** maximum_depth - 1
 
-    
-    def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
-        #tf.print('function_array', function_array)
-        weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
-        #tf.print('weights', weights)
-        #tf.print('leaf_probabilities', leaf_probabilities)
-        
-        function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
-        #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
-        
-        
-        return function_values_vanilla_dt
-    return calculate_function_value_from_vanilla_decision_tree_parameters
 
 
 
