@@ -5,7 +5,7 @@
 import itertools 
 from tqdm import tqdm_notebook as tqdm
 #import pickle
-import cloudpickle
+#import cloudpickle
 import dill 
 
 import traceback
@@ -26,7 +26,7 @@ from collections.abc import Iterable
 
 from sklearn.model_selection import train_test_split
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
-from similaritymeasures import frechet_dist, area_between_two_curves, dtw
+#from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 
 from tensorflow.keras.layers import Dense, concatenate
 from tensorflow.keras import Input, Model

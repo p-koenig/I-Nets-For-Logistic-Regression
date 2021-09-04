@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
-from similaritymeasures import frechet_dist, area_between_two_curves, dtw
+#from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 import time
 
 import tensorflow as tf

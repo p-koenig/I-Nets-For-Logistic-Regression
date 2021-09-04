@@ -20,14 +20,14 @@ from collections.abc import Iterable
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 #from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
-from similaritymeasures import frechet_dist, area_between_two_curves, dtw
+#from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
 
 
 import tensorflow as tf
 import keras
 import random 
-import tensorflow_addons as tfa
+#import tensorflow_addons as tfa
 
 #udf import
 from utilities.LambdaNet import *

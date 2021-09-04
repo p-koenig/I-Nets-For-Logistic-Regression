@@ -29,7 +29,7 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-import tensorflow_addons as tfa
+#import tensorflow_addons as tfa
 
 #udf import
 #from utilities.LambdaNet import *
