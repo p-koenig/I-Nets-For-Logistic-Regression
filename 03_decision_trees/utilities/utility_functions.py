@@ -349,7 +349,7 @@ def largest_indices(array: np.ndarray, n: int) -> tuple:
 ######################################################################################################################################################################################################################
 
 ######################################################################################################################################################################################################################
-def generate_random_data_points(low, high, size, variables, distrib='uniform'):
+def generate_random_data_points_custom(low, high, size, variables, distrib='uniform'):
     if distrib=='normal':
         list_of_data_points = []
         for _ in range(size):
@@ -432,7 +432,7 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
     elif config['i_net']['function_representation_type'] == 3:
         split_values_num_params = internal_node_num_ * config['function_family']['decision_sparsity']
         split_index_num_params = config['data']['number_of_variables'] *  config['function_family']['decision_sparsity'] * internal_node_num_
-        leaf_classes_num_params = leaf_node_num_ * config['data']['num_classes']
+        leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
         
         split_values = flat_parameters[:split_values_num_params]
         split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
@@ -458,11 +458,14 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
             
         leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
         split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
-        leaf_classes_list = []
-        for tensor in split_index_list_by_leaf_node:
-            argmax = tf.argmax(tensor)
-            leaf_classes_list.append(argmax)
-        leaf_classes= tf.stack(leaf_classes_list)
+        #leaf_classes_list = []
+        #for tensor in split_index_list_by_leaf_node:
+            #argmax = tf.argmax(tensor)
+            #argsort = tf.argsort(tensor, direction='DESCENDING')
+            #leaf_classes_list.append(argsort[0])
+            #leaf_classes_list.append(argsort[1])
+            
+        leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))#tf.stack(leaf_classes_list)
         return splits, leaf_classes
 
        
@@ -513,6 +516,39 @@ def generate_random_decision_tree(config, seed=42):
     return tree
 
 
+def generate_random_vanilla_decision_tree(config, seed=42):
+    
+    from sklearn.tree import DecisionTreeClassifier
+    
+    tree = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+        
+    return tree
+
+
+def generate_decision_tree_data_random_vanilla_decision_tree_trained(config, seed=42):
+    
+    decision_tree = generate_random_vanilla_decision_tree(config, seed)
+    
+    X_data = generate_random_data_points(config, seed)
+    
+    y_data_tree = np.random.randint(0,2,X_data.shape[0])
+    
+    decision_tree.fit(X_data, y_data_tree)    
+    
+    y_data = decision_tree.predict(X_data)
+    counter = 1
+    
+    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+        counter += 1
+        
+        decision_tree = generate_random_decision_tree(config, seed)
+        y_data = decision_tree.predict(X_data)    #predict_proba #predict
+    
+    return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
+
+
+
 def generate_random_data_points(config, seed):
     
     random.seed(seed)
@@ -535,10 +571,8 @@ def generate_random_data_points(config, seed):
 
 
 def generate_decision_tree_data_trained_make_classification(config, seed=42):
-    
-    decision_tree = generate_random_decision_tree(config, seed)
-        
-    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+            
+    X_data, y_data = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=0, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -552,29 +586,8 @@ def generate_decision_tree_data_trained_make_classification(config, seed=42):
                                                        scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
                                                        random_state=seed) 
-    
-    decision_tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
-                   output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
-                   depth=config['function_family']['maximum_depth'],
-                   beta=config['function_family']['beta'],
-                   decision_sparsity=config['function_family']['decision_sparsity'],
-                   random_seed=seed,
-                   use_cuda=False,
-                   verbosity=0)
-    
-    decision_tree.fit(X_data, y_data_tree, epochs=50)    
-    
-    y_data = decision_tree.predict_proba(X_data)
-    counter = 1
-    
-    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
-        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
-        counter += 1
-        
-        decision_tree = generate_random_decision_tree(config, seed)
-        y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict    
-    
-    return decision_tree.to_array(), X_data, np.round(y_data), y_data 
+            
+    return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
 
 
 def generate_decision_tree_data_trained(config, seed=42):
@@ -629,6 +642,11 @@ def generate_decision_tree_data(config, seed=42):
     return decision_tree.to_array(), X_data, np.round(y_data), y_data 
 
 
+
+
+
+
+
 def generate_decision_tree_identifier(config):
     num_internal_nodes = 2 ** config['function_family']['maximum_depth'] - 1
     num_leaf_nodes = 2 ** config['function_family']['maximum_depth']
@@ -651,6 +669,305 @@ def generate_decision_tree_identifier(config):
             decision_tree_identifier_list.append('lp' + str(leaf_probabilities_number) + 'c' + str(class_number))       
             
     return decision_tree_identifier_list
+
+
+
+def dt_array_to_sklearn(vanilla_dt_array, config,X_data, y_data, printing=False):
+#def dt_array_to_sklearn(vanilla_dt_array, config, printing=False):
+    
+    """
+    Attributes
+    ----------
+    node_count : int
+        The number of nodes (internal nodes + leaves) in the tree.
+    capacity : int
+        The current capacity (i.e., size) of the arrays, which is at least as
+        great as `node_count`.
+    max_depth : int
+        The depth of the tree, i.e. the maximum depth of its leaves.
+    children_left : array of int, shape [node_count]
+        children_left[i] holds the node id of the left child of node i.
+        For leaves, children_left[i] == TREE_LEAF. Otherwise,
+        children_left[i] > i. This child handles the case where
+        X[:, feature[i]] <= threshold[i].
+    children_right : array of int, shape [node_count]
+        children_right[i] holds the node id of the right child of node i.
+        For leaves, children_right[i] == TREE_LEAF. Otherwise,
+        children_right[i] > i. This child handles the case where
+        X[:, feature[i]] > threshold[i].
+    feature : array of int, shape [node_count]
+        feature[i] holds the feature to split on, for the internal node i.
+    threshold : array of double, shape [node_count]
+        threshold[i] holds the threshold for the internal node i.
+    value : array of double, shape [node_count, n_outputs, max_n_classes]
+        Contains the constant prediction value of each node.
+    impurity : array of double, shape [node_count]
+        impurity[i] holds the impurity (i.e., the value of the splitting
+        criterion) at node i.
+    n_node_samples : array of int, shape [node_count]
+        n_node_samples[i] holds the number of training samples reaching node i.
+    weighted_n_node_samples : array of int, shape [node_count]
+        weighted_n_node_samples[i] holds the weighted number of training samples
+        reaching node i.
+    """    
+    
+    from math import log2
+    import queue
+    from sklearn.tree import DecisionTreeClassifier
+    def gini(p):
+        return (p)*(1 - (p)) + (1 - p)*(1 - (1-p))    
+
+    def level_to_pre(arr,ind,new_arr):
+        if ind>=len(arr): return new_arr #nodes at ind don't exist
+        new_arr.append(arr[ind]) #append to back of the array
+        new_arr = level_to_pre(arr,ind*2+1,new_arr) #recursive call to left
+        new_arr = level_to_pre(arr,ind*2+2,new_arr) #recursive call to right
+        return new_arr
+
+    def pre_to_level(arr):
+        def left_tree_size(n):
+            if n<=1: return 0
+            l = int(log2(n+1)) #l = no of completely filled levels
+            ans = 2**(l-1)
+            last_level_nodes = min(n-2**l+1,ans)
+            return ans + last_level_nodes -1       
+
+        que = queue.Queue()
+        que.put((0,len(arr)))
+        ans = [] #this will be answer
+        while not que.empty():
+            iroot,size = que.get() #index of root and size of subtree
+            if iroot>=len(arr) or size==0: continue ##nodes at iroot don't exist
+            else : ans.append(arr[iroot]) #append to back of output array
+            sz_of_left = left_tree_size(size) 
+            que.put((iroot+1,sz_of_left)) #insert left sub-tree info to que
+            que.put((iroot+1+sz_of_left,size-sz_of_left-1)) #right sub-tree info 
+
+        return ans    
+    
+    splits, leaf_classes= get_shaped_parameters_for_decision_tree(vanilla_dt_array, config)
+    
+    if printing:
+        print('splits', splits)
+        print('leaf_classes', leaf_classes)
+        
+    internal_node_num = 2 ** config['function_family']['maximum_depth'] -1    
+    leaf_node_num = 2 ** config['function_family']['maximum_depth']    
+    n_nodes = internal_node_num + leaf_node_num
+
+    indices_list = [i for i in range(internal_node_num + leaf_node_num)]
+    pre_order_from_level = np.array(level_to_pre(indices_list, 0, []))
+
+    level_order_from_pre = np.array(pre_to_level(indices_list))
+    children_left = []
+    children_right = []
+    counter = 0
+    for i in pre_order_from_level:#pre_order_from_level:
+        left = 2*i+1 
+        right = 2*i+2 
+        if left < n_nodes:
+            children_left.append(level_order_from_pre[left])
+        else:
+            children_left.append(-1)
+        if left < n_nodes:
+            children_right.append(level_order_from_pre[right])
+        else:
+            children_right.append(-1)            
+            
+        #try:
+        #    children_left.append(level_order_from_pre[left])
+        #except:
+        #    children_left.append(-1)
+        #try:
+        #    children_right.append(level_order_from_pre[right])
+        #except:
+        #    children_right.append(-1)            
+        
+    children_left = np.array(children_left)
+    children_right = np.array(children_right)
+    
+    #print('children_left', children_left.shape, children_left)
+    #print('children_right', children_right.shape, children_right)
+    
+    indices_list = [i for i in range(internal_node_num+leaf_node_num)]
+    new_order = np.array(level_to_pre(indices_list, 0, []))
+    
+    feature = [np.argmax(np.abs(split)) for split in splits]
+    feature.extend([-2 for i in range(leaf_node_num)])
+    feature = np.array(feature)[new_order]
+    threshold = [split[np.argmax(np.abs(split))] for split in splits]
+    threshold.extend([-2 for i in range(leaf_node_num)])
+    threshold = np.round(np.array(threshold)[new_order], 3) 
+    
+    samples = 1000
+    value_list = []
+    n_node_samples_list = []
+    impurity_list = []
+    
+    value_list_previous = None
+    for current_depth in reversed(range(1, (config['function_family']['maximum_depth']+1)+1)):
+        internal_node_num_current_depth = (2 ** current_depth - 1) - (2 ** (current_depth-1) - 1)
+        #print(internal_node_num_current_depth)
+        #n_node_samples = [samples for _ in range(internal_node_num_current_depth)]
+        if current_depth > config['function_family']['maximum_depth']: #is leaf
+            values = []
+            impurity = []
+            n_node_samples = []
+            for i, leaf_class in enumerate(leaf_classes):
+                current_value = [int(np.round(samples*leaf_class.numpy())), int(np.round(samples*(1-leaf_class.numpy())))] 
+                curent_impurity = gini(current_value[0]/sum(current_value))
+                
+                values.append(current_value)
+                impurity.append(curent_impurity)
+                n_node_samples.append(sum(current_value))
+            #values = [[0, samples] for _ in range(internal_node_num_current_depth)]
+            #impurity = [0.5 for _ in range(internal_node_num_current_depth)]
+        else:
+            value_list_previous_left = value_list_previous[::2]
+            value_list_previous_right = value_list_previous[1::2]
+            samples_sum_list = np.add(value_list_previous_left, value_list_previous_right)
+            
+            values = [samples_sum for samples_sum in samples_sum_list]
+            impurity = [gini(value[0]/sum(value)) for value in values]
+            n_node_samples = [sum(value) for value in values]
+
+            samples = samples*2
+        
+        value_list_previous = values
+        
+        n_node_samples_list[0:0] = n_node_samples
+        value_list[0:0] = values
+        impurity_list[0:0] = impurity        
+        #n_node_samples_list.extend(n_node_samples)
+        #value_list.extend(values)
+        #impurity_list.extend(impurity)
+        
+        
+        
+    value = np.expand_dims(np.array(value_list), axis=1) #shape [node_count, n_outputs, max_n_classes]; number of samples for each class
+    value = np.round(value[new_order].astype(np.float64), 3)
+    impurity =  np.array(impurity_list) #
+    impurity = impurity[new_order].astype(np.float64)
+    n_node_samples = np.array(n_node_samples_list) #number of samples at each node
+    n_node_samples = n_node_samples[new_order]
+    weighted_n_node_samples = 1 * np.array(n_node_samples_list) #same as tree_n_node_samples, but weighted    
+    weighted_n_node_samples = np.round(weighted_n_node_samples.astype(np.float64), 3)
+    
+    if printing:
+        node_depth = np.zeros(shape=n_nodes, dtype=np.int64)
+        is_leaves = np.zeros(shape=n_nodes, dtype=bool)
+        stack = [(0, 0)]  # start with the root node id (0) and its depth (0)
+        while len(stack) > 0:
+            # `pop` ensures each node is only visited once
+            node_id, depth = stack.pop()
+            node_depth[node_id] = depth
+
+            # If the left and right child of a node is not the same we have a split
+            # node
+            is_split_node = children_left[node_id] != children_right[node_id]
+            # If a split node, append left and right children and depth to `stack`
+            # so we can loop through them
+            if is_split_node:
+                stack.append((children_left[node_id], depth + 1))
+                stack.append((children_right[node_id], depth + 1))
+            else:
+                is_leaves[node_id] = True
+
+        print("The binary tree structure has {n} nodes and has "
+              "the following tree structure:\n".format(n=n_nodes))
+        for i in range(n_nodes):
+            if is_leaves[i]:
+                print("{space}node={node} is a leaf node.".format(space=node_depth[i] * "\t", node=i))
+            else:
+                print("{space}node={node} is a split node: "
+                      "go to node {left} if X[:, {feature}] <= {threshold} "
+                      "else to node {right}.".format(
+                          space=node_depth[i] * "\t",
+                          node=i,
+                          left=children_left[i],
+                          feature=feature[i],
+                          threshold=threshold[i],
+                          right=children_right[i]))    
+
+        
+    clf=DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+    #y_data = [i for i in range(config['data']['num_classes'])]
+    #X_data = [[0 for i in range(config['data']['number_of_variables'])] for _ in range(config['data']['num_classes'])]
+    clf.fit(X_data, y_data)
+    if printing:    
+        print('-------------------------------------------------------------')
+        print(clf.tree_.value.dtype, value.dtype)
+        print(clf.tree_.impurity.dtype, impurity.dtype)
+        print(clf.tree_.n_node_samples.dtype, n_node_samples.dtype)
+        print(clf.tree_.weighted_n_node_samples.dtype, weighted_n_node_samples.dtype)
+        print(clf.tree_.children_left.dtype, children_left.dtype)
+        print(clf.tree_.children_right.dtype, children_right.dtype)
+        print(clf.tree_.feature.dtype, feature.dtype)
+        print(clf.tree_.threshold.dtype, threshold.dtype)      
+        print('-------------------------------------------------------------')
+        print('clf.tree_.value', clf.tree_.value)
+        print('clf.tree_.impurity', clf.tree_.impurity)
+        print('clf.tree_.n_node_samples', clf.tree_.n_node_samples)
+        print('clf.tree_.weighted_n_node_samples', clf.tree_.weighted_n_node_samples)
+        print('clf.tree_.children_left', clf.tree_.children_left)
+        print('clf.tree_.children_right', clf.tree_.children_right)
+        print('clf.tree_.feature', clf.tree_.feature)
+        print('clf.tree_.threshold', clf.tree_.threshold)            
+        print('-------------------------------------------------------------')    
+    
+    #print(type(clf.tree_.node_count), type(n_nodes))
+    #print(type(clf.tree_.capacity), type(n_nodes))    
+    clf.tree_.node_count = n_nodes
+    clf.tree_.capacity = n_nodes
+    
+    #print(type(clf.tree_.node_count), type(n_nodes))
+    #print(type(clf.tree_.capacity), type(n_nodes))       
+    
+    #print(clf.tree_.value, np.array(clf.tree_.value.shape))
+    #print(value, np.array(value).shape)
+    #TODO: FÜR VALUES NICHT IMMER 50/50 BEI INNER UND 100/0 BEI LEAF, SONDERN: BEI LEAFS ANFANGEN UND DANN DEN PFADEN ENTLANG HOCH-ADDIEREN FÜR JEDEN PARENT NODE
+    if printing:    
+        print('-------------------------------------------------------------')
+        print(clf.tree_.value.dtype, value.dtype)
+        print(clf.tree_.impurity.dtype, impurity.dtype)
+        print(clf.tree_.n_node_samples.dtype, n_node_samples.dtype)
+        print(clf.tree_.weighted_n_node_samples.dtype, weighted_n_node_samples.dtype)
+        print(clf.tree_.children_left.dtype, children_left.dtype)
+        print(clf.tree_.children_right.dtype, children_right.dtype)
+        print(clf.tree_.feature.dtype, feature.dtype)
+        print(clf.tree_.threshold.dtype, threshold.dtype)
+    for i in indices_list:
+        clf.tree_.children_left[i] = children_left[i]
+        clf.tree_.children_right[i] = children_right[i]            
+        clf.tree_.value[i] = value[i]
+        clf.tree_.impurity[i] = impurity[i]
+        clf.tree_.n_node_samples[i] = n_node_samples[i]
+        clf.tree_.weighted_n_node_samples[i] = weighted_n_node_samples[i]
+        clf.tree_.feature[i] = feature[i]
+        clf.tree_.threshold[i] = threshold[i]      
+    if printing:    
+        print('-------------------------------------------------------------')
+        print('value', value)
+        print('impurity', impurity)
+        print('n_node_samples', n_node_samples)
+        print('weighted_n_node_samples', weighted_n_node_samples)
+        print('children_left', children_left)
+        print('children_right', children_right)
+        print('feature', feature)
+        print('threshold', threshold)            
+        print('-------------------------------------------------------------')        
+        print('-------------------------------------------------------------')
+        print('clf.tree_.value', clf.tree_.value)
+        print('clf.tree_.impurity', clf.tree_.impurity)
+        print('clf.tree_.n_node_samples', clf.tree_.n_node_samples)
+        print('clf.tree_.weighted_n_node_samples', clf.tree_.weighted_n_node_samples)
+        print('clf.tree_.children_left', clf.tree_.children_left)
+        print('clf.tree_.children_right', clf.tree_.children_right)
+        print('clf.tree_.feature', clf.tree_.feature)
+        print('clf.tree_.threshold', clf.tree_.threshold)            
+        print('-------------------------------------------------------------')
+    return clf
+
 
 
 

@@ -349,7 +349,7 @@ def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_
                 split_value_neg_filled = tf.fill( [2**(maximum_depth-current_depth)], tf.logical_not(split_value))
                 #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
                 #print('LOOP 2 OUTPUT', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
-                split_value_list_per_depth.append(tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))        
+                split_value_list_per_depth.append(tf.keras.backend.flatten(tf.stack([split_value_neg_filled, split_value_filled])))        
                 #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
             #print('LOOP 1 OUTPUT', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
             split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
@@ -363,10 +363,8 @@ def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_
         #tf.print('split_values', split_values, summarize=-1)
         leaf_classes = tf.cast(leaf_probabilities, tf.float32)
         #tf.print('leaf_classes', leaf_classes, summarize=-1)
-        final_class = tf.reduce_max(tf.multiply(leaf_classes, split_values))                                                                 
-        #tf.print('final_class', final_class, summarize=-1)                                                                
-                                                                           
-        return final_class#y_pred
+        final_class_probability = 1-tf.reduce_max(tf.multiply(leaf_classes, split_values))                                                                                                                                            
+        return final_class_probability#y_pred
     
     return calculate_function_value_from_vanilla_decision_tree_parameter_single_sample
         

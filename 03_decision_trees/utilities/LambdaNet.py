@@ -439,8 +439,8 @@ def train_lambda_net(config,
                   #'y_test': y_test
                 }
 
-    scores_train = evaluate_lambda_net(y_train, y_train_pred, 'TRAIN')
-    scores_valid = evaluate_lambda_net(y_valid, y_valid_pred, 'VALID')
+    scores_train = None#evaluate_lambda_net(y_train, y_train_pred, 'TRAIN')
+    scores_valid = None#evaluate_lambda_net(y_valid, y_valid_pred, 'VALID')
 
     scores_list = [lambda_index,
                  scores_train,

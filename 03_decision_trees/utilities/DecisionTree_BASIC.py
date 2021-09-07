@@ -23,11 +23,15 @@ from utilities.utility_functions import *
 #################################################################################################################################################################################################################################
 #################################################################################################################################################################################################################################
  
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
 
-def batch(iterable, size):
-    it = iter(iterable)
-    while item := list(itertools.islice(it, size)):
-        yield item
+#def batch(iterable, size):
+#    it = iter(iterable)
+#    while item := list(itertools.islice(it, size)):
+#        yield item
     
     
 class SDT(nn.Module):
@@ -511,10 +515,6 @@ class SDT(nn.Module):
         self.inner_nodes[0].bias = torch.nn.Parameter(torch.FloatTensor(biases))
         self.leaf_nodes.weight = torch.nn.Parameter(torch.FloatTensor(leaf_probabilities))
         
-def batch(iterable, size):
-    it = iter(iterable)
-    while item := list(itertools.islice(it, size)):
-        yield item
         
         
     

@@ -629,6 +629,7 @@ print(leaf_classes)
 # In[29]:
 
 def dt_array_to_sklearn(vanilla_dt_array, config,X_data, y_data, printing=False):
+    import copy
     def gini(p):
         return (p)*(1 - (p)) + (1 - p)*(1 - (1-p))    
     
@@ -791,36 +792,49 @@ def dt_array_to_sklearn(vanilla_dt_array, config,X_data, y_data, printing=False)
     #TODO: FÜR VALUES NICHT IMMER 50/50 BEI INNER UND 100/0 BEI LEAF, SONDERN: BEI LEAFS ANFANGEN UND DANN DEN PFADEN ENTLANG HOCH-ADDIEREN FÜR JEDEN PARENT NODE
     print('-------------------------------------------------------------')
     print(clf.tree_.value.dtype, value.dtype)
-    print(clf.tree_.impurity.dtype, impurity.dtype)
-    print(clf.tree_.n_node_samples.dtype, n_node_samples.dtype)
-    print(clf.tree_.weighted_n_node_samples.dtype, weighted_n_node_samples.dtype)
-    print(clf.tree_.children_left.dtype, children_left.dtype)
-    print(clf.tree_.children_right.dtype, children_right.dtype)
-    print(clf.tree_.feature.dtype, feature.dtype)
-    print(clf.tree_.threshold.dtype, threshold.dtype)
+    print(clf.tree_.value, value)
+    #print(clf.tree_.impurity.dtype, impurity.dtype)
+    #print(clf.tree_.n_node_samples.dtype, n_node_samples.dtype)
+    #print(clf.tree_.weighted_n_node_samples.dtype, weighted_n_node_samples.dtype)
+    #print(clf.tree_.children_left.dtype, children_left.dtype)
+    #print(clf.tree_.children_right.dtype, children_right.dtype)
+    #print(clf.tree_.feature.dtype, feature.dtype)
+    #print(clf.tree_.threshold.dtype, threshold.dtype)
     if True:
         for i in indices_list:
-            print(i)
-            clf.tree_.children_left[i] = -1#children_left[i]
-            clf.tree_.children_right[i] = -1#children_right[i]            
-            #clf.tree_.value[i] = [1,1]#value[i]
-            clf.tree_.impurity[i] = 1#impurity[i]
-            clf.tree_.n_node_samples[i] = 1#n_node_samples[i]
-            clf.tree_.weighted_n_node_samples[i] = 1#weighted_n_node_samples[i]
-            clf.tree_.feature[i] = 1#feature[i]
-            clf.tree_.threshold[i] = 1#threshold[i]
+            print(clf.tree_.value[i].dtype, value[i].dtype)
+            print(type(clf.tree_.value[i]), type(value[i]))
+            print(clf.tree_.value[i], value[i])
+            #print(clf.tree_.impurity[i].dtype, impurity[i].dtype)
+            #print(clf.tree_.n_node_samples[i].dtype, n_node_samples[i].dtype)
+            #print(clf.tree_.weighted_n_node_samples[i].dtype, weighted_n_node_samples[i].dtype)
+            #print(clf.tree_.children_left[i].dtype, children_left[i].dtype)
+            #print(clf.tree_.children_right[i].dtype, children_right[i].dtype)
+            #print(clf.tree_.feature[i].dtype, feature[i].dtype)
+            #print(clf.tree_.threshold[i].dtype, threshold[i].dtype)            
+            
+            
+            clf.tree_.children_left[i] = copy.deepcopy(children_left[i])
+            clf.tree_.children_right[i] = copy.deepcopy(children_right[i])           
+            clf.tree_.value[i] = copy.deepcopy(value[i])
+            clf.tree_.impurity[i] = copy.deepcopy(impurity[i])
+            clf.tree_.n_node_samples[i] = copy.deepcopy(n_node_samples[i])
+            clf.tree_.weighted_n_node_samples[i] = copy.deepcopy(weighted_n_node_samples[i])
+            clf.tree_.feature[i] = copy.deepcopy(feature[i])
+            clf.tree_.threshold[i] = copy.deepcopy(threshold[i])
     print('-------------------------------------------------------------')
+    #print(clf.tree_.children_left)
     print(clf.tree_.value)
-    print(clf.tree_.impurity)
-    print(clf.tree_.n_node_samples)
-    print(clf.tree_.weighted_n_node_samples)
-    print(clf.tree_.children_left)
-    print(clf.tree_.children_right)
-    print(clf.tree_.feature)
-    print(clf.tree_.threshold)            
-    print('clf.tree_.max_depth', clf.tree_.max_depth)
+    #print(clf.tree_.impurity)
+    #print(clf.tree_.n_node_samples)
+    #print(clf.tree_.weighted_n_node_samples)
+    #print(clf.tree_.children_right)
+    #print(clf.tree_.feature)
+    #print(clf.tree_.threshold)            
+    #print('clf.tree_.max_depth', clf.tree_.max_depth)
     
     return clf
+
 
 
 # In[30]:
@@ -866,8 +880,9 @@ weighted_n_node_samples : array of int, shape [node_count]
 # In[31]:
 
 
+#new_tree = dt_array_to_sklearn(dt_pred, config, X_data, y_data, printing=True)
 new_tree = dt_array_to_sklearn(dt_pred, config, X_data, y_data, printing=True)
-
+print('DONE')
 
 # In[32]:
 

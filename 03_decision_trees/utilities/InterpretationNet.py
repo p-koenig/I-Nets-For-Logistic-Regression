@@ -253,7 +253,8 @@ def train_inet(lambda_net_train_dataset,
     ############################## DATA PREPARATION ###############################
     
     random_model = generate_base_model(config)
-    random_evaluation_dataset =  np.random.uniform(low=0, high=0.2, size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))# np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
+    #random_evaluation_dataset =  np.random.uniform(low=0, high=0.2, size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
+    random_evaluation_dataset =  np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
         
     random_network_parameters = random_model.get_weights()
     network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]         
@@ -441,7 +442,7 @@ def train_inet(lambda_net_train_dataset,
                 
                 number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
                 
-                outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, name='output_coeff_' + str(number_output_coefficients))(hidden)
+                outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, activation='sigmoid', name='output_coeff_' + str(number_output_coefficients))(hidden)
                 outputs_list = [outputs_coeff]
                 for outputs_index in range(internal_node_num_):
                     for var_index in range(config['function_family']['decision_sparsity']):
@@ -450,7 +451,8 @@ def train_inet(lambda_net_train_dataset,
                         outputs_list.append(outputs_identifer)    
 
                 for leaf_node in range(leaf_node_num_):
-                    outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
+                    #outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
+                    outputs_leaf_nodes = tf.keras.layers.Dense(1, activation='sigmoid', name='output_leaf_node_' + str(leaf_node))(hidden)
                     outputs_list.append(outputs_leaf_nodes)    
                     
                 outputs = concatenate(outputs_list, name='output_combined')
