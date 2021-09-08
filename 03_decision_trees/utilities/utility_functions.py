@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
+from sklearn.preprocessing import MinMaxScaler
 #from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 import time
 
@@ -374,105 +375,122 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
     leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
 
     if config['i_net']['function_representation_type'] == 1:
-        weights = flat_parameters[:input_dim*internal_node_num_]
-        weights = tf.reshape(weights, (internal_node_num_, input_dim))
+        if config['function_family']['dt_type'] == 'SDT':
+            weights_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
+            weights_coeff_list = tf.split(weights_coeff, internal_node_num_)
+            weights_index = flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]
+            weights_index_list = tf.split(weights_index, internal_node_num_)
+            
+            weights_list = []
+            for values_node, indices_node in zip(weights_coeff_list, weights_index_list):
+                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                weights_list.append(dense_tensor)             
+            
+            weights = tf.stack(weights_list)#tf.reshape(weights, (internal_node_num_, input_dim))
 
+            biases = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2: (config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_]
 
-        biases = flat_parameters[input_dim*internal_node_num_:(input_dim+1)*internal_node_num_]
-
-        leaf_probabilities = flat_parameters[(input_dim+1)*internal_node_num_:]
-        leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+            leaf_probabilities = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_:]
+            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+            
+            return weights, biases, leaf_probabilities
+            
+        elif config['function_family']['dt_type'] == 'vanilla':
+            splits_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
+            splits_coeff_list = tf.split(splits_coeff, internal_node_num_)
+            splits_index = flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]
+            splits_index_list = tf.split(splits_index, internal_node_num_)
+            
+            splits_list = []
+            for values_node, indices_node in zip(splits_coeff_list, splits_index_list):
+                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                splits_list.append(dense_tensor)             
+            
+            splits = tf.stack(splits_list)            
+            
+            
+            leaf_classes = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2:]  
+          
+            
+            return splits, leaf_classes
         
     elif config['i_net']['function_representation_type'] == 2:
-        weights_coeff = flat_parameters[:internal_node_num_ * config['function_family']['decision_sparsity']]
-        
-        #print(weights_coeff.shape)
-        weights_index_array = flat_parameters[internal_node_num_ * config['function_family']['decision_sparsity']:(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables'])]
-        #print(weights_index_array.shape)
-        biases = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']):(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']) + internal_node_num_]
-        #print(biases.shape)
-        leaf_probabilities = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']) + internal_node_num_:]
-        #print(leaf_probabilities.shape)
-        leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
-        #print(leaf_probabilities.shape)
-        
-        #print('weights_coeff', weights_coeff)
-        weights_coeff_list_by_internal_node = tf.split(weights_coeff, internal_node_num_)
-        #print('weights_coeff_list_by_internal_node', weights_coeff_list_by_internal_node)
-         
-            
-        weights_index_list_by_internal_node = tf.split(weights_index_array, internal_node_num_)
-        #print('weights_index_list_by_internal_node', weights_index_list_by_internal_node)
-        weights_index_list_by_internal_node_by_decision_sparsity = []
-        for tensor in weights_index_list_by_internal_node:
-            weights_index_list_by_internal_node_by_decision_sparsity.append(tf.split(tensor, config['function_family']['decision_sparsity']))
-        #print(weights_index_list_by_internal_node_by_decision_sparsity)
-        weights_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(weights_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
-        weights_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
-        for tensor in weights_index_list_by_internal_node_by_decision_sparsity_argmax:
-            weights_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tf.squeeze(tensor, axis=0))
-        weights_index_list_by_internal_node_by_decision_sparsity_argmax = weights_index_list_by_internal_node_by_decision_sparsity_argmax_new
-        #print(weights_index_list_by_internal_node_by_decision_sparsity_argmax)
-        
-        dense_tensor_list = []
-        for indices_node, values_node in zip(weights_index_list_by_internal_node_by_decision_sparsity_argmax,  weights_coeff_list_by_internal_node):
-            #print('indices_node', indices_node)
-            #print('values_node', values_node)            
+        if config['function_family']['dt_type'] == 'SDT':
+            weights_coeff = flat_parameters[:internal_node_num_ * config['function_family']['decision_sparsity']]
 
-            sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
-            dense_tensor = tf.sparse.to_dense(sparse_tensor)
-            dense_tensor_list.append(dense_tensor)
-        #print('dense_tensor_list', dense_tensor_list)
+            weights_index_array = flat_parameters[internal_node_num_ * config['function_family']['decision_sparsity']:(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables'])]
+            biases = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']):(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']) + internal_node_num_]
+            leaf_probabilities = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']) + internal_node_num_:]
+            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+
+            weights_coeff_list_by_internal_node = tf.split(weights_coeff, internal_node_num_)
+
+
+            weights_index_list_by_internal_node = tf.split(weights_index_array, internal_node_num_)
+            weights_index_list_by_internal_node_by_decision_sparsity = []
+            for tensor in weights_index_list_by_internal_node:
+                weights_index_list_by_internal_node_by_decision_sparsity.append(tf.split(tensor, config['function_family']['decision_sparsity']))
+            weights_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(weights_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
+            weights_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
+            for tensor in weights_index_list_by_internal_node_by_decision_sparsity_argmax:
+                weights_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tf.squeeze(tensor, axis=0))
+            weights_index_list_by_internal_node_by_decision_sparsity_argmax = weights_index_list_by_internal_node_by_decision_sparsity_argmax_new
+
+            dense_tensor_list = []
+            for indices_node, values_node in zip(weights_index_list_by_internal_node_by_decision_sparsity_argmax,  weights_coeff_list_by_internal_node):
+                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                dense_tensor_list.append(dense_tensor)
+
+            weights = tf.stack(dense_tensor_list) 
         
-        weights = tf.stack(dense_tensor_list)
-        #print('weights', weights)
-        #print('biases', biases)
-        #print('leaf_probabilities', leaf_probabilities)      
+            return weights, biases, leaf_probabilities
         
-    elif config['i_net']['function_representation_type'] == 3:
-        split_values_num_params = internal_node_num_ * config['function_family']['decision_sparsity']
-        split_index_num_params = config['data']['number_of_variables'] *  config['function_family']['decision_sparsity'] * internal_node_num_
-        leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
-        
-        split_values = flat_parameters[:split_values_num_params]
-        split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
-        
-        split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
-        split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)
-        split_index_list_by_internal_node_by_decision_sparsity = []
-        for tensor in split_index_list_by_internal_node:
-            split_tensor = tf.split(tensor, config['function_family']['decision_sparsity'])
-            split_index_list_by_internal_node_by_decision_sparsity.append(split_tensor)
-        split_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(split_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
-        split_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
-        for tensor in split_index_list_by_internal_node_by_decision_sparsity_argmax:
-            tensor_squeeze = tf.squeeze(tensor, axis=0)
-            split_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tensor_squeeze)
-        split_index_list_by_internal_node_by_decision_sparsity_argmax = split_index_list_by_internal_node_by_decision_sparsity_argmax_new    
-        dense_tensor_list = []
-        for indices_node, values_node in zip(split_index_list_by_internal_node_by_decision_sparsity_argmax,  split_values_list_by_internal_node):
-            sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
-            dense_tensor = tf.sparse.to_dense(sparse_tensor)
-            dense_tensor_list.append(dense_tensor) 
-        splits = tf.stack(dense_tensor_list)
-            
-        leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
-        split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
-        #leaf_classes_list = []
-        #for tensor in split_index_list_by_leaf_node:
-            #argmax = tf.argmax(tensor)
-            #argsort = tf.argsort(tensor, direction='DESCENDING')
-            #leaf_classes_list.append(argsort[0])
-            #leaf_classes_list.append(argsort[1])
-            
-        leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))#tf.stack(leaf_classes_list)
-        return splits, leaf_classes
+        elif config['function_family']['dt_type'] == 'vanilla':
+            split_values_num_params = internal_node_num_ * config['function_family']['decision_sparsity']
+            split_index_num_params = config['data']['number_of_variables'] *  config['function_family']['decision_sparsity'] * internal_node_num_
+            leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
+
+            split_values = flat_parameters[:split_values_num_params]
+            split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
+
+            split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
+            split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)
+            split_index_list_by_internal_node_by_decision_sparsity = []
+            for tensor in split_index_list_by_internal_node:
+                split_tensor = tf.split(tensor, config['function_family']['decision_sparsity'])
+                split_index_list_by_internal_node_by_decision_sparsity.append(split_tensor)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(split_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
+            for tensor in split_index_list_by_internal_node_by_decision_sparsity_argmax:
+                tensor_squeeze = tf.squeeze(tensor, axis=0)
+                split_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tensor_squeeze)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax = split_index_list_by_internal_node_by_decision_sparsity_argmax_new    
+            dense_tensor_list = []
+            for indices_node, values_node in zip(split_index_list_by_internal_node_by_decision_sparsity_argmax,  split_values_list_by_internal_node):
+                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                dense_tensor_list.append(dense_tensor) 
+            splits = tf.stack(dense_tensor_list)
+
+            leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
+            split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
+            #leaf_classes_list = []
+            #for tensor in split_index_list_by_leaf_node:
+                #argmax = tf.argmax(tensor)
+                #argsort = tf.argsort(tensor, direction='DESCENDING')
+                #leaf_classes_list.append(argsort[0])
+                #leaf_classes_list.append(argsort[1])
+
+            leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))#tf.stack(leaf_classes_list)
+            return splits, leaf_classes
 
        
 
 
-    return weights, biases, leaf_probabilities
-    
+        return None
 
     
 
@@ -569,6 +587,37 @@ def generate_random_data_points(config, seed):
         
     return list_of_data_points 
 
+def generate_decision_tree_data_trained_make_classification_vanilla_decision_tree_trained(config, seed=42):
+            
+    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                       n_informative=config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                       n_redundant=0, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                       n_repeated=0, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                       n_classes=config['data']['num_classes'], 
+                                                       n_clusters_per_class=2, 
+                                                       flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       scale=1.0, #Multiply features by the specified value. 
+                                                       shuffle=True, 
+                                                       random_state=seed) 
+    scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
+    X_data = scaler.fit_transform(X_data)    
+    
+    decision_tree = generate_random_vanilla_decision_tree(config, seed)
+    
+    decision_tree.fit(X_data, y_data_tree)    
+    
+    y_data = decision_tree.predict(X_data)    
+    
+    
+    
+        
+    return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
+
+
 
 def generate_decision_tree_data_trained_make_classification(config, seed=42):
             
@@ -586,7 +635,10 @@ def generate_decision_tree_data_trained_make_classification(config, seed=42):
                                                        scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
                                                        random_state=seed) 
-            
+    
+    scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
+    X_data = scaler.fit_transform(X_data)        
+        
     return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
 
 

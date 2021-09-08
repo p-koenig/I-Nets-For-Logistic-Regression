@@ -410,52 +410,56 @@ def train_inet(lambda_net_train_dataset,
                 if config['i_net']['dropout'][layer_index+1] > 0:
                     hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
 
+                    
             if config['i_net']['function_representation_type'] == 1:
                 outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], name='output_' + str(config['function_family']['function_representation_length']))(hidden)
             elif config['i_net']['function_representation_type'] == 2:
-                
-                #input_dim = config['data']['number_of_variables']
-                #output_dim = config['data']['num_classes']
-                internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
-                
-                number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
-                
-                outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
-                outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, name='output_coeff_' + str(number_output_coefficients))(hidden)
-                outputs_bias = tf.keras.layers.Dense(internal_node_num_, name='output_bias_' + str(internal_node_num_))(hidden)
-                
-                outputs_list = [outputs_leaf_nodes, outputs_coeff, outputs_bias]
+                if config['function_family']['dt_type'] == 'SDT':
 
-                for outputs_index in range(internal_node_num_):
-                    for var_index in range(config['function_family']['decision_sparsity']):
-                        output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
-                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
-                        outputs_list.append(outputs_identifer)    
+                    #input_dim = config['data']['number_of_variables']
+                    #output_dim = config['data']['num_classes']
+                    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
 
-                outputs = concatenate(outputs_list, name='output_combined')
-            elif config['i_net']['function_representation_type'] == 3:
-                #input_dim = config['data']['number_of_variables']
-                #output_dim = config['data']['num_classes']
-                internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
-                
-                number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
-                
-                outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, activation='sigmoid', name='output_coeff_' + str(number_output_coefficients))(hidden)
-                outputs_list = [outputs_coeff]
-                for outputs_index in range(internal_node_num_):
-                    for var_index in range(config['function_family']['decision_sparsity']):
-                        output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
-                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
-                        outputs_list.append(outputs_identifer)    
+                    number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
 
-                for leaf_node in range(leaf_node_num_):
-                    #outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
-                    outputs_leaf_nodes = tf.keras.layers.Dense(1, activation='sigmoid', name='output_leaf_node_' + str(leaf_node))(hidden)
-                    outputs_list.append(outputs_leaf_nodes)    
+                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
+                    outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, name='output_coeff_' + str(number_output_coefficients))(hidden)
+                    outputs_bias = tf.keras.layers.Dense(internal_node_num_, name='output_bias_' + str(internal_node_num_))(hidden)
+
+                    outputs_list = [outputs_leaf_nodes, outputs_coeff, outputs_bias]
+
+                    for outputs_index in range(internal_node_num_):
+                        for var_index in range(config['function_family']['decision_sparsity']):
+                            output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
+                            outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
+                            outputs_list.append(outputs_identifer)    
+
+                    outputs = concatenate(outputs_list, name='output_combined')
                     
-                outputs = concatenate(outputs_list, name='output_combined')
+                    
+                elif config['function_family']['dt_type'] == 'vanilla':
+                    #input_dim = config['data']['number_of_variables']
+                    #output_dim = config['data']['num_classes']
+                    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+
+                    number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
+
+                    outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, activation='sigmoid', name='output_coeff_' + str(number_output_coefficients))(hidden)
+                    outputs_list = [outputs_coeff]
+                    for outputs_index in range(internal_node_num_):
+                        for var_index in range(config['function_family']['decision_sparsity']):
+                            output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
+                            outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
+                            outputs_list.append(outputs_identifer)    
+
+                    for leaf_node in range(leaf_node_num_):
+                        #outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
+                        outputs_leaf_nodes = tf.keras.layers.Dense(1, activation='sigmoid', name='output_leaf_node_' + str(leaf_node))(hidden)
+                        outputs_list.append(outputs_leaf_nodes)    
+
+                    outputs = concatenate(outputs_list, name='output_combined')
                 
                 
 

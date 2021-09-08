@@ -101,10 +101,10 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
         
-        if config['i_net']['function_representation_type'] <= 2:
+        if config['function_family']['dt_type'] == 'SDT':
             function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
-        elif config['i_net']['function_representation_type'] >= 3:
+        elif config['function_family']['dt_type'] == 'vanilla':
             function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
             
@@ -161,9 +161,9 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
         #tf.print(function_values_array_function_true)
         
-        if config['i_net']['function_representation_type'] <= 2:
+        if config['function_family']['dt_type'] == 'SDT':
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
-        elif config['i_net']['function_representation_type'] >= 3:
+        elif config['function_family']['dt_type'] == 'vanilla':
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         #tf.print(function_values_array_function_pred)
                 
@@ -397,10 +397,10 @@ def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, me
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
-        if config['i_net']['function_representation_type'] <= 2:
+        if config['function_family']['dt_type'] == 'SDT':
             function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
-        elif config['i_net']['function_representation_type'] >= 3:
+        elif config['function_family']['dt_type'] == 'vanilla':
             function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         
@@ -457,9 +457,9 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
         #tf.print(function_values_array_function_true)
         
         #tf.print('function_pred', function_pred)
-        if config['i_net']['function_representation_type'] <= 2:
+        if config['function_family']['dt_type'] == 'SDT':
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
-        elif config['i_net']['function_representation_type'] >= 3:
+        elif config['function_family']['dt_type'] == 'vanilla':
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)            
             
         def loss_function_wrapper(metric_name):
@@ -467,7 +467,10 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
                 
                 function_values_true = input_list[0]
                 function_values_pred = input_list[1]
-
+                
+                #tf.print('function_values_true', function_values_true, summarize=-1)
+                #tf.print('function_values_pred', function_values_pred, summarize=-1)
+                
                 loss = tf.keras.metrics.get(metric_name)
                 
                 loss_value = loss(function_values_true, function_values_pred)
@@ -477,9 +480,9 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
             return loss_function
         
         loss_per_sample = tf.vectorized_map(loss_function_wrapper(metric), (function_values_array_function_true, function_values_array_function_pred))
-        #tf.print(loss_per_sample)
+        #tf.print('loss_per_sample', loss_per_sample, summarize=-1)
         loss_value = tf.math.reduce_mean(loss_per_sample)
-        #tf.print(loss_value)
+        #tf.print('loss_value', loss_value, summarize=-1)
     
         #loss_value = tf.math.reduce_mean(function_true - function_pred)
         #tf.print(loss_value)
