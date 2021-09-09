@@ -25,7 +25,7 @@ from sklearn.metrics import accuracy_score, mean_absolute_error, r2_score
 
 
 import tensorflow as tf
-import keras
+#import keras
 import random 
 #import tensorflow_addons as tfa
 
@@ -91,15 +91,15 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
         #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
         #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
-        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
-        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
         if config['function_family']['dt_type'] == 'SDT':
             function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))
@@ -147,15 +147,15 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         #tf.print('function_true', function_true)
         
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
         network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
         assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)  
-        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Polynomial: ' + str(function_true.shape)      
-        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Polynomial: ' + str(function_pred.shape)   
+        assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
+        assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
         #tf.print('GO function_values_array_function_true')
         function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
@@ -387,7 +387,7 @@ def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, me
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
         #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
@@ -442,7 +442,7 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
-            function_pred = function_pred[:,:config['function_family']['basic_function_representation_length']]
+            function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
         network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)

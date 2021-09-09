@@ -145,10 +145,10 @@ def return_callbacks_from_string(callback_string_list):
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
     if 'reduce_lr_loss' in callback_string_list:
-        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=50, verbose=0, min_delta=0, mode='min') #epsilon
+        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=50, verbose=0, min_delta=0.001, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=50, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=50, min_delta=0.001, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     if 'plot_losses' in callback_string_list:
         plotLosses = PlotLossesKerasTF()
@@ -378,7 +378,7 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
         if config['function_family']['dt_type'] == 'SDT':
             weights_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
             weights_coeff_list = tf.split(weights_coeff, internal_node_num_)
-            weights_index = flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]
+            weights_index = tf.cast(tf.clip_by_value(tf.round(flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]), clip_value_min=0, clip_value_max=config['data']['number_of_variables']-1), tf.int64)
             weights_index_list = tf.split(weights_index, internal_node_num_)
             
             weights_list = []
@@ -394,12 +394,15 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
             leaf_probabilities = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_:]
             leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
             
+            #tf.print(weights, biases, leaf_probabilities)
+            
             return weights, biases, leaf_probabilities
             
         elif config['function_family']['dt_type'] == 'vanilla':
             splits_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
+            splits_coeff = tf.clip_by_value(splits_coeff, clip_value_min=config['data']['x_min'], clip_value_max=config['data']['x_max'])
             splits_coeff_list = tf.split(splits_coeff, internal_node_num_)
-            splits_index = flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]
+            splits_index = tf.cast(tf.clip_by_value(tf.round(flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]), clip_value_min=0, clip_value_max=config['data']['number_of_variables']-1), tf.int64)
             splits_index_list = tf.split(splits_index, internal_node_num_)
             
             splits_list = []
@@ -412,7 +415,8 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
             
             
             leaf_classes = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2:]  
-          
+            leaf_classes = tf.clip_by_value(leaf_classes, clip_value_min=0, clip_value_max=1)
+            #tf.print(splits, leaf_classes)
             
             return splits, leaf_classes
         
@@ -421,7 +425,9 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
             weights_coeff = flat_parameters[:internal_node_num_ * config['function_family']['decision_sparsity']]
 
             weights_index_array = flat_parameters[internal_node_num_ * config['function_family']['decision_sparsity']:(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables'])]
+            
             biases = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']):(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']) + internal_node_num_]
+            
             leaf_probabilities = flat_parameters[(internal_node_num_ * config['function_family']['decision_sparsity'])+(internal_node_num_ * config['function_family']['decision_sparsity'] * config['data']['number_of_variables']) + internal_node_num_:]
             leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
 
@@ -445,7 +451,7 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
                 dense_tensor_list.append(dense_tensor)
 
             weights = tf.stack(dense_tensor_list) 
-        
+            #tf.print(weights, biases, leaf_probabilities)
             return weights, biases, leaf_probabilities
         
         elif config['function_family']['dt_type'] == 'vanilla':
@@ -485,6 +491,8 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
                 #leaf_classes_list.append(argsort[1])
 
             leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))#tf.stack(leaf_classes_list)
+            
+            #tf.print(splits, leaf_classes)
             return splits, leaf_classes
 
        

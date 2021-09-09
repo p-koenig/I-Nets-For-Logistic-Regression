@@ -97,33 +97,23 @@ class CombinedOutputInet(ak.Head):
             )
         return hyper_preprocessors            
 
-class ClassificationDenseInet(ak.Block):
-
+class CustomDenseInet(ak.Block):
+    
+    neurons=None
+    activation=None
+    
+    def __init__(self, neurons=None, activation=None, **kwargs):
+        super().__init__(**kwargs)
+        self.neurons = neurons
+        self.activation = activation
+        
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
         input_node = tf.nest.flatten(inputs)[0]
-        layer = Dense(sparsity, activation='softmax')
+        layer = Dense(units=self.neurons, activation=self.activation)
+        #layer = Dense(1, activation='linear')
         output_node = layer(input_node)
         return output_node    
-    
-class ClassificationDenseInetDegree(ak.Block):
-
-    def build(self, hp, inputs=None):
-        # Get the input_node from inputs.
-        input_node = tf.nest.flatten(inputs)[0]
-        layer = Dense(d+1, activation='softmax')
-        output_node = layer(input_node)
-        return output_node    
-    
-
-class RegressionDenseInet(ak.Block):
-
-    def build(self, hp, inputs=None):
-        # Get the input_node from inputs.
-        input_node = tf.nest.flatten(inputs)[0]
-        layer = Dense(interpretation_net_output_monomials)       
-        output_node = layer(input_node)
-        return output_node     
 
 
 
@@ -172,7 +162,7 @@ def interpretation_net_training(lambda_net_train_dataset,
 
     start = time.time() 
 
-    model = load_inet(loss_function=loss_function, metrics=metrics, config=config)
+    model = None#load_inet(loss_function=loss_function, metrics=metrics, config=config)
 
     end = time.time()     
     inet_load_time = (end - start) 
@@ -206,14 +196,18 @@ def load_inet(loss_function, metrics, config):
     model = []
     from tensorflow.keras.utils import CustomObjectScope
     loss_function = dill.loads(loss_function)
-    metrics = dill.loads(metrics)         
+    metrics = dill.loads(metrics)       
 
     #with CustomObjectScope({'custom_loss': loss_function}):
     custom_object_dict = {}
     custom_object_dict[loss_function.__name__] = loss_function
     for metric in  metrics:
         custom_object_dict[metric.__name__] = metric        
-    model = tf.keras.models.load_model(path, custom_objects=custom_object_dict) # #, compile=False
+        
+    if config['i_net']['nas']:    
+        tf.keras.models.load_model(path, custom_objects=custom_object_dict)
+    else:
+        model = tf.keras.models.load_model(path, custom_objects=custom_object_dict) # #, compile=False
         
     return model
 
@@ -282,16 +276,16 @@ def train_inet(lambda_net_train_dataset,
             for metric in config['i_net']['metrics']:
                 metrics.append(inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, metric))  
                 metrics.append(inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, metric))  
-            raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
     else:
         metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
         metrics.append(inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config))
         if config['i_net']['optimize_decision_function']:
-            raise SystemExit('Coefficient Loss not implemented for selected function representation')
+            raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
         else:
             if config['i_net']['function_representation_type'] is 1:
                 loss_function = tf.keras.losses.get('mae') #inet_coefficient_loss_wrapper(inet_loss)
-                
+            else:
+                raise SystemExit('Coefficient Loss not implemented for selected function representation')
     if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL'):
         y_train_model = np.hstack((y_train, X_train_flat))   
         valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
@@ -320,39 +314,30 @@ def train_inet(lambda_net_train_dataset,
             #print(metric_names)
             #print(loss_function_name)
 
+            #CustomDenseInet(neurons, activation)
+            #config['i_net']['function_representation_type']
+            #config['function_family']['dt_type']          
+            
             with CustomObjectScope(custom_object_dict):
                 if config['i_net']['nas_type'] == 'SEQUENTIAL':
                     input_node = ak.Input()
-
                     hidden_node = ak.DenseBlock()(input_node)
-
-                    #print('interpretation_net_output_monomials', interpretation_net_output_monomials)
-
-                    output_node = ak.RegressionHead()(hidden_node)
-                    
 
                 elif config['i_net']['nas_type'] == 'CNN': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
-
-                    output_node = ak.RegressionHead()(hidden_node)  
-
-
+                    
                 elif config['i_net']['nas_type'] == 'LSTM':
                     input_node = ak.Input()
                     hidden_node = ak.RNNBlock()(input_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
-
-                    output_node = ak.RegressionHead()(hidden_node)  
 
                 elif config['i_net']['nas_type'] == 'CNN-LSTM': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
                     hidden_node = ak.RNNBlock()(hidden_node)
                     hidden_node = ak.DenseBlock()(hidden_node)
-
-                    output_node = ak.RegressionHead()(hidden_node)  
 
                 elif config['i_net']['nas_type'] == 'CNN-LSTM-parallel':                         
                     input_node = ak.Input()
@@ -361,8 +346,53 @@ def train_inet(lambda_net_train_dataset,
                     hidden_node = ak.Merge()([hidden_node1, hidden_node2])
                     hidden_node = ak.DenseBlock()(hidden_node)
 
-                    output_node = ak.RegressionHead()(hidden_node)  
+                if config['i_net']['function_representation_type'] == 1:
+                    output_node = ak.RegressionHead()(hidden_node)
+                elif config['i_net']['function_representation_type'] == 2:
+                    if config['function_family']['dt_type'] == 'SDT':                    
 
+                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+
+                        number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
+
+                        outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='linear')(hidden_node)
+
+                        outputs_list = [outputs_coeff]
+
+                        for outputs_index in range(internal_node_num_):
+                            for var_index in range(config['function_family']['decision_sparsity']):
+                                outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                outputs_list.append(outputs_identifer)    
+
+                        outputs_bias = CustomDenseInet(neurons=internal_node_num_, activation='linear')(hidden_node)
+                        outputs_list.append(outputs_bias)     
+
+                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_ * config['data']['num_classes'], activation='linear')(hidden_node) 
+                        outputs_list.append(outputs_leaf_nodes)     
+
+
+                    
+                    elif config['function_family']['dt_type'] == 'vanilla':  
+                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+
+                        number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
+                        outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='sigmoid')(hidden_node)
+                        outputs_list = [outputs_coeff]
+                        for outputs_index in range(internal_node_num_):
+                            for var_index in range(config['function_family']['decision_sparsity']):
+                                output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
+                                outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                outputs_list.append(outputs_identifer)    
+
+                        for leaf_node in range(leaf_node_num_):
+                            #outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
+                            outputs_leaf_nodes = CustomDenseInet(neurons=1, activation='sigmoid')(hidden_node)
+                            outputs_list.append(outputs_leaf_nodes)    
+                    
+                    output_node = CombinedOutputInet()(outputs_list)
+                    
                 directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version'])
 
                 auto_model = ak.AutoModel(inputs=input_node, 
@@ -390,9 +420,10 @@ def train_inet(lambda_net_train_dataset,
 
 
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
+                print(history)
                 model = auto_model.export_model()
-
-                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'])
+                
+                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'], save_format='tf')
 
         else: 
             inputs = Input(shape=X_train.shape[1], name='input')
@@ -423,11 +454,9 @@ def train_inet(lambda_net_train_dataset,
 
                     number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
 
-                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
                     outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, name='output_coeff_' + str(number_output_coefficients))(hidden)
-                    outputs_bias = tf.keras.layers.Dense(internal_node_num_, name='output_bias_' + str(internal_node_num_))(hidden)
 
-                    outputs_list = [outputs_leaf_nodes, outputs_coeff, outputs_bias]
+                    outputs_list = [outputs_coeff]
 
                     for outputs_index in range(internal_node_num_):
                         for var_index in range(config['function_family']['decision_sparsity']):
@@ -435,6 +464,12 @@ def train_inet(lambda_net_train_dataset,
                             outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], activation='softmax', name=output_name)(hidden)
                             outputs_list.append(outputs_identifer)    
 
+                    outputs_bias = tf.keras.layers.Dense(internal_node_num_, name='output_bias_' + str(internal_node_num_))(hidden)
+                    outputs_list.append(outputs_bias)     
+                    
+                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
+                    outputs_list.append(outputs_leaf_nodes)     
+                            
                     outputs = concatenate(outputs_list, name='output_combined')
                     
                     
@@ -492,7 +527,7 @@ def train_inet(lambda_net_train_dataset,
 
             history = history.history
             
-            model.save('./data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'])
+            model.save('./data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'], save_format='tf')
     else:
         history = None
         
