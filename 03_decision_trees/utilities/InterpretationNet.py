@@ -3,7 +3,7 @@
 #######################################################################################################################################################
 
 import itertools 
-from tqdm import tqdm_notebook as tqdm
+from tqdm.notebook import tqdm
 #import pickle
 #import cloudpickle
 import dill 
@@ -162,7 +162,7 @@ def interpretation_net_training(lambda_net_train_dataset,
 
     start = time.time() 
 
-    model = None#load_inet(loss_function=loss_function, metrics=metrics, config=config)
+    model = load_inet(loss_function=loss_function, metrics=metrics, config=config)
 
     end = time.time()     
     inet_load_time = (end - start) 
@@ -191,7 +191,10 @@ def interpretation_net_training(lambda_net_train_dataset,
 def load_inet(loss_function, metrics, config):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
-    path = './data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'] #paths_dict['path_identifier_interpretation_net_data'] + '/model'
+    if config['i_net']['nas']:
+        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net']
+    else:
+        path = './data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'] #paths_dict['path_identifier_interpretation_net_data'] + '/model'
 
     model = []
     from tensorflow.keras.utils import CustomObjectScope
@@ -204,10 +207,7 @@ def load_inet(loss_function, metrics, config):
     for metric in  metrics:
         custom_object_dict[metric.__name__] = metric        
         
-    if config['i_net']['nas']:    
-        tf.keras.models.load_model(path, custom_objects=custom_object_dict)
-    else:
-        model = tf.keras.models.load_model(path, custom_objects=custom_object_dict) # #, compile=False
+    model = tf.keras.models.load_model(path, custom_objects=custom_object_dict) # #, compile=False
         
     return model
 
@@ -420,7 +420,6 @@ def train_inet(lambda_net_train_dataset,
 
 
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
-                print(history)
                 model = auto_model.export_model()
                 
                 model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'], save_format='tf')

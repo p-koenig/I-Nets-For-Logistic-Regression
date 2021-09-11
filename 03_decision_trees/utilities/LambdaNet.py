@@ -334,6 +334,43 @@ class LambdaNet():
 #################################################################Lambda Net TRAINING###################################################################
 #######################################################################################################################################################
 
+def generate_lambda_net_from_config(config, seed=None):
+    
+    if seed is None:
+        seed = config['computation']['RANDOM_SEED']
+    
+    output_neurons = 1 if config['data']['num_classes']==2 else config['data']['num_classes']
+    output_activation = 'sigmoid' if config['data']['num_classes']==2 else 'softmax'
+        
+    model = Sequential()
+        
+    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
+    model.add(Dense(config['lambda_net']['lambda_network_layers'][0], activation='relu', input_dim=config['data']['number_of_variables'], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), bias_initializer='zeros'))
+   
+    if config['lambda_net']['dropout_lambda'] > 0:
+        model.add(Dropout(config['lambda_net']['dropout_lambda']))
+
+    for neurons in config['lambda_net']['lambda_network_layers'][1:]:
+        model.add(Dense(neurons, 
+                        activation='relu', 
+                        kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), 
+                        bias_initializer='zeros'))
+        
+        if config['lambda_net']['dropout_lambda'] > 0:
+            model.add(Dropout(config['lambda_net']['dropout_lambda']))   
+    
+    model.add(Dense(output_neurons, 
+                    activation=output_activation, 
+                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), 
+                    bias_initializer='zeros'))
+        
+    model.compile(optimizer=config['lambda_net']['optimizer_lambda'],
+                  loss='binary_crossentropy',#tf.keras.losses.get(config['lambda_net']['loss_lambda']),
+                  metrics=[tf.keras.metrics.get("binary_accuracy")]
+                 )
+    
+    return model
+
 def train_lambda_net(config,
                      lambda_index,
                      X_data_with_function, 
@@ -374,37 +411,8 @@ def train_lambda_net(config,
     X_train_with_valid, X_test, y_train_with_valid, y_test = train_test_split(X_data, y_data, test_size=0.25, random_state=config['computation']['RANDOM_SEED'])           
     X_train, X_valid, y_train, y_valid= train_test_split(X_train_with_valid, y_train_with_valid, test_size=0.1, random_state=config['computation']['RANDOM_SEED'])           
      
-        
-    output_neurons = 1 if config['data']['num_classes']==2 else config['data']['num_classes']
-    output_activation = 'sigmoid' if config['data']['num_classes']==2 else 'softmax'
-        
-    model = Sequential()
-        
-    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
-    model.add(Dense(config['lambda_net']['lambda_network_layers'][0], activation='relu', input_dim=X_data.shape[1], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), bias_initializer='zeros'))
-   
-    if config['lambda_net']['dropout_lambda'] > 0:
-        model.add(Dropout(config['lambda_net']['dropout_lambda']))
-
-    for neurons in config['lambda_net']['lambda_network_layers'][1:]:
-        model.add(Dense(neurons, 
-                        activation='relu', 
-                        kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), 
-                        bias_initializer='zeros'))
-        
-        if config['lambda_net']['dropout_lambda'] > 0:
-            model.add(Dropout(config['lambda_net']['dropout_lambda']))   
+    model = generate_lambda_net_from_config(config, current_seed)
     
-    model.add(Dense(output_neurons, 
-                    activation=output_activation, 
-                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=current_seed), 
-                    bias_initializer='zeros'))
-        
-    model.compile(optimizer=config['lambda_net']['optimizer_lambda'],
-                  loss='binary_crossentropy',#tf.keras.losses.get(config['lambda_net']['loss_lambda']),
-                  metrics=[tf.keras.metrics.get("binary_accuracy")]
-                 )
-        
     if config['lambda_net']['early_stopping_lambda']:
         if callbacks == None:
             callbacks = []

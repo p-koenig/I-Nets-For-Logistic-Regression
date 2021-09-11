@@ -3,7 +3,7 @@
 #######################################################################################################################################################
 
 #from itertools import product       # forms cartesian products
-from tqdm import tqdm_notebook as tqdm
+from tqdm.notebook import tqdm
 #import pickle
 import numpy as np
 from numpy import linspace
@@ -703,6 +703,131 @@ def generate_decision_tree_data(config, seed=42):
 
 
 
+def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer_list=None, path='./data/plotting/temp.png'):
+    
+    from anytree import Node, RenderTree
+    from anytree.exporter import DotExporter
+    
+    splits, leaf_classes = get_shaped_parameters_for_decision_tree(dt_parameter_array, config)
+
+    splits = splits.numpy()
+    leaf_classes = leaf_classes.numpy()
+    
+    if normalizer_list is not None: 
+        transpose = splits.transpose()
+        transpose_normalized = []
+        for i, column in enumerate(transpose):
+            column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
+            transpose_normalized.append(column_new)
+        splits = np.array(transpose_normalized).transpose()
+
+    splits_by_layer = []
+    for i in range(config['function_family']['maximum_depth']+1):
+        start = 2**i - 1
+        end = 2**(i+1) -1
+        splits_by_layer.append(splits[start:end])
+
+    nodes = {
+    }
+    #tree = Tree()
+    for i, splits in enumerate(splits_by_layer):
+        for j, split in enumerate(splits):
+            if i == 0:
+                current_node_id = int(2**i - 1 + j)
+                name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+                split_variable = np.argmax(np.abs(split))
+                split_value = np.round(split[split_variable], 3)
+                split_description = 'x' + str(split_variable) + ' <= '  + str(split_value)
+                
+                nodes[name] = Node(name=name, display_name=split_description)
+                
+                #tree.create_node(tag=split_description, identifier=name, data=None)            
+            else:
+                current_node_id = int(2**i - 1 + j)
+                name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+                parent_node_id = int(np.floor((current_node_id-1)/2))
+                parent_name = 'n' + str(parent_node_id)
+                split_variable = np.argmax(np.abs(split))
+                split_value = np.round(split[split_variable], 3)
+                split_description = 'x' + str(split_variable) + ' <= '  + str(split_value)
+                
+                nodes[name] = Node(name=name, parent=nodes[parent_name], display_name=split_description)
+                
+                #tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)
+                
+    for j, leaf_class in enumerate(leaf_classes):
+        i = config['function_family']['maximum_depth']
+        current_node_id = int(2**i - 1 + j)
+        name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+        parent_node_id = int(np.floor((current_node_id-1)/2))
+        parent_name = 'n' + str(parent_node_id)
+        #split_variable = np.argmax(np.abs(split))
+        #split_value = np.round(split[split_variable], 3)
+        split_description = str(np.round((1-leaf_class), 3))#'x' + str(split_variable) + ' <= '  + str(split_value)
+        nodes[name] = Node(name=name, parent=nodes[parent_name], display_name=split_description)
+        #tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)        
+    
+        DotExporter(nodes['n0'], nodeattrfunc=lambda node: 'label="{}"'.format(node.display_name)).to_picture(path)
+        
+        
+    return Image(path), nodes#nodes#tree
+
+
+
+def treelib_decision_tree_from_parameters(dt_parameter_array, config, normalizer_list=None):
+    
+    from treelib import Node, Tree
+    
+    splits, leaf_classes = get_shaped_parameters_for_decision_tree(dt_parameter_array, config)
+
+    splits = splits.numpy()
+    leaf_classes = leaf_classes.numpy()
+    if normalizer_list is not None: 
+        transpose = splits.transpose()
+        transpose_normalized = []
+        for i, column in enumerate(transpose):
+            column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
+            transpose_normalized.append(column_new)
+        splits = np.array(transpose_normalized).transpose()
+        
+    splits_by_layer = []
+    for i in range(config['function_family']['maximum_depth']+1):
+        start = 2**i - 1
+        end = 2**(i+1) -1
+        splits_by_layer.append(splits[start:end])
+
+    tree = Tree()
+    for i, splits in enumerate(splits_by_layer):
+        for j, split in enumerate(splits):
+            if i == 0:
+                current_node_id = int(2**i - 1 + j)
+                name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+                split_variable = np.argmax(np.abs(split))
+                split_value = np.round(split[split_variable], 3)
+                split_description = 'x' + str(split_variable) + ' <= '  + str(split_value)
+                tree.create_node(tag=split_description, identifier=name, data=None)            
+            else:
+                current_node_id = int(2**i - 1 + j)
+                name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+                parent_node_id = int(np.floor((current_node_id-1)/2))
+                parent_name = 'n' + str(parent_node_id)
+                split_variable = np.argmax(np.abs(split))
+                split_value = np.round(split[split_variable], 3)
+                split_description = 'x' + str(split_variable) + ' <= '  + str(split_value)
+                tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)
+                
+    for j, leaf_class in enumerate(leaf_classes):
+        i = config['function_family']['maximum_depth']
+        current_node_id = int(2**i - 1 + j)
+        name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+        parent_node_id = int(np.floor((current_node_id-1)/2))
+        parent_name = 'n' + str(parent_node_id)
+        #split_variable = np.argmax(np.abs(split))
+        #split_value = np.round(split[split_variable], 3)
+        split_description = str(np.round((1-leaf_class), 3))#'x' + str(split_variable) + ' <= '  + str(split_value)
+        tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)        
+    
+    return tree
 
 
 

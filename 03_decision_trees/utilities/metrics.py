@@ -227,7 +227,14 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
 
 
 def calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth):
+    
+    weights = tf.cast(weights, tf.float32)
+    biases = tf.cast(biases, tf.float32)
+    leaf_probabilities = tf.cast(leaf_probabilities, tf.float32)   
+    
     def calculate_function_value_from_decision_tree_parameter_single_sample(evaluation_entry):
+        
+        evaluation_entry = tf.cast(evaluation_entry, tf.float32)
         
         path_prob = tf.expand_dims(tf.sigmoid(tf.add(tf.reduce_sum(tf.multiply(weights, evaluation_entry), axis=1), biases)), axis=0)
         #tf.print(path_prob)

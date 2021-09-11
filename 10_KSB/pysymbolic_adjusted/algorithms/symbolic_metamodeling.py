@@ -29,7 +29,6 @@ if not sys.warnoptions:
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import MinMaxScaler
-from xgboost import XGBClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge
 from sympy import Integral, Symbol
 from sympy.abc import x, y
