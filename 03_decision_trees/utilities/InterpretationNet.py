@@ -228,11 +228,10 @@ def generate_inet_train_data(lambda_net_dataset, config):
     else:
         y_data = np.zeros_like(lambda_net_dataset.target_function_parameters_array)
         
-    if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL'):
+    if (config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL')) and config['i_net']['data_reshape_version'] is not None:
+        print('RESTRUCTURING DATA')
         X_data, X_data_flat = restructure_data_cnn_lstm(X_data, config, subsequences=None)
 
-
-    
     return X_data, X_data_flat, y_data
 
 
@@ -256,6 +255,7 @@ def train_inet(lambda_net_train_dataset,
     (X_train, X_train_flat, y_train) = generate_inet_train_data(lambda_net_train_dataset, config)
     (X_valid, X_valid_flat, y_valid) = generate_inet_train_data(lambda_net_valid_dataset, config)
     (X_test, X_test_flat, y_test) = generate_inet_train_data(lambda_net_test_dataset, config)
+    
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
@@ -282,7 +282,7 @@ def train_inet(lambda_net_train_dataset,
         if config['i_net']['optimize_decision_function']:
             raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
         else:
-            if config['i_net']['function_representation_type'] is 1:
+            if config['i_net']['function_representation_type'] == 1:
                 loss_function = tf.keras.losses.get('mae') #inet_coefficient_loss_wrapper(inet_loss)
             else:
                 raise SystemExit('Coefficient Loss not implemented for selected function representation')
@@ -407,7 +407,7 @@ def train_inet(lambda_net_train_dataset,
                                     seed=config['computation']['RANDOM_SEED'])
 
                 ############################## PREDICTION ###############################
-
+                print('TRAIN DATAS SHAPE: ', X_train.shape)
 
                 auto_model.fit(
                     x=X_train,
@@ -588,7 +588,7 @@ def normalize_lambda_net(flat_weights, random_evaluation_dataset, base_model=Non
 
         current_bias_normalization_factor = current_bias_normalization_factor * normalization_factor_per_layer
         current_bias_normalization_factor_reverse = current_bias_normalization_factor_reverse / normalization_factor_per_layer  
-    flat_weights_normalized = list(flatten(shaped_weights_normalized))  
+    flat_weights_normalized = flatten_list(shaped_weights_normalized)
     
     return flat_weights_normalized, (min_preds, max_preds)
     
@@ -865,9 +865,76 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
         
     return per_network_optimization_polynomials
 
+
+def restructure_network_parameters(shaped_network_parameters, config):
+    
+    if config['i_net']['data_reshape_version'] == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
+        
+        max_size = 0
+        for weights in shaped_network_parameters:
+            max_size = max(max_size, max(weights.shape)) 
+        
+        padded_network_parameters_list = []
+        for layer_weights, biases in pairwise(shaped_network_parameters):
+            padded_weights_list = []
+            for weights in layer_weights:
+                padded_weights = np.pad(weights, (int(np.floor((max_size-weights.shape[0])/2)), int(np.ceil((max_size-weights.shape[0])/2))), 'constant')
+                padded_weights_list.append(padded_weights)
+            padded_biases = np.pad(biases, (int(np.floor((max_size-biases.shape[0])/2)), int(np.ceil((max_size-biases.shape[0])/2))), 'constant')
+            padded_network_parameters_list.append(padded_biases)
+            padded_network_parameters_list.extend(padded_weights_list)   
+
+        return padded_network_parameters_list
+    
+    elif config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer    
+    
+        lambda_net_structure = flatten_list([config['data']['number_of_variables'], config['lambda_net']['lambda_network_layers'], 1 if config['data']['num_classes'] == 2 else None])                 
+        number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
+
+        network_parameters_sequence_list = np.array([]).reshape(number_of_paths, 0)    
+        for layer_index, (weights, biases) in zip(range(1, len(lambda_net_structure)), pairwise(shaped_network_parameters)):
+
+            layer_neurons = lambda_net_structure[layer_index]    
+            previous_layer_neurons = lambda_net_structure[layer_index-1]
+
+            assert biases.shape[0] == layer_neurons
+            assert weights.shape[0]*weights.shape[1] == previous_layer_neurons*layer_neurons
+
+            bias_multiplier = number_of_paths//layer_neurons
+            weight_multiplier = number_of_paths//(previous_layer_neurons * layer_neurons)
+
+            extended_bias_list = []
+            for bias in biases:
+                extended_bias = np.tile(bias, (bias_multiplier,1))
+                extended_bias_list.extend(extended_bias)
+
+
+            extended_weights_list = []
+            for weight in weights.flatten():
+                extended_weights = np.tile(weight, (weight_multiplier,1))
+                extended_weights_list.extend(extended_weights)      
+
+            network_parameters_sequence = np.concatenate([extended_weights_list, extended_bias_list], axis=1)
+            network_parameters_sequence_list = np.hstack([network_parameters_sequence_list, network_parameters_sequence])
+
+
+        number_of_paths = network_parameters_sequence_list.shape[0]
+        number_of_unique_paths = np.unique(network_parameters_sequence_list, axis=0).shape[0]
+        number_of_nonUnique_paths = number_of_paths-number_of_unique_paths
+
+        if number_of_nonUnique_paths > 0:
+            pass
+            #print("Number of non-unique rows: " + str(number_of_nonUnique_paths))
+            #print(network_parameters_sequence_list)     
+            
+        return network_parameters_sequence_list
+    
+    return None
+    
     
 def restructure_data_cnn_lstm(X_data, config, subsequences=None):
-
+    import multiprocessing
+    import psutil
     #version == 0: one sequence for biases and one sequence for weights per layer (padded to maximum size)
     #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
     #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
@@ -879,77 +946,32 @@ def restructure_data_cnn_lstm(X_data, config, subsequences=None):
     
     shaped_weights_list = []
     for data in tqdm(X_data):
-        shaped_weights = shape_flat_weights(data, base_model.get_weights())
+        shaped_weights = shape_flat_network_parameters(data, base_model.get_weights())
         shaped_weights_list.append(shaped_weights)
 
     max_size = 0
     for weights in shaped_weights:
         max_size = max(max_size, max(weights.shape))      
-
-
-    if config['i_net']['data_reshape_version'] == 0: #one sequence for biases and one sequence for weights per layer (padded to maximum size)
-        X_data_list = []
-        for shaped_weights in tqdm(shaped_weights_list):
-            padded_network_parameters_list = []
-            for layer_weights, biases in pairwise(shaped_weights):
-                padded_weights_list = []
-                for weights in layer_weights:
-                    padded_weights = np.pad(weights, (int(np.floor((max_size-weights.shape[0])/2)), int(np.ceil((max_size-weights.shape[0])/2))), 'constant')
-                    padded_weights_list.append(padded_weights)
-                padded_biases = np.pad(biases, (int(np.floor((max_size-biases.shape[0])/2)), int(np.ceil((max_size-biases.shape[0])/2))), 'constant')
-                padded_network_parameters_list.append(padded_biases)
-                padded_network_parameters_list.extend(padded_weights_list)   
-            X_data_list.append(padded_network_parameters_list)
-        X_data = np.array(X_data_list)    
-
-    elif config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2: #each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer
-        lambda_net_structure = list(flatten([n, lambda_network_layers, 1]))                    
-        number_of_paths = reduce(lambda x, y: x * y, lambda_net_structure)
-
-        X_data_list = []
-        for shaped_weights in tqdm(shaped_weights_list):        
-            network_parameters_sequence_list = np.array([]).reshape(number_of_paths, 0)    
-            for layer_index, (weights, biases) in zip(range(1, len(lambda_net_structure)), pairwise(shaped_weights)):
-
-                layer_neurons = lambda_net_structure[layer_index]    
-                previous_layer_neurons = lambda_net_structure[layer_index-1]
-
-                assert biases.shape[0] == layer_neurons
-                assert weights.shape[0]*weights.shape[1] == previous_layer_neurons*layer_neurons
-
-                bias_multiplier = number_of_paths//layer_neurons
-                weight_multiplier = number_of_paths//(previous_layer_neurons * layer_neurons)
-
-                extended_bias_list = []
-                for bias in biases:
-                    extended_bias = np.tile(bias, (bias_multiplier,1))
-                    extended_bias_list.extend(extended_bias)
-
-
-                extended_weights_list = []
-                for weight in weights.flatten():
-                    extended_weights = np.tile(weight, (weight_multiplier,1))
-                    extended_weights_list.extend(extended_weights)      
-
-                network_parameters_sequence = np.concatenate([extended_weights_list, extended_bias_list], axis=1)
-                network_parameters_sequence_list = np.hstack([network_parameters_sequence_list, network_parameters_sequence])
-
-
-            number_of_paths = network_parameters_sequence_list.shape[0]
-            number_of_unique_paths = np.unique(network_parameters_sequence_list, axis=0).shape[0]
-            number_of_nonUnique_paths = number_of_paths-number_of_unique_paths
-
-            if number_of_nonUnique_paths > 0:
-                print("Number of non-unique rows: " + str(number_of_nonUnique_paths))
-                print(network_parameters_sequence_list)
-
-            X_data_list.append(network_parameters_sequence_list)
-        X_data = np.array(X_data_list)          
         
-        if config['i_net']['data_reshape_version'] == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
-            X_data = np.transpose(X_data, (0, 2, 1))
 
-    if lstm_layers != None and cnn_layers != None: #generate subsequences for cnn-lstm
+    cores = multiprocessing.cpu_count()
+        
+    n_jobs = config['computation']['n_jobs']
+    if n_jobs < 0:
+        n_jobs = cores + n_jobs
+    cpu_usage = psutil.cpu_percent() / 100
+    n_jobs = max(int((1-cpu_usage) * n_jobs), 1)
+
+    parallel_restructure_weights = Parallel(n_jobs=n_jobs, verbose=1, backend='loky')
+    
+    X_data_list = parallel_restructure_weights(delayed(restructure_network_parameters)(shaped_weight, config=config) for shaped_weight in shaped_weights_list)      
+    X_data = np.array(X_data_list)          
+    del parallel_restructure_weights    
+        
+    if config['i_net']['data_reshape_version'] == 2: #transpose matrices (if false, no. columns == number of paths and no. rows = number of layers/length of path)
+        X_data = np.transpose(X_data, (0, 2, 1))
+
+    if config['i_net']['lstm_layers'] != None and config['i_net']['cnn_layers'] != None: #generate subsequences for cnn-lstm
         subsequences = 1 #for each bias+weights
         timesteps = X_train.shape[1]//subsequences
 

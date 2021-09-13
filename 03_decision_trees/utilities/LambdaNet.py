@@ -416,7 +416,7 @@ def train_lambda_net(config,
     if config['lambda_net']['early_stopping_lambda']:
         if callbacks == None:
             callbacks = []
-        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20, min_delta=config['lambda_net']['early_stopping_min_delta_lambda'], verbose=0, mode='min', restore_best_weights=True)
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=50, min_delta=config['lambda_net']['early_stopping_min_delta_lambda'], verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(early_stopping)
 
     model_history = model.fit(X_train,
