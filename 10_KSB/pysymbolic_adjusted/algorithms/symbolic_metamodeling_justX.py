@@ -724,7 +724,7 @@ def calculate_function_values_from_sympy(function, data_points, variable_names=N
     try:
         if variable_names is None:
             function_vars = function.atoms(Symbol)
-            print(function_vars)
+            #print(function_vars)
         else:
             function_vars = [sym.symbols(variable_name, real=True) for variable_name in variable_names]
         #print('function_vars', function_vars)
