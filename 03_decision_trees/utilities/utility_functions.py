@@ -611,6 +611,7 @@ def generate_decision_tree_data_trained_make_classification_vanilla_decision_tre
                                                        scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
                                                        random_state=seed) 
+    
     scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
     X_data = scaler.fit_transform(X_data)    
     
@@ -620,7 +621,7 @@ def generate_decision_tree_data_trained_make_classification_vanilla_decision_tre
     
     y_data = decision_tree.predict(X_data)    
     
-    
+    print(accuracy_score(np.round(y_data_tree), np.round(y_data)))
     
         
     return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 

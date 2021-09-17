@@ -386,10 +386,15 @@ def train_inet(lambda_net_train_dataset,
                                 outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
                                 outputs_list.append(outputs_identifer)    
 
-                        for leaf_node in range(leaf_node_num_):
-                            #outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
-                            outputs_leaf_nodes = CustomDenseInet(neurons=1, activation='sigmoid')(hidden_node)
+                        if True:
+                            outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, activation='sigmoid')(hidden_node)
                             outputs_list.append(outputs_leaf_nodes)    
+
+                        else:
+                            for leaf_node in range(leaf_node_num_):
+                                #outputs_leaf_nodes = tf.keras.layers.Dense(config['data']['num_classes'], activation='softmax', name='output_leaf_node_' + str(leaf_node))(hidden)
+                                outputs_leaf_nodes = CustomDenseInet(neurons=1, activation='sigmoid')(hidden_node)
+                                outputs_list.append(outputs_leaf_nodes)    
                     
                     output_node = CombinedOutputInet()(outputs_list)
                     
@@ -416,8 +421,7 @@ def train_inet(lambda_net_train_dataset,
                     epochs=config['i_net']['epochs'],
                     batch_size=config['i_net']['batch_size'],
                     callbacks=return_callbacks_from_string('early_stopping'),
-                    )
-
+                    )         
 
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
                 model = auto_model.export_model()
