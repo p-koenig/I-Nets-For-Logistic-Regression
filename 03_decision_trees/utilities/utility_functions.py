@@ -597,13 +597,23 @@ def generate_random_data_points(config, seed):
 
 def generate_decision_tree_data_trained_make_classification_vanilla_decision_tree_trained(config, seed=42):
             
+    informative = config['data']['number_of_variables'] #np.random.randint(1, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    #print('informative', informative)
+    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    #print('redundant', redundant)
+    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
+    #print('repeated', repeated)
+    
+    n_clusters_per_class =  2#max(1, np.random.randint(0, high=informative//2+1)) #2
+    #print('n_clusters_per_class', n_clusters_per_class)
+    
     X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
-                                                       n_informative=config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
-                                                       n_redundant=0, #The number of redundant features. These features are generated as random linear combinations of the informative features.
-                                                       n_repeated=0, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                       n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                       n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                       n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
                                                        n_classes=config['data']['num_classes'], 
-                                                       n_clusters_per_class=2, 
+                                                       n_clusters_per_class=n_clusters_per_class, 
                                                        flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
                                                        class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
                                                        hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
