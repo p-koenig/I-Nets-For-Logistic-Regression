@@ -200,7 +200,7 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
 
 
 def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder):
-    @tf.function(experimental_compile=True)
+    @tf.function(experimental_compile=True, experimental_relax_shapes=True)
     def calculate_function_value_from_lambda_net_parameters(network_parameters):
 
         #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
@@ -278,7 +278,7 @@ def calculate_function_value_from_decision_tree_parameters_wrapper(random_evalua
         
     maximum_depth = config['function_family']['maximum_depth']
     leaf_node_num_ = 2 ** maximum_depth
-    @tf.function(experimental_compile=True)
+    @tf.function(experimental_compile=True, experimental_relax_shapes=True)
     def calculate_function_value_from_decision_tree_parameters(function_array):
         
         weights, biases, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
@@ -296,7 +296,7 @@ def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(rando
     leaf_node_num_ = 2 ** maximum_depth
     internal_node_num_ = 2 ** maximum_depth - 1
 
-    @tf.function(experimental_compile=True)
+    @tf.function(experimental_compile=True, experimental_relax_shapes=True)
     def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
         #tf.print('function_array', function_array)
         weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)

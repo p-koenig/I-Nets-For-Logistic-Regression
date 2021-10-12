@@ -199,6 +199,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   '_depth' + str(config['function_family']['maximum_depth']) +
                                   '_beta' + str(config['function_family']['beta']) +
                                   '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
+                                  '_' + str(config['function_family']['dt_type']) +
                                   '_' + ('fullyGrown' if config['function_family']['fully_grown'] else 'partiallyGrown')
                                  )
 
@@ -349,22 +350,128 @@ def largest_indices(array: np.ndarray, n: int) -> tuple:
 ########################################################################################  RANDOM FUNCTION GENERATION FROM ############################################################################################ 
 ######################################################################################################################################################################################################################
 
-######################################################################################################################################################################################################################
-def generate_random_data_points_custom(low, high, size, variables, distrib='uniform'):
-    if distrib=='normal':
-        list_of_data_points = []
-        for _ in range(size):
-            random_data_points = np.random.normal(loc=(low+high)/2, scale=(low+high)/4, size=variables)
-            while max(random_data_points) > high and min(random_data_points) < low:
-                random_poly = np.random.normal(loc=(low+high)/2, scale=1.0, size= variables)
-            list_of_data_points.append(random_poly)
-        list_of_data_points = np.array(list_of_polynomials)
-        
-    elif distrib=='uniform':
-        list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
-        
-    return list_of_data_points
-######################################################################################################################################################################################################################
+def plot_tree_from_parameters(paramerter_array, config):
+    
+    if config['function_family']['dt_type'] == 'SDT':
+        some_tree = generate_decision_tree_from_array(paramerter_array, config)
+        return some_tree.plot_tree()
+    
+    elif config['function_family']['dt_type'] == 'vanilla':
+        image, nodes = anytree_decision_tree_from_parameters(paramerter_array, config=config)
+        return image
+
+def get_parameters_from_sklearn_decision_tree(tree, config, printing=False):
+    
+    from sklearn.tree import plot_tree
+    from sklearn.tree import _tree
+    from math import log2
+    import queue
+    
+    if printing:
+        plt.figure(figsize=(24,12))  # set plot size (denoted in inches)
+        plot_tree(tree, fontsize=12)
+        plt.show()
+     
+    def level_to_pre(arr,ind,new_arr):
+        if ind>=len(arr): return new_arr #nodes at ind don't exist
+        new_arr.append(arr[ind]) #append to back of the array
+        new_arr = level_to_pre(arr,ind*2+1,new_arr) #recursive call to left
+        new_arr = level_to_pre(arr,ind*2+2,new_arr) #recursive call to right
+        return new_arr    
+    
+    def pre_to_level(arr):
+        def left_tree_size(n):
+            if n<=1: return 0
+            l = int(log2(n+1)) #l = no of completely filled levels
+            ans = 2**(l-1)
+            last_level_nodes = min(n-2**l+1,ans)
+            return ans + last_level_nodes -1       
+
+        que = queue.Queue()
+        que.put((0,len(arr)))
+        ans = [] #this will be answer
+        while not que.empty():
+            iroot,size = que.get() #index of root and size of subtree
+            if iroot>=len(arr) or size==0: continue ##nodes at iroot don't exist
+            else : ans.append(arr[iroot]) #append to back of output array
+            sz_of_left = left_tree_size(size) 
+            que.put((iroot+1,sz_of_left)) #insert left sub-tree info to que
+            que.put((iroot+1+sz_of_left,size-sz_of_left-1)) #right sub-tree info 
+
+        return ans     
+    
+    features = [i for i in range(config['data']['number_of_variables'])]
+    
+    tree_ = tree.tree_
+    features = [
+        features[i] if i != _tree.TREE_UNDEFINED else "undefined!"
+        for i in tree_.feature
+    ]
+
+    if printing:
+        print(features)
+    
+    split_values = []
+    split_features = []
+    
+    leaf_probabilities = []
+    
+    def recurse(node, depth):        
+        indent = "  " * depth
+        if tree_.feature[node] != _tree.TREE_UNDEFINED:
+            feature = features[node]
+            threshold = tree_.threshold[node]
+            split_values.append(threshold)
+            split_features.append(feature)
+                       
+            if printing:
+                print("{}if {} <= {}:".format(indent, feature, threshold))
+            recurse(tree_.children_left[node], depth + 1)
+            if printing:
+                print("{}else:  # if {} > {}".format(indent, feature, threshold))
+            recurse(tree_.children_right[node], depth + 1)
+        else:
+            
+            missing_depth_subtree = config['function_family']['maximum_depth'] - (depth-1) 
+            
+            if missing_depth_subtree > 0:
+                internal_node_num_ = 2 ** missing_depth_subtree - 1
+                leaf_node_num_ = 2 ** missing_depth_subtree 
+                
+                subtree_internal_nodes = [-1 for i in range(internal_node_num_)]
+                
+                class_distribution = tree_.value[node][0]
+                subtree_leaf_nodes = [class_distribution[0]/(class_distribution[0] + class_distribution[1]) for i in range(leaf_node_num_)]
+                
+                subtree_level = np.hstack([subtree_internal_nodes, subtree_leaf_nodes])
+                subtree_pre = np.array(level_to_pre(subtree_level, 0, []))
+                
+                subtree_internal_nodes_level = subtree_pre[subtree_pre == -1]
+                subtree_leaf_nodes_level = subtree_pre[subtree_pre != -1]
+                           
+                #split_features.extend(subtree_level)
+                split_features.extend(subtree_internal_nodes_level)
+                split_values.extend(subtree_internal_nodes_level)
+                leaf_probabilities.extend(subtree_leaf_nodes_level)  
+
+            else:       
+                class_distribution = tree_.value[node][0]
+                leaf_probabilities.append(class_distribution[0]/(class_distribution[0] + class_distribution[1]))
+                #leaf_probabilities.append(class_distribution)
+                            
+            if printing:
+                print("{}return {}".format(indent, tree_.value[node]))
+
+    recurse(0, 1)
+    
+    split_values = pre_to_level(split_values)
+    split_features = pre_to_level(split_features)
+    
+    parameter_array = np.hstack([split_values, split_features, leaf_probabilities])
+    
+    return parameter_array
+
+
 
 
 def get_shaped_parameters_for_decision_tree(flat_parameters, config):
@@ -373,6 +480,9 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
     output_dim = config['data']['num_classes']
     internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
     leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+    
+    if 'i_net' not in config.keys():
+        config['i_net'] = {'function_representation_type': 1}
 
     if config['i_net']['function_representation_type'] == 1:
         if config['function_family']['dt_type'] == 'SDT':
@@ -519,62 +629,6 @@ def generate_decision_tree_from_array(parameter_array, config):
     return tree
 
 
-def generate_random_decision_tree(config, seed=42):
-    
-    from utilities.DecisionTree_BASIC import SDT    
-    #random.seed(seed)
-    #np.random.seed(seed)
-    
-    if config['function_family']['fully_grown']:
-        tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
-                   output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
-                   depth=config['function_family']['maximum_depth'],
-                   beta=config['function_family']['beta'],
-                   decision_sparsity=config['function_family']['decision_sparsity'],
-                   random_seed=seed,
-                   use_cuda=False,
-                   verbosity=0)#
-        
-    else: 
-        raise SystemExit('Partially Grown Trees not implemented yet')
-        
-    
-    return tree
-
-
-def generate_random_vanilla_decision_tree(config, seed=42):
-    
-    from sklearn.tree import DecisionTreeClassifier
-    
-    tree = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
-        
-    return tree
-
-
-def generate_decision_tree_data_random_vanilla_decision_tree_trained(config, seed=42):
-    
-    decision_tree = generate_random_vanilla_decision_tree(config, seed)
-    
-    X_data = generate_random_data_points(config, seed)
-    
-    y_data_tree = np.random.randint(0,2,X_data.shape[0])
-    
-    decision_tree.fit(X_data, y_data_tree)    
-    
-    y_data = decision_tree.predict(X_data)
-    counter = 1
-    
-    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
-        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
-        counter += 1
-        
-        decision_tree = generate_random_decision_tree(config, seed)
-        y_data = decision_tree.predict(X_data)    #predict_proba #predict
-    
-    return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
-
-
-
 def generate_random_data_points(config, seed):
     
     random.seed(seed)
@@ -595,19 +649,181 @@ def generate_random_data_points(config, seed):
         
     return list_of_data_points 
 
-def generate_decision_tree_data_trained_make_classification_vanilla_decision_tree_trained(config, seed=42):
+
+def generate_random_decision_tree(config, seed=42):
+    
+    from utilities.DecisionTree_BASIC import SDT   
+    from sklearn.tree import DecisionTreeClassifier
+    #random.seed(seed)
+    #np.random.seed(seed)
+    
+    if config['function_family']['dt_type'] == 'SDT':    
+        if config['function_family']['fully_grown']:
+            tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
+                       output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
+                       depth=config['function_family']['maximum_depth'],
+                       beta=config['function_family']['beta'],
+                       decision_sparsity=config['function_family']['decision_sparsity'],
+                       random_seed=seed,
+                       use_cuda=False,
+                       verbosity=0)#
             
-    informative = config['data']['number_of_variables'] #np.random.randint(1, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+            return tree
+
+        else: 
+            raise SystemExit('Partially Grown Trees not implemented yet')
+    elif config['function_family']['dt_type'] == 'vanilla': 
+    
+        tree = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+        
+        return tree
+    
+    return None
+
+
+
+def generate_data_random_decision_tree(config, seed=42):
+    
+    if config['function_family']['dt_type'] == 'SDT':    
+        decision_tree = generate_random_decision_tree(config, seed)
+
+        X_data = generate_random_data_points(config, seed)
+
+        y_data = decision_tree.predict_proba(X_data)
+        counter = 1
+
+        while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+            seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+            counter += 1
+
+            decision_tree = generate_random_decision_tree(config, seed)
+            y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
+
+        return decision_tree.to_array(), X_data, np.round(y_data), y_data 
+
+    elif config['function_family']['dt_type'] == 'vanilla': 
+        raise SystemExit('Untrained sklearn trees not possible')
+    
+    return None
+
+
+def generate_data_random_decision_tree_trained(config, seed=42):
+    
+    decision_tree = generate_random_decision_tree(config, seed)
+
+    X_data = generate_random_data_points(config, seed)
+
+    y_data_tree = np.random.randint(0,2,X_data.shape[0])
+        
+    if config['function_family']['dt_type'] == 'SDT':    
+
+        decision_tree.fit(X_data, y_data_tree, epochs=50)    
+
+        y_data = decision_tree.predict_proba(X_data)
+        counter = 1
+
+        while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+            seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+            counter += 1
+
+            decision_tree = generate_random_decision_tree(config, seed)
+            y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
+
+        return decision_tree.to_array(), X_data, np.round(y_data), y_data 
+
+    elif config['function_family']['dt_type'] == 'vanilla': 
+
+        decision_tree.fit(X_data, y_data_tree)    
+
+        y_data = decision_tree.predict(X_data)
+        counter = 1
+
+        while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+            seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+            counter += 1
+
+            decision_tree = generate_random_decision_tree(config, seed)
+            
+            X_data = generate_random_data_points(config, seed)
+
+            y_data_tree = np.random.randint(0,2,X_data.shape[0])  
+            
+            decision_tree.fit(X_data, y_data_tree)  
+            
+            y_data = decision_tree.predict(X_data)    #predict_proba #predict
+
+        #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
+
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data 
+
+    return None
+
+
+def generate_data_make_classification_decision_tree_trained(config, seed=42):
+           
+    informative = np.random.randint(1, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
     #print('informative', informative)
-    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
     #print('redundant', redundant)
-    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
+    #print('repeated', repeated)
+
+    n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
+    #print('n_clusters_per_class', n_clusters_per_class)
+
+    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                       n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                       n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                       n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                       n_classes=config['data']['num_classes'], 
+                                                       n_clusters_per_class=n_clusters_per_class, 
+                                                       flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       scale=1.0, #Multiply features by the specified value. 
+                                                       shuffle=True, 
+                                                       random_state=seed) 
+
+    scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
+    X_data = scaler.fit_transform(X_data)            
+        
+    decision_tree = generate_random_decision_tree(config, seed)
+        
+    if config['function_family']['dt_type'] == 'SDT':   
+        decision_tree.fit(X_data, y_data_tree, epochs=50)    
+
+        y_data = decision_tree.predict_proba(X_data)
+
+        return decision_tree.to_array(), X_data, np.round(y_data), y_data     
+    
+    
+    elif config['function_family']['dt_type'] == 'vanilla': 
+        decision_tree.fit(X_data, y_data_tree)    
+
+        y_data = decision_tree.predict(X_data)    
+
+        #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
+
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data 
+    
+    return None
+
+
+def generate_data_make_classification(config, seed=42):
+            
+    informative = np.random.randint(1, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    #print('informative', informative)
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    #print('redundant', redundant)
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
     #print('repeated', repeated)
     
-    n_clusters_per_class =  2#max(1, np.random.randint(0, high=informative//2+1)) #2
+    n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
     #print('n_clusters_per_class', n_clusters_per_class)
     
-    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+    X_data, y_data = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -623,94 +839,12 @@ def generate_decision_tree_data_trained_make_classification_vanilla_decision_tre
                                                        random_state=seed) 
     
     scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
-    X_data = scaler.fit_transform(X_data)    
-    
-    decision_tree = generate_random_vanilla_decision_tree(config, seed)
-    
-    decision_tree.fit(X_data, y_data_tree)    
-    
-    y_data = decision_tree.predict(X_data)    
-    
-    print(accuracy_score(np.round(y_data_tree), np.round(y_data)))
-    
-        
-    return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
-
-
-
-def generate_decision_tree_data_trained_make_classification(config, seed=42):
-            
-    X_data, y_data = make_classification(n_samples=config['data']['lambda_dataset_size'], 
-                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
-                                                       n_informative=config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
-                                                       n_redundant=0, #The number of redundant features. These features are generated as random linear combinations of the informative features.
-                                                       n_repeated=0, #The number of duplicated features, drawn randomly from the informative and the redundant features.
-                                                       n_classes=config['data']['num_classes'], 
-                                                       n_clusters_per_class=2, 
-                                                       flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
-                                                       shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
-                                                       scale=1.0, #Multiply features by the specified value. 
-                                                       shuffle=True, 
-                                                       random_state=seed) 
-    
-    scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
     X_data = scaler.fit_transform(X_data)        
         
-    return [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])], X_data, np.round(y_data), y_data 
-
-
-def generate_decision_tree_data_trained(config, seed=42):
-    
-    decision_tree = generate_random_decision_tree(config, seed)
-    
-    X_data = generate_random_data_points(config, seed)
-    
-    y_data_tree = np.random.randint(0,2,X_data.shape[0])
-    
-    decision_tree = SDT(input_dim=config['data']['number_of_variables'],#X_train.shape[1], 
-                   output_dim=config['data']['num_classes'],#int(max(y_train))+1, 
-                   depth=config['function_family']['maximum_depth'],
-                   beta=config['function_family']['beta'],
-                   decision_sparsity=config['function_family']['decision_sparsity'],
-                   random_seed=seed,
-                   use_cuda=False,
-                   verbosity=0)
-    
-    decision_tree.fit(X_data, y_data_tree, epochs=50)    
-    
-    y_data = decision_tree.predict_proba(X_data)
-    counter = 1
-    
-    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
-        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
-        counter += 1
+    placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
         
-        decision_tree = generate_random_decision_tree(config, seed)
-        y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
-    
-    return decision_tree.to_array(), X_data, np.round(y_data), y_data 
+    return placeholder, X_data, np.round(y_data), y_data 
 
-
-
-def generate_decision_tree_data(config, seed=42):
-    
-    decision_tree = generate_random_decision_tree(config, seed)
-    
-    X_data = generate_random_data_points(config, seed)
-    
-    y_data = decision_tree.predict_proba(X_data)
-    counter = 1
-    
-    while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
-        seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
-        counter += 1
-        
-        decision_tree = generate_random_decision_tree(config, seed)
-        y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
-    
-    return decision_tree.to_array(), X_data, np.round(y_data), y_data 
 
 
 
@@ -844,25 +978,43 @@ def treelib_decision_tree_from_parameters(dt_parameter_array, config, normalizer
 
 
 def generate_decision_tree_identifier(config):
-    num_internal_nodes = 2 ** config['function_family']['maximum_depth'] - 1
-    num_leaf_nodes = 2 ** config['function_family']['maximum_depth']
     
-    filter_shape = (num_internal_nodes, config['data']['number_of_variables'])
-    bias_shape = (num_internal_nodes, 1)
+    if config['function_family']['dt_type'] == 'SDT':
     
-    leaf_probabilities_shape = (num_leaf_nodes, config['data']['num_classes'])
-    
-    decision_tree_identifier_list = []
-    for filter_number in range(filter_shape[0]):
-        for variable_number in range(filter_shape[1]):
-            decision_tree_identifier_list.append('f' + str(filter_number) + 'v' + str(variable_number))
+        num_internal_nodes = 2 ** config['function_family']['maximum_depth'] - 1
+        num_leaf_nodes = 2 ** config['function_family']['maximum_depth']
+
+        filter_shape = (num_internal_nodes, config['data']['number_of_variables'])
+        bias_shape = (num_internal_nodes, 1)
+
+        leaf_probabilities_shape = (num_leaf_nodes, config['data']['num_classes'])
+
+        decision_tree_identifier_list = []
+        for filter_number in range(filter_shape[0]):
+            for variable_number in range(filter_shape[1]):
+                decision_tree_identifier_list.append('f' + str(filter_number) + 'v' + str(variable_number))
+
+        for bias_number in range(bias_shape[0]):
+            decision_tree_identifier_list.append('b' + str(bias_number))
+
+        for leaf_probabilities_number in range(leaf_probabilities_shape[0]):
+            for class_number in range(leaf_probabilities_shape[1]):
+                decision_tree_identifier_list.append('lp' + str(leaf_probabilities_number) + 'c' + str(class_number))       
             
-    for bias_number in range(bias_shape[0]):
-        decision_tree_identifier_list.append('b' + str(bias_number))
+    elif config['function_family']['dt_type'] == 'vanilla':
+        
+        num_internal_nodes = 2 ** config['function_family']['maximum_depth'] - 1
+        num_leaf_nodes = 2 ** config['function_family']['maximum_depth']
+
+        decision_tree_identifier_list = []
+        for internal_number in range(num_internal_nodes):
+            decision_tree_identifier_list.append('feat' + str(internal_number))
+
+        for internal_number in range(num_internal_nodes):
+            decision_tree_identifier_list.append('split' + str(internal_number))
             
-    for leaf_probabilities_number in range(leaf_probabilities_shape[0]):
-        for class_number in range(leaf_probabilities_shape[1]):
-            decision_tree_identifier_list.append('lp' + str(leaf_probabilities_number) + 'c' + str(class_number))       
+        for leaf_probabilities_number in range(num_leaf_nodes):
+            decision_tree_identifier_list.append('lp' + str(leaf_probabilities_number))               
             
     return decision_tree_identifier_list
 
@@ -1227,7 +1379,7 @@ def generate_base_model(config): #without dropout
 
 def shape_flat_network_parameters(flat_network_parameters, target_network_parameters):
     
-    #äfrom utilities.utility_functions import flatten_list
+    #from utilities.utility_functions import flatten_list
     
     #def recursive_len(item):
     #    if type(item) == list:

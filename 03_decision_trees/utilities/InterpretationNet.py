@@ -258,7 +258,6 @@ def train_inet(lambda_net_train_dataset,
     
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
-    current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     metrics = []
     loss_function = None
     

@@ -857,7 +857,7 @@ def generate_paths(path_type='interpretation_net'):
     RANDOM_SEED_path = RANDOM_SEED
     
     if path_type=='interpretation_net_no_noise':
-        lambda_nets_total_path = 50000
+        lambda_nets_total_path = 10000#50000
         noise_path = 0
         RANDOM_SEED_path = 42
     
