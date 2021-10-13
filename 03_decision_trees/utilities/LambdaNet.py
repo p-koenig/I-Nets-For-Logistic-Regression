@@ -232,8 +232,10 @@ class LambdaNet():
         self.number_of_variables = config['data']['number_of_variables']  
         self.number_of_classes = config['data']['num_classes']  
         
-        self.function_parameter_size = (2 ** config['function_family']['maximum_depth'] - 1) * (self.number_of_variables + 1) + (2 ** config['function_family']['maximum_depth']) * self.number_of_classes
-        self.network_parameter_size = get_number_of_lambda_net_parameters(config['lambda_net']['lambda_network_layers'] , self.number_of_variables, self.number_of_classes)
+        self.function_parameter_size = get_number_of_function_parameters(config['function_family']['dt_type'], config['function_family']['maximum_depth'], self.number_of_variables, self.number_of_classes)#(2 ** config['function_family']['maximum_depth'] - 1) * (self.number_of_variables + 1) + (2 ** config['function_family']['maximum_depth']) * self.number_of_classes
+        
+        
+        self.network_parameter_size = get_number_of_lambda_net_parameters(config['lambda_net']['lambda_network_layers'], self.number_of_variables, self.number_of_classes)
         
         self.index = int(line_weights[0])
         self.seed = int(line_weights[1])

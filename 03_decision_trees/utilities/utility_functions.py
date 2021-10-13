@@ -616,18 +616,40 @@ def generate_decision_tree_from_array(parameter_array, config):
     
     from utilities.DecisionTree_BASIC import SDT
     
-    tree = SDT(input_dim=config['data']['number_of_variables'],
-               output_dim=config['data']['num_classes'],
-               depth=config['function_family']['maximum_depth'],
-               beta=config['function_family']['beta'],
-               decision_sparsity=config['function_family']['decision_sparsity'],
-               use_cuda=False,
-               verbosity=0)
-    
-    tree.initialize_from_parameter_array(parameter_array)
+    if config['function_family']['dt_type'] == 'SDT': 
+        
+        tree = SDT(input_dim=config['data']['number_of_variables'],
+                   output_dim=config['data']['num_classes'],
+                   depth=config['function_family']['maximum_depth'],
+                   beta=config['function_family']['beta'],
+                   decision_sparsity=config['function_family']['decision_sparsity'],
+                   use_cuda=False,
+                   verbosity=0)
+
+        tree.initialize_from_parameter_array(parameter_array)
+        
+    elif config['function_family']['dt_type'] == 'vanilla': 
+        #raise SystemExit('Cant inizialize vanilla DT') 
+        return None
     
     return tree
 
+
+
+def generate_random_data_points_custom(low, high, size, variables, distrib='uniform'):
+    if distrib=='normal':
+        list_of_data_points = []
+        for _ in range(size):
+            random_data_points = np.random.normal(loc=(low+high)/2, scale=(low+high)/4, size=variables)
+            while max(random_data_points) > high and min(random_data_points) < low:
+                random_poly = np.random.normal(loc=(low+high)/2, scale=1.0, size= variables)
+            list_of_data_points.append(random_poly)
+        list_of_data_points = np.array(list_of_polynomials)
+        
+    elif distrib=='uniform':
+        list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
+        
+    return list_of_data_points
 
 def generate_random_data_points(config, seed):
     
@@ -1318,6 +1340,16 @@ def dt_array_to_sklearn(vanilla_dt_array, config,X_data, y_data, printing=False)
 
 
 
+def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variables, number_of_classes):
+    
+    number_of_function_parameters = None
+    
+    if dt_type == 'SDT':
+        number_of_function_parameters = (2 ** maximum_depth - 1) * (number_of_variables + 1) + (2 ** maximum_depth) * number_of_classes
+    elif dt_type == 'vanilla':
+        number_of_function_parameters = 2*(2 ** maximum_depth - 1) + (2 ** maximum_depth)
+    
+    return number_of_function_parameters
 
 ######################################################################################################################################################################################################################
 ###########################################################################################  LAMBDA NET UTILITY ################################################################################################ 
