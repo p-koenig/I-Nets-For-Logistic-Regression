@@ -346,7 +346,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
             #distrib_dict_valid_list,
             #distrib_dict_test_list,
             
-            [identifier_type, samples_list, loss_function_list, metrics_list],
+            #[identifier_type, samples_list, loss_function_list, metrics_list],
             
             model_list)
     
