@@ -62,6 +62,8 @@ import itertools
 from interruptingcow import timeout
 from livelossplot import PlotLossesKerasTF
 from sklearn.datasets import make_classification
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+
 
                                     
 #######################################################################################################################################################
@@ -126,7 +128,9 @@ def mergeDict(dict1, dict2):
     newDict = {**dict1, **dict2}
     for key, value in newDict.items():
         if key in dict1 and key in dict2:
-            if isinstance(dict1[key], list) and isinstance(value, list):
+            if isinstance(dict1[key], dict) and isinstance(value, dict):
+                newDict[key] = mergeDict(dict1[key], value)
+            elif isinstance(dict1[key], list) and isinstance(value, list):
                 newDict[key] = dict1[key]
                 newDict[key].extend(value)
             elif isinstance(dict1[key], list) and not isinstance(value, list):

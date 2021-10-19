@@ -54,6 +54,9 @@ from utilities.metrics import *
 from utilities.utility_functions import *
 from utilities.DecisionTree_BASIC import *
 
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+
+
 
             
 #######################################################################################################################################################
@@ -179,7 +182,9 @@ def interpretation_net_training(lambda_net_train_dataset,
     return ((X_valid, y_valid), 
             (X_test, y_test),
             
-            history, 
+            history,
+            loss_function,
+            metrics,
             
             model)
     
@@ -982,6 +987,67 @@ def restructure_data_cnn_lstm(X_data, config, subsequences=None):
 
     return X_data, X_data_flat
 
+
+#@tf.function(experimental_compile=True, experimental_relax_shapes=True)
+def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_array, 
+                                                         dt_inet, 
+                                                         X_test_lambda, 
+                                                         y_test_lambda,
+                                                         config):
+        
+    lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)
+    
+    #dt_inet = model.predict(np.array([lambda_net_parameters]))[0]
+    if config['i_net']['nas']:
+        dt_inet = dt_inet[:function_representation_length]
+    
+    X_data_random = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'])
+    y_data_random_lambda_pred = lambda_net.predict(X_data_random)
+    y_data_random_lambda_pred = np.round(y_data_random_lambda_pred).astype(np.int64)
+    
+    dt_sklearn_distilled = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+    dt_sklearn_distilled.fit(X_data_random, y_data_random_lambda_pred)
+    
+    if config['function_family']['dt_type'] == 'SDT':
+        y_test_inet_dt  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
+    elif config['function_family']['dt_type'] == 'vanilla':
+        y_test_inet_dt  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
+    y_test_distilled_sklearn_dt = dt_sklearn_distilled.predict(X_test_lambda)
+    
+    y_test_lambda_pred = lambda_net.predict(X_test_lambda)
+    y_test_lambda_pred = np.round(y_test_lambda_pred)
+    
+    binary_crossentropy_distilled_sklearn_dt = log_loss(y_test_lambda_pred, y_test_distilled_sklearn_dt, labels=[0,1])
+    accuracy_distilled_sklearn_dt = accuracy_score(y_test_lambda_pred, np.round(y_test_distilled_sklearn_dt))
+    f1_score_distilled_sklearn_dt = f1_score(y_test_lambda_pred, np.round(y_test_distilled_sklearn_dt))
+    
+    binary_crossentropy_inet_dt = log_loss(y_test_lambda_pred, y_test_inet_dt, labels=[0,1])
+    accuracy_inet_dt = accuracy_score(y_test_lambda_pred, np.round(y_test_inet_dt))
+    f1_score_inet_dt = f1_score(y_test_lambda_pred, np.round(y_test_inet_dt))
+    
+    results =  {
+                    'function_values': {
+                        'y_test': y_test_inet_dt,
+                        'y_test_distilled_sklearn_dt': y_test_distilled_sklearn_dt,
+                    },
+                    'inet_scores': {
+                        'binary_crossentropy': np.nan_to_num(binary_crossentropy_distilled_sklearn_dt),
+                        'accuracy': np.nan_to_num(accuracy_distilled_sklearn_dt),
+                        'f1_score': np.nan_to_num(f1_score_distilled_sklearn_dt),                    
+                    },
+                    'sklearn_scores': {
+                        'binary_crossentropy': np.nan_to_num(binary_crossentropy_inet_dt),
+                        'accuracy': np.nan_to_num(accuracy_inet_dt),
+                        'f1_score': np.nan_to_num(f1_score_inet_dt),                    
+                    },                
+               }
+    
+    
+    return results
+    
+    
+
+
 #######################################################################################################################################################
 ################################################################SAVING AND PLOTTING RESULTS############################################################
 #######################################################################################################################################################    
@@ -1167,5 +1233,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
         tab.add_row(["Target Poly \n vs. \n LSTSQ Lambda Preds Poly \n", real_poly_VS_lstsq_lambda_preds_poly_mae, real_poly_VS_lstsq_lambda_preds_poly_r2, polynomial_target_string, polynomial_lstsq_lambda_string])
 
         print(tab)
+
+            
 
             

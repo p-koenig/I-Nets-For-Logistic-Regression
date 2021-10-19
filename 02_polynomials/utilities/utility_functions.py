@@ -442,6 +442,20 @@ def get_critical_points_from_polynomial(coefficient_array, force_complete_poly_r
 #######################################################################################################################################################
 ########################################################################JUSTUS CODE####################################################################
 #######################################################################################################################################################
+# simplified the function for this usecase
+def get_sympy_string_from_coefficients_fg(coefficient_array, variable_list):
+    
+    global list_of_monomial_identifiers
+    
+    f=0
+    for i in range(sparsity):
+        monomial = coefficient_array[i]
+        for j in range(n):
+            monomial = monomial*variable_list[j]**int(list_of_monomial_identifiers[i][j])
+        f += monomial
+
+    return f
+
 # Method to shift a function(func) by a given distance(distance) for a given variable(variable)
 def shift(func, distance, variable):
     a = variable
@@ -462,144 +476,215 @@ def bulge(func, factor, variable):
     f = sym.expand(f)
     return f
 
-# method to adjust the function to fit in the intervall between 0 and 1
-def adjust_maj(func, border, variable):
-    # variable(for example x or a) given after sym.Symbol('a') argument
-    a = variable
-    # border
-    border = border
-    # width of corridor
-    width = 1 - 2*border
-    # Derivative
-    f = func
-    g = sym.diff(func, a)
-    #find extremums ()
-    ext = sym.solveset(g, domain=sym.Reals)
-    #find inflection points
-    inflec = sym.calculus.util.stationary_points(g, a, domain=sym.Reals)
-    #critical points (joint extremums and inflection points)
-    critical_points = Union(ext, inflec)
-    # Test, if there are any critical points (Only case where a polynomial function has no critical point is a straight, which causes no problem)
-    if not critical_points.is_empty: 
-        # find infimum and supremum of set:
-        left_critical_point = critical_points.inf
-        right_critical_point = critical_points.sup
-        # calculate distance between points:
-        distance = right_critical_point - left_critical_point
-        # only one critical point
-        if distance == 0:
-            # shift function so that the critical point is between border and 1-border
-            f = shift(f, -left_critical_point+random.uniform(border, 1-border), a)
-            pass
-        # check if function needs to be bulged 
-        elif distance <= width:
-            # shift function so that the critical points are between border and 1-border
-            f = shift(f, -left_critical_point+border+random.uniform(0, width-distance), a)
-            pass
-        else:
-            #check if left and right critical points are extremums or inflection points (to reduce later calculations)
-            left_extreme = False
-            right_extreme = False
-            if ext.contains(left_critical_point):
-                left_extreme = True
+def adjust_function(f, borders, variables):
+    variables = list(f.free_symbols)
+    width = [1 - border - random.uniform(border_min, border_max) for border in borders] # space between borders (only left border is saved)
+    
+    # check if the degree is 1 (there are no stationary points for functions of degree 1. Therefore they can't be adjusted with this function)
+    higher_degree = False
+    for variable in variables:
+        if sym.degree(f, variable) > 1:
+            higher_degree = True
+            break;
+    if not higher_degree:
+        return f
+    
+    # special method for functions with 1 variable (inflection points are also used) There also are some extras for functions with more than 1 variable that functions with only 1 variable do not need
+    if n==1:
+        g = sym.diff(f, variables[0])
+        #find extremums ()
+        ext = sym.solveset(g, domain=sym.Reals)
+        #find inflection points
+        inflec = sym.calculus.util.stationary_points(g, variables[0], domain=sym.Reals)
+        #critical points (joint extremums and inflection points)
+        critical_points = Union(ext, inflec)
+        # Test, if there are any critical points (Only case where a polynomial function has no critical point is a straight, which causes no problem)
+        if not critical_points.is_empty: 
+            # find infimum and supremum of set:
+            left_critical_point = critical_points.inf
+            right_critical_point = critical_points.sup
+            # calculate distance between points:
+            distance = right_critical_point - left_critical_point
+            # only one critical point
+            
+            if distance == 0:
+                # shift function so that the critical point is between border and 1-border
+                bulge_factor = random.uniform(bulge_min, bulge_max)
+                shift_distance = -(stationary_points[0][variables[0]]) + bulge_factor * (borders[0] + random.uniform(0, width[0]))
+                f = shift(f, shift_distance, variables[0])
+                f = bulge(f, bulge_factor, variables[0])
+                #f = shift(f, -left_critical_point+random.uniform(borders[0], 1-borders[0]), variables[0])
+             
+            # check if function needs to be bulged 
+            elif distance <= width[0]:
+                # shift function so that the critical points are between border and 1-border
+                f = shift(f, -left_critical_point+borders[0]+random.uniform(0, width[0]-distance), variables[0])
+                
             else:
-                if ext.contains(right_critical_point):
-                    right_extreme = True
-            # bulge the function
-            f = bulge(f, distance/width, a)
-            # calculate the new position of the necessary critical points and shift the function accordingly
-            if left_extreme:
-                left_shift = sym.calculus.util.stationary_points(f, a, domain=sym.Reals).inf
-                f = shift(f, -left_shift+border, a)
-            elif right_extreme:
-                right_shift = sym.calculus.util.stationary_points(f, a, domain=sym.Reals).sup
-                f = shift(f, -right_shift+(1-border), a)
-            else:
-                left_shift = sym.calculus.util.stationary_points(sym.diff(f, a), a, domain=sym.Reals).inf
-                f = shift(f, -left_shift+border, a)
+                bulge_factor = distance/width[0]
+                shift_distance = -left_critical_point + bulge_factor * borders[0]
+                f = shift(f, shift_distance, variables[0])
+                # bulge the function
+                f = bulge(f, distance/width[0], variables[0])
+        return f
+    
+    
+    # determine the number of variables that are used in the search for stationary points (probabilties in configs)
+    number_of_used_variables = random.choices([n, random.randint(min_variables_used, max_variables_used)], [global_stationary_prob, 1-global_stationary_prob])[0]
+    used_variables = []
+    # helper function to get stationary points
+    f_copy = f
+    
+    # select 'number_of_used_variables' many variables
+    while len(used_variables) < number_of_used_variables and len(used_variables)<len(variables):
+        variable = variables[random.randint(0, len(variables)-1)]
+        if not variable in used_variables:
+            used_variables.append(variable)
+            
+    # substitute all variables that are not used with constants that are in the intervall
+    for variable in variables:
+        if not variable in used_variables:
+            f_copy = f_copy.subs(variable, random.uniform(x_min, x_max))
+            
+    # adjustment of the used_variables, because some variables might not be in the function
+    used_variables = list(f_copy.free_symbols)
+    number_of_used_variables = len(used_variables)
+    
+    # special search for the use of only one variable (also uses inflection points)
+    if number_of_used_variables == 1:
+        g = sym.diff(f_copy, used_variables[0], domain=sym.Reals)
+        #find extremums ()
+        ext = sym.solveset(g, used_variables[0], domain=sym.Reals)
+        #find inflection points
+        inflec = sym.calculus.util.stationary_points(g, used_variables[0])
+        #critical points (joint extremums and inflection points) (called stationary_points to use the same code)
+        critical_points = Union(ext, inflec)
+        stationary_points = []
+        
+        # filter out stationary points that are not real
+        if not type(critical_points) is sym.sets.fancysets.Reals:
+            for point in critical_points:
+                stationary_points.append({used_variables[0]: point})
+                
+    # get stationary points for the use of more than one variable
+    else:
+        f_copy = sym.expand(f_copy)
+        gradient = sym.derive_by_array(f_copy, tuple(f_copy.free_symbols))
+        stationary_points = sym.solve(gradient, tuple(f_copy.free_symbols), dict=True)
+        if len(stationary_points) == 0:
+            return f;
+        length_helper = len(stationary_points) - 1
+        used_variables = list(stationary_points[0].keys())
+        number_of_used_variables = len(used_variables)
+        
+        # filter out stationary points that are not real 
+        for i in range(len(stationary_points)):
+            for j in range(number_of_used_variables):
+                if not stationary_points[length_helper-i][used_variables[j]].is_real:
+                    stationary_points.pop(length_helper-i)
+                    break;
+                    
+    # no stationary points => nothing can be adjusted => just return functions
+    if len(stationary_points) == 0:
+        return f;
+    # 1 stationary point => shift it inside the intervall for all used variables and bulge it randomly
+    if len(stationary_points) == 1:
+        for i in range(number_of_used_variables):
+            bulge_factor = random.uniform(bulge_min, bulge_max)
+            shift_distance = -(stationary_points[0][used_variables[i]]) + bulge_factor * (borders[i] + random.uniform(0, width[i]))
+            f = shift(f, shift_distance, used_variables[i])
+            f = bulge(f, bulge_factor, used_variables[i])
+            
+    # minimum of two stationary points => shift them to the border limits
+    else:
+        for i in range(len(used_variables)):
+            critical_values = [stationary_points[j][used_variables[i]] for j in range(len(stationary_points))]
+            minimum = min(critical_values)
+            distance = max(critical_values) - minimum
+            bulge_factor = distance/width[i]
+            shift_distance = -minimum + bulge_factor * borders[i]
+            f = shift(f, shift_distance, used_variables[i])
+            f = bulge(f, bulge_factor, used_variables[i])
     return f
 
-
-# method to prep the function for the use with the sympy Library and convert final function to the used style
-def adjust_prep_postp(values, border, a_abs_max, a_zero_prob):
-    a = sym.Symbol('a')
-    border = border
-    function = values[0]
-    for i in range(sparsity-1):
-        function += values[i+1] * a ** (i+1)
-    function_adjusted = adjust_maj(function, border, a)
+def prep_post_polynomial (borders, values):
+    variable_alphabet = "abcdefghijklmnopqrstuvwxyz"
+    variable_list = [sym.symbols(variable_alphabet[i]) for i in range(n)]
+    list_of_monomial_dict_names = []
+    
+    global list_of_monomial_identifiers
+    
+    # get dictionary keys to retrieve function 
+    for mono_string in list_of_monomial_identifiers:
+        helper = 1
+        for i in range(n):
+            if mono_string[i] != "0":
+                if(helper!=1):
+                    helper = helper*variable_list[i]**int(mono_string[i])
+                else:
+                    helper = variable_list[i]**int(mono_string[i])
+        list_of_monomial_dict_names.append(helper)
+    
+    # get sympy string for adjustments
+    function = get_sympy_string_from_coefficients_fg(values, variable_list)
+    
+    # adjustment
+    function_adjusted = adjust_function(function, borders, variable_list)
+    
+    # get list representation from sympy representation
     coeff_dict = function_adjusted.as_coefficients_dict()
-    coeff_list = [coeff_dict[1]]
-    for i in range(sparsity-1):
-        coeff_list.append(coeff_dict[a**(i+1)])
-    # possible divisor for the case that coefficient values are to high. Divisor is random, to prohibit that a_abs_max is the highest coefficient value for most functions
-    div = abs(max(coeff_list, key=abs) / random.uniform(a_abs_max/2, a_abs_max))
-    if div>1:
-        coeff_list = [x / div for x in coeff_list]
-    # NaN can happen if one coefficient has value of infinity after bulging and shifting
-    for n in range(len(coeff_list)):
-        if math.isnan(coeff_list[n]):
-            values=generate_rand_values(a_zero_prob)
-            return adjust_prep_postp(values, border, a_abs_max, a_zero_prob)
+    coeff_list = [coeff_dict[monomial] for monomial in list_of_monomial_dict_names]
+    
+    # possible divisor for the case that coefficient values are to high
+    divider = abs(max(coeff_list, key=abs) / random.uniform(a_max/4, a_max))
+    if divider > 1:
+        coeff_list = [x / divider for x in coeff_list]
+        
+    #adjust the y-axis intercept so that function are spread better
+    if coeff_list[0] != 0:
+        multiplier0 = random.uniform(1, a_max / abs(coeff_list[0]))
+        coeff_list[0] = coeff_list[0] * multiplier0
+    # NaN can happen if one coefficent has values of infinity after bulging or shifting
+    for i in range(sparsity):
+        if math.isnan(coeff_list[i]):
+            values = [random.uniform(a_min, a_max) for _ in range(sparsity)]
+            return prep_post_polynomial(borders, values)
     return coeff_list
 
-def generate_rand_values(a_zero_prob):
-    values=[]
-    # initialise random coefficient values
-    for _ in range(sparsity):
-        values.extend(random.choices([random.uniform(-0.3, 0.3), 0],[1-a_zero_prob, a_zero_prob]))
-    # protect against the unlikely case that all values are initialized as 0
-    while all(m==0 for m in values):
-        values = []
-        for _ in range(sparsity):
-            values.extend(random.choices([random.uniform(-0.3, 0.3), 0],[1-a_zero_prob, a_zero_prob]))
-    return values
 
-
-
-# border = space between the intervall boundary and the outmost significant point
-# a_abs_max = absolute maximum value of the coefficient(has to be the same positive and negative)
-# a_zero_prob = probability that a is initialized as zero
-def get_polynomial(border_min, border_max, a_abs_max, a_zero_prob, a_random_prob, lower_degree_prob, change=0):
-    if(random.random()<a_random_prob):
-        coeff_list = [random.uniform(a_min, a_max) for _ in range(sparsity)]
-        
-        if(random.random() > neg_d_prob):
-            for monomial_index, monomial in enumerate(list_of_monomial_identifiers):
-                if min(monomial) < 0:
-                    coeff_list[monomial_index] = 0
-        
-        for i in range(sparsity-1):
-            if(random.random() < (lower_degree_prob + i*change)):
-                coeff_list[len(coeff_list)-i - 1] = 0
-            else:
-                for g in range(sparsity -1 - i):
-                    if(random.random() < a_zero_prob):
-                        coeff_list[g] = 0
-                break
-    else:
-        #values = generate_rand_values(a_zero_prob)
-        values = [random.uniform(a_min, a_max) for _ in range(sparsity)]
-        
-        if(random.random() > neg_d_prob):
-            for monomial_index, monomial in enumerate(list_of_monomial_identifiers):
-                if min(monomial) < 0:
-                    values[monomial_index] = 0        
-        for i in range(sparsity-1):
-            if(random.random() < (lower_degree_prob+ i*change)):
-                values[len(values)-i - 1] = 0
-                if(i == sparsity -1 - 1):
-                    return values
-            else:
-                for g in range(sparsity - 1 - i):
-                    if(random.random() < a_zero_prob):
-                        values[g] = 0
-                break
-        border = random.uniform(border_min, border_max)
-        coeff_list = adjust_prep_postp(values, border, a_abs_max, a_zero_prob)
-    return coeff_list 
-
-
+def get_polynomial_basic (sparsities ,change = 0):
+    # change adjusts the lower degree probability. Other values than 0 are better for function generations with low degree because if you use 0 there will be a lot of functions of degree 0. Example value:
+    # change = -((lower_degree_prob / (d-1)) - (0.01 * d))
+    values = np.zeros(sparsity)
+    degree_helper = 1
+    for i in range(d):
+        if(random.random() < (lower_degree_prob + i*change)):
+            degree_helper += 1
+        else:
+            break
+            
+    #return random nonadjusted function
+    if random.random()<a_random_prob:
+        for i in range(max_monomials_random-1):
+            values[random.randint(0, sparsities[-degree_helper]-1)] = random.uniform(a_min, a_max)
+        values[0] = random.uniform(a_min, a_max)
+        return values
+    
+    # degree_helper >= d => maximum degree = 1 => no stationary points => no adjustment possible
+    if degree_helper >= d:
+        for i in range(max_monomials-1):
+            values[random.randint(0, sparsities[-degree_helper]-1)] = random.uniform(a_min, a_max)
+        values[0] = random.uniform(a_min, a_max)
+        return values
+    
+    # get random borders (minimum space between x_min (x_max) to the critical_points
+    borders = [random.uniform(border_min, border_max) for i in range(n)]
+    try:
+        with timeout(5, exception=RuntimeError):
+            coeff_list = prep_post_polynomial(borders, values)
+    except:
+        return get_polynomial_basic(sparsities, change = change)
+    return coeff_list
 
 
 #######################################################################################################################################################
@@ -857,7 +942,7 @@ def generate_paths(path_type='interpretation_net'):
     RANDOM_SEED_path = RANDOM_SEED
     
     if path_type=='interpretation_net_no_noise':
-        lambda_nets_total_path = 10000#50000
+        lambda_nets_total_path = 50000#50000
         noise_path = 0
         RANDOM_SEED_path = 42
     
@@ -884,12 +969,13 @@ def generate_paths(path_type='interpretation_net'):
                                    '_xdist_' + str(x_distrib) + 
                                    '_noise_' + str(noise_distrib) + '_' + str(noise_path))
         
-        
-    adjusted_dataset_string = ('bmin' + str(border_min) +
-                                'bmax' + str(border_max) +
-                                'lowd' + str(lower_degree_prob) +
-                                'azero' + str(a_zero_prob) +
-                                'arand' + str(a_random_prob))
+    if shift_polynomial:         
+        adjusted_dataset_string = ('bmin' + str(border_min) +
+                                    'bmax' + str(border_max) +
+                                    'lowd' + str(lower_degree_prob) +
+                                    'arand' + str(a_random_prob))
+    else:
+        adjusted_dataset_string = ''
         
         
 
