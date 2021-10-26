@@ -1087,7 +1087,6 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
 def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', backend='loky'): 
         
     printing = True if n_jobs == 1 else False
-    
     #if use_gpu and False:
         #os.environ['CUDA_VISIBLE_DEVICES'] = gpu_numbers if use_gpu else ''
         #os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
@@ -1131,7 +1130,6 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
                 }
 
         with tf.device('/CPU:0'):
-
             parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
 
             per_network_optimization_polynomials = parallel_per_network(delayed(per_network_poly_optimization_tf)(per_network_hyperparams['per_network_dataset_size'], 
@@ -1149,7 +1147,6 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
             del parallel_per_network
 
     elif optimization_type=='scipy':    
-
         per_network_hyperparams = {
             'optimizer':  'Powell',
             'jac': 'fprime',
@@ -1190,7 +1187,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
                                                   printing = True,
                                                   return_error = True)
                 print(result)        
-
+            
             parallel_per_network = Parallel(n_jobs=n_jobs, verbose=1, backend=backend)
 
             result_list_per_network = parallel_per_network(delayed(per_network_poly_optimization_scipy)(per_network_hyperparams['per_network_dataset_size'], 
@@ -1214,6 +1211,8 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
     return per_network_optimization_polynomials
 
 def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
+    
+    printing = True if n_jobs == 1 else False
     
     #backend='multiprocessing'
     
@@ -1254,7 +1253,7 @@ def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
     result_list_symbolic_regression = parallel_symbolic_regression(delayed(symbolic_regression)(lambda_net, 
                                                                                   config,
                                                                                   symbolic_regression_hyperparams,
-                                                                                  #printing = printing,
+                                                                                  printing = printing,
                                                                                   return_error = return_error) for lambda_net in lambda_net_dataset.lambda_net_list)      
 
     del parallel_symbolic_regression  
@@ -1269,6 +1268,8 @@ def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
 
 
 def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):
+        
+    printing = True if n_jobs == 1 else False
         
     metamodeling_hyperparams = {
         'num_iter': 10,#500,
@@ -1307,7 +1308,7 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
             'sparse_poly_representation_version': sparse_poly_representation_version,
             'max_optimization_minutes': max_optimization_minutes,
              }
-
+    
     parallel_metamodeling = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
 
     return_error = False 
@@ -1317,7 +1318,7 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
         result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling)(lambda_net, 
                                                                                       config,
                                                                                       metamodeling_hyperparams,
-                                                                                      #printing = printing,
+                                                                                      printing = printing,
                                                                                       return_error = return_error,
                                                                                       return_expression=return_expression,
                                                                                       function_metamodeling=function_metamodeling,
@@ -1328,13 +1329,12 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
         result_list_metamodeling = parallel_metamodeling(delayed(symbolic_metamodeling_original)(lambda_net, 
                                                                                       config,
                                                                                       metamodeling_hyperparams,
-                                                                                      #printing = printing,
+                                                                                      printing = printing,
                                                                                       return_error = return_error,
                                                                                       return_expression=return_expression,
                                                                                       function_metamodeling=function_metamodeling,
                                                                                       force_polynomial=force_polynomial) for lambda_net in lambda_net_dataset.lambda_net_list)          
         
-        print(result_list_metamodeling)
     del parallel_metamodeling  
     
     if return_error:
@@ -1523,24 +1523,27 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
 
     vars_plot = lambda_net_test_dataset_list[-1].X_test_data_list[rand_index]    
     
-    custom_representation_keys_fixed = ['target_polynomials', 'lstsq_target_polynomials', 'lstsq_lambda_pred_polynomials']
-    custom_representation_keys_dynamic = ['inet_polynomials', 'per_network_polynomials']
-    sympy_representation_keys = ['metamodel_poly', 'metamodel_functions', 'metamodel_functions_no_GD', 'symbolic_regression_functions']
+    custom_representation_keys_fixed = ['target_polynomials']#['target_polynomials', 'lstsq_target_polynomials', 'lstsq_lambda_pred_polynomials']
+    custom_representation_keys_dynamic = ['inet_polynomials']#['inet_polynomials', 'per_network_polynomials']
+    sympy_representation_keys = ['metamodel_functions', 'symbolic_regression_functions']#['metamodel_poly', 'metamodel_functions', 'metamodel_functions_no_GD', 'symbolic_regression_functions']
     
     #keys = ['target_polynomials', 'lstsq_target_polynomials', 'lstsq_lambda_pred_polynomials', 'inet_polynomials', 'per_network_polynomials', 'metamodel_functions']
     
-    lambda_train_data = lambda_net_test_dataset_list[-1].y_test_data_list[rand_index].ravel()
-    lambda_train_data_size = lambda_train_data.shape[0]
-    lambda_train_data_str = np.array(['Lambda Train Data' for i in range(lambda_train_data_size)])  
-    columns_single.append('Lambda Train Data')
+    
+    
+    
+    #lambda_train_data = lambda_net_test_dataset_list[-1].y_test_data_list[rand_index].ravel()
+    #lambda_train_data_size = lambda_train_data.shape[0]
+    #lambda_train_data_str = np.array(['Lambda Train Data' for i in range(lambda_train_data_size)])  
+    #columns_single.append('Lambda Train Data')
     
     lambda_model_preds = function_values_test_list[-1]['lambda_preds'][rand_index].ravel()
     eval_size_plot = lambda_model_preds.shape[0]
     lambda_model_preds_str = np.array(['Lambda Model Preds' for i in range(eval_size_plot)])
     columns_single.append('Lambda Model Preds')
     
-    identifier_list =[lambda_train_data_str, lambda_model_preds_str]
-    plot_data_single_list = [vars_plot, lambda_train_data, lambda_model_preds]
+    identifier_list = [lambda_model_preds_str]#[lambda_train_data_str, lambda_model_preds_str]
+    plot_data_single_list = [vars_plot, lambda_model_preds]#[vars_plot, lambda_train_data, lambda_model_preds]
     for key in custom_representation_keys_fixed:
         try:
             polynomial_by_key = polynomial_dict_test_list[-1][key][rand_index]
@@ -1599,7 +1602,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                       x_vars=x_vars, 
                       height=7.5,
                       aspect=2)
-        file = 'pp3in1_' + str(rand_index) + '.pdf'                 
+        file = 'pp3in1_' + str(rand_index).zfill(3) + '.pdf'                 
         
     elif plot_type == 2:
 
@@ -1610,7 +1613,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                           #x_vars=x_vars, 
                           height=10//n)
              
-        file = 'pp3in1_extended_' + str(rand_index) + '.pdf'  
+        file = 'pp3in1_extended_' + str(rand_index).zfill(3) + '.pdf'  
         
     elif plot_type == 3:
         
@@ -1621,7 +1624,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
                           height=3,
                           aspect=3)
 
-        file = 'pp1_' + str(rand_index) + '.pdf'                   
+        file = 'pp1_' + str(rand_index).zfill(3) + '.pdf'                   
         
     path = location + folder + file
     pp.savefig(path, format='pdf')

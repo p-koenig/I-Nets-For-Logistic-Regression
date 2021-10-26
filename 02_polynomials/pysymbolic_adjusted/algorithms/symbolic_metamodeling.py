@@ -29,7 +29,6 @@ if not sys.warnoptions:
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import MinMaxScaler
-from xgboost import XGBClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge
 from sympy import Integral, Symbol
 from sympy.abc import x, y
@@ -317,8 +316,8 @@ class symbolic_metamodel:
         
     
     def fit(self, num_iter=10, batch_size=100, learning_rate=.01):
-        
-        print("---- Tuning the basis functions ----")
+        if self.verbosity:
+            print("---- Tuning the basis functions ----")
         
         for u in self.tqdm_mode(range(self.X.shape[1])):
             
@@ -327,8 +326,8 @@ class symbolic_metamodel:
         self.set_equation(reset_init_model=True)
 
         self.metamodel_loss = []
-        
-        print("----  Optimizing the metamodel  ----")
+        if self.verbosity:
+            print("----  Optimizing the metamodel  ----")
         
         #print(num_iter) 
         

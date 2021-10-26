@@ -112,7 +112,7 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
     return symbol_exprs[best_model], R2_perf    
 
 
-def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None):
+def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printing=True):
 
     if data is not None:
         X = data
@@ -142,17 +142,18 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None):
                                generations=1,#1000, 
                                #stopping_criteria=0.01,
                                tournament_size=100,#
-                               init_depth=(sparsity, sparsity),#
+                               init_depth=(int(np.round(np.log2(sparsity))), int(np.round(np.log2(sparsity)))),#
                                #p_crossover=0.7, 
                                #p_subtree_mutation=0.1,
                                #p_hoist_mutation=0.05, 
                                #p_point_mutation=0.1,
                                #max_samples=0.9, 
-                               verbose=1,
-                               parsimony_coefficient=0.001,#0,#0.01, 
+                               verbose=1 if printing else 0,
+                               parsimony_coefficient=0,#0.001,#0,#0.01, 
                                random_state=0,
                                metric=metric,#
                                #low_memory=True,
+                               function_set=['add', 'sub', 'mul'],
                               )
     current_generation = 0
     best_fitness = np.inf
@@ -163,8 +164,9 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None):
         est_gp.set_params(generations=current_generation+1, warm_start=True)
         best_fitness_generation = est_gp.run_details_['best_fitness'][-1]
         #print(est_gp.run_details_)
-        print('best_fitness_generation', best_fitness_generation)
-        print('best_fitness', best_fitness)
+        if printing:
+            print('best_fitness_generation', best_fitness_generation)
+            print('best_fitness', best_fitness)
         if best_fitness_generation < best_fitness-epsilon:
             early_stopping_counter = 0
             best_fitness = best_fitness_generation

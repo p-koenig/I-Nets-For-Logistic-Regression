@@ -248,7 +248,12 @@ def return_callbacks_from_string(callback_string_list):
         reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=min(50, epochs//10), verbose=0, min_delta=0, mode='min') #epsilon
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
-        earlyStopping = EarlyStopping(monitor='val_loss', patience=min(50, epochs//10), min_delta=0, verbose=0, mode='min', restore_best_weights=True)
+        try:
+            patience = early_stopping_patience if early_stopping_patience is not None else min(50, epochs//10)
+        except:
+            patience = min(50, epochs//10)
+        
+        earlyStopping = EarlyStopping(monitor='val_loss', patience=patience, min_delta=0, verbose=0, mode='min', restore_best_weights=True)
         callbacks.append(earlyStopping)        
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
@@ -1516,7 +1521,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
         
     current_monomial_degree = tf.Variable(0, dtype=tf.int64)
     best_result = np.inf
-
+    
     for current_iteration in range(restarts):
                 
         @tf.function(experimental_compile=True) 
@@ -1532,7 +1537,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
                         poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
                         poly_optimize_identifiers_list.append(poly_optimize_identifiers)
                     poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
-                else:
+                elif sparse_poly_representation_version != 2:
                     for i in range(interpretation_net_output_monomials):
                         for j in range(n):
                             poly_optimize_identifiers = tf.math.softmax(poly_optimize[i*n*j*(d+1)+interpretation_net_output_monomials:(i+1)*n*j*(d+1)+interpretation_net_output_monomials])
@@ -1764,7 +1769,7 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 def symbolic_regression(lambda_net, 
                           config,
                           metamodeling_hyperparams,
-                          #printing = True,
+                          printing = True,
                           return_error = False):
 
     from pysymbolic_adjusted.algorithms.symbolic_expressions import symbolic_regressor
@@ -1782,7 +1787,7 @@ def symbolic_regression(lambda_net,
         x_min = 1e-5 
     try:
         with timeout(60*max_optimization_minutes, exception=RuntimeError):
-            symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'])
+            symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing)
     except RuntimeError as e:
         print(e)
         if return_error:
@@ -1799,7 +1804,7 @@ def symbolic_regression(lambda_net,
 def symbolic_metamodeling(lambda_net, 
                           config,
                           metamodeling_hyperparams,
-                          #printing = True,
+                          printing = True,
                           return_error = False,
                           return_expression = 'approx', #'approx', #'exact',
                           function_metamodeling = False,
@@ -1829,7 +1834,7 @@ def symbolic_metamodeling(lambda_net,
     ########################################### OPTIMIZATION ########################################################
     
     if function_metamodeling:    
-        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'])
+        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'], verbosity=printing)
         symbolic_model.approximation_order = d
         
         if return_expression == 'exact':
@@ -1847,7 +1852,7 @@ def symbolic_metamodeling(lambda_net,
         if metamodeling_hyperparams['batch_size'] == None:
             metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
 
-        metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", approximation_order = d, force_polynomial=force_polynomial)
+        metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", approximation_order = d, force_polynomial=force_polynomial, verbosity=printing)
         metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
 
 
@@ -1874,7 +1879,7 @@ def symbolic_metamodeling(lambda_net,
 def symbolic_metamodeling_original(lambda_net, 
                           config,
                           metamodeling_hyperparams,
-                          #printing = True,
+                          printing = True,
                           return_error = False,
                           return_expression = 'approx', #'approx', #'exact',
                           function_metamodeling = False,
@@ -1904,7 +1909,7 @@ def symbolic_metamodeling_original(lambda_net,
     if function_metamodeling:    
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
-                symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+                symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], verbosity=printing)
         except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
             print(e)
             if return_error:
@@ -1930,7 +1935,7 @@ def symbolic_metamodeling_original(lambda_net,
             metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
-                metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression")
+                metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", verbosity=printing)
                 metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], 
                               batch_size=metamodeling_hyperparams['batch_size'], 
                               learning_rate=metamodeling_hyperparams['learning_rate'])    
