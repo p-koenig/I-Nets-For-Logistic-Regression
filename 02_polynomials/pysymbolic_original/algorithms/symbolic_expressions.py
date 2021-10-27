@@ -27,6 +27,7 @@ from sympy.utilities.autowrap import ufuncify
 
 from gplearn.genetic import SymbolicRegressor
 
+import time
 
 def load_hyperparameter_config():
 
@@ -98,6 +99,8 @@ def get_symbolic_model(f, npoints, xrange):
 
 def symbolic_regressor(f, npoints, xrange):
 
+    start = time.time()
+    
     X  = np.linspace(xrange[0], xrange[1], npoints).reshape((-1,1))
     y  = f(X)
 
@@ -129,6 +132,11 @@ def symbolic_regressor(f, npoints, xrange):
     Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
 
     R2_perf = compute_Rsquared(Y_true, Y_est)
-
-    return sym_reg, R2_perf
+    
+    end = time.time()
+    
+    time_required = end - start
+    
+    
+    return sym_reg, R2_perf, time_required
 

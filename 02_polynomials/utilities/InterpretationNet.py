@@ -55,6 +55,8 @@ from utilities.utility_functions import *
 
 from tqdm import tqdm_notebook as tqdm
 
+import time
+
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
 #######################################################################################################################################################
@@ -449,6 +451,9 @@ def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda
     
     global list_of_monomial_identifiers
         
+        
+    start = time.time()
+        
     if inet_training_normalized:
         if network_data is None:
             network_data = np.random.uniform(low=x_min, high=x_max, size=(random_evaluation_dataset_size, n)) 
@@ -556,20 +561,30 @@ def make_inet_prediction(model, networks_to_interpret, network_data=None, lambda
             inet_predictions_denormalized.append(inet_prediction_denormalized)
 
         if len(inet_predictions_denormalized) == 1:
-            return np.array(inet_predictions_denormalized[0])
+            end = time.time()
+            runtime = end-start
+            return np.array(inet_predictions_denormalized[0]), runtime
 
-        return np.array(inet_predictions_denormalized)
+        end = time.time()
+        runtime = end-start        
+        return np.array(inet_predictions_denormalized), runtime
 
     elif not lambda_trained_normalized:
         if len(networks_to_interpret.shape) == 1:
             network_to_interpret = np.array([networks_to_interpret])         
             inet_prediction = model.predict(np.array([network_to_interpret]))[0][:interpretation_net_output_shape]
-            return inet_prediction
+            
+            end = time.time()
+            runtime = end-start            
+            return inet_prediction, runtime
         else:
             inet_predictions = model.predict(networks_to_interpret)[:,:interpretation_net_output_shape]
-            return inet_predictions
+            
+            end = time.time()
+            runtime = end-start            
+            return inet_predictions, runtime
     else: #(if not inet_training_normalized and lambda_trained_normalized)
-        return None
+        return None, np.nan
         
 def generate_inet_train_data(lambda_net_dataset, data_reshape_version=1):
     X_data = None
@@ -1030,6 +1045,9 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
     evaluation_key_list = []
     evaluation_scores_list = []
     evaluation_distrib_list = []
+    runtime_distrib_list = []
+    
+    key_list = []
     for combination in itertools.combinations(function_value_dict.keys(), r=2):
         key_1 = combination[0]
         key_2 = combination[1]
@@ -1047,9 +1065,7 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
                 polynomials_2 = None
         except KeyError:
             polynomials_2 = None
-            
-
-            
+                        
         function_values_1 = function_value_dict[key_1]
         function_values_2 = function_value_dict[key_2]
         
@@ -1065,7 +1081,6 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
         evaluation_scores_list.append(evaluation_scores)
         evaluation_distrib_list.append(evaluation_distrib)
         
-        
     scores_dict = pd.DataFrame(data=evaluation_scores_list,
                                index=evaluation_key_list)        
         
@@ -1080,7 +1095,7 @@ def evaluate_all_predictions(function_value_dict, polynomial_dict):
     
     distrib_dicts = {'MAE': mae_distrib_dict, 
                      'R2': r2_distrib_dict}        
-    
+        
     
     return scores_dict, distrib_dicts
 
@@ -1212,6 +1227,8 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
 
 def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
     
+    print('TIMEOUT')
+    
     printing = True if n_jobs == 1 else False
     
     #backend='multiprocessing'
@@ -1220,7 +1237,6 @@ def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
         'dataset_size': per_network_optimization_dataset_size,
     }
     #backend='sequential'
-
     
     config = {
             'n': n,
@@ -1261,10 +1277,14 @@ def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
     if return_error:
         symbolic_regression_errors = [result[0] for result in result_list_symbolic_regression]
         symbolic_regression_functions = [result[1] for result in result_list_symbolic_regression]   
+        symbolic_regression_runtimes = [result[2] for result in result_list_symbolic_regression]   
     else:
-        return result_list_symbolic_regression
+        symbolic_regression_functions = [result[0] for result in result_list_symbolic_regression]   
+        symbolic_regression_runtimes = [result[1] for result in result_list_symbolic_regression] 
+        
+        return symbolic_regression_functions, symbolic_regression_runtimes
     
-    return symbolic_regression_errors, symbolic_regression_functions
+    return symbolic_regression_errors, symbolic_regression_functions, symbolic_regression_runtimes
 
 
 def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):
@@ -1340,10 +1360,14 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
     if return_error:
         metamodeling_errors = [result[0] for result in result_list_metamodeling]
         metamodeling_polynomials = [result[1] for result in result_list_metamodeling]   
+        metamodeling_runtimes = [result[2] for result in result_list_metamodeling]   
     else:
-        return result_list_metamodeling
+        metamodeling_polynomials = [result[0] for result in result_list_metamodeling]   
+        metamodeling_runtimes = [result[1] for result in result_list_metamodeling]          
+        return metamodeling_polynomials, metamodeling_runtimes
+        
     
-    return metamodeling_errors, metamodeling_polynomials
+    return metamodeling_errors, metamodeling_polynomials, metamodeling_runtimes
     
     
     

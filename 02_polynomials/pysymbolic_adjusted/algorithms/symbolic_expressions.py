@@ -9,6 +9,8 @@ import pandas as pd
 import scipy as sc
 import itertools
 
+import time
+
 from mpmath import *
 from sympy import *
 
@@ -29,6 +31,8 @@ from sympy.utilities.autowrap import ufuncify
 from gplearn.genetic import SymbolicRegressor
 
 import types
+
+from interruptingcow import timeout
 
 
 def load_hyperparameter_config():
@@ -112,8 +116,23 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
     return symbol_exprs[best_model], R2_perf    
 
 
-def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printing=True):
 
+
+    try:
+        with timeout(60*max_optimization_minutes, exception=RuntimeError):
+            symbolic_reg, r2_score, time_required   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing)
+    except (RuntimeError, MemoryError) as e:
+        print(e)
+        if return_error:
+            return np.nan, None, np.nan
+        else:
+            return None, np.nan         
+
+def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printing=True, max_optimization_minutes=60):
+
+    start = time.time()
+    
+    
     if data is not None:
         X = data
     elif n_vars == 1:
@@ -149,7 +168,7 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
                                #p_point_mutation=0.1,
                                #max_samples=0.9, 
                                verbose=1 if printing else 0,
-                               parsimony_coefficient=0,#0.001,#0,#0.01, 
+                               parsimony_coefficient=0,#0.0001,#0.001,#0,#0.01, 
                                random_state=0,
                                metric=metric,#
                                #low_memory=True,
@@ -158,29 +177,33 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
     current_generation = 0
     best_fitness = np.inf
     early_stopping_counter = 0
-    for generation in range(generations):
-        est_gp.fit(X, y)
-        current_generation += 1
-        est_gp.set_params(generations=current_generation+1, warm_start=True)
-        best_fitness_generation = est_gp.run_details_['best_fitness'][-1]
-        #print(est_gp.run_details_)
-        if printing:
-            print('best_fitness_generation', best_fitness_generation)
-            print('best_fitness', best_fitness)
-        if best_fitness_generation < best_fitness-epsilon:
-            early_stopping_counter = 0
-            best_fitness = best_fitness_generation
-        else:
-            early_stopping_counter += 1
-            
-        if early_stopping_counter >= early_stopping:
-            break
-            
-            
-#SymbolicRegressor(population_size=1000, generations=20, tournament_size=20, stopping_criteria=0.0, const_range=(-1.0, 1.0), init_depth=(2, 6), init_method='half and half', function_set=('add', 'sub', 'mul', 'div'), metric='mean absolute error', parsimony_coefficient=0.001, p_crossover=0.9, p_subtree_mutation=0.01, p_hoist_mutation=0.01, p_point_mutation=0.01, p_point_replace=0.05, max_samples=1.0, feature_names=None, warm_start=False, low_memory=False, n_jobs=1, verbose=0, random_state=None)    
     
-    
+    try:
+        with timeout(60*max_optimization_minutes, exception=RuntimeError):    
+            for generation in range(generations):
+                est_gp_old = est_gp
+                est_gp.fit(X, y)
+                current_generation += 1
+                est_gp.set_params(generations=current_generation+1, warm_start=True)
+                best_fitness_generation = est_gp.run_details_['best_fitness'][-1]
+                #print(est_gp.run_details_)
+                if printing:
+                    print('best_fitness_generation', best_fitness_generation)
+                    print('best_fitness', best_fitness)
+                if best_fitness_generation < best_fitness-epsilon:
+                    early_stopping_counter = 0
+                    best_fitness = best_fitness_generation
+                else:
+                    early_stopping_counter += 1
 
+                if early_stopping_counter >= early_stopping:
+                    break
+            
+    except (RuntimeError, MemoryError) as e:
+        est_gp = est_gp_old
+        #SymbolicRegressor(population_size=1000, generations=20, tournament_size=20, stopping_criteria=0.0, const_range=(-1.0, 1.0), init_depth=(2, 6), init_method='half and half', function_set=('add', 'sub', 'mul', 'div'), metric='mean absolute error', parsimony_coefficient=0.001, p_crossover=0.9, p_subtree_mutation=0.01, p_hoist_mutation=0.01, p_point_mutation=0.01, p_point_replace=0.05, max_samples=1.0, feature_names=None, warm_start=False, low_memory=False, n_jobs=1, verbose=0, random_state=None)    
+    
+    
     sym_expr = str(est_gp._program)
 
     converter = {
@@ -218,10 +241,14 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
     Y_est = np.nan_to_num(function_values).ravel()
                 
     #Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
-    
-    print(sym_reg)
+    if printing:
+        print(sym_reg)
     
     R2_perf = compute_Rsquared(Y_true, Y_est)
 
-    return sym_reg, R2_perf
+    end = time.time()
+    
+    time_required = end - start
+    
+    return sym_reg, R2_perf, time_required
 

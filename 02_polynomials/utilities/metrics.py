@@ -102,7 +102,8 @@ def calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers, polynomial, curre
     if config != None:
         globals().update(config)
 
-    #@tf.function(experimental_compile=True)
+    #@tf.function(jit_compile=True)
+    @tf.function(jit_compile=True)
     def calculate_poly_fv_tf(evaluation_entry):  
                 
         def limit_monomial_to_degree_wrapper(monomial_degrees_by_variable, current_monomial_degree):

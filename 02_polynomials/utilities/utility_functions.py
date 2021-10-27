@@ -59,6 +59,8 @@ import itertools
 
 from interruptingcow import timeout
 
+import time
+
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
 #######################################################################################################################################################
@@ -1245,7 +1247,7 @@ def calculate_poly_fv_tf_wrapper_new_no_tfFunction(list_of_monomial_identifiers,
 
 
 
-@tf.function(experimental_compile=True)
+@tf.function(jit_compile=True)
 def calculate_poly_fv_tf_wrapper_new(list_of_monomial_identifiers, polynomial, evaluation_entry_list, force_complete_poly_representation=False, config=None):
     
     if config != None:
@@ -1524,7 +1526,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
     
     for current_iteration in range(restarts):
                 
-        @tf.function(experimental_compile=True) 
+        @tf.function(jit_compile=True) 
         def function_to_optimize():
             
             poly_optimize = poly_optimize_input[0]
@@ -1687,7 +1689,7 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
     for current_iteration in range(restarts):
 
         def function_to_optimize_scipy_wrapper(current_monomial_degree):
-            @tf.function(experimental_compile=True) 
+            @tf.function(jit_compile=True) 
             def function_to_optimize_scipy(poly_optimize_input):   
 
                 #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
@@ -1773,7 +1775,7 @@ def symbolic_regression(lambda_net,
                           return_error = False):
 
     from pysymbolic_adjusted.algorithms.symbolic_expressions import symbolic_regressor
-    
+        
     globals().update(config) 
     
     global x_min
@@ -1786,19 +1788,19 @@ def symbolic_regression(lambda_net,
     if x_min == 0:
         x_min = 1e-5 
     try:
-        with timeout(60*max_optimization_minutes, exception=RuntimeError):
-            symbolic_reg, r2_score   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing)
-    except RuntimeError as e:
+        with timeout(60*(max_optimization_minutes + 10), exception=RuntimeError):
+            symbolic_reg, r2_score, time_required   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing, max_optimization_minutes=max_optimization_minutes)
+    except (RuntimeError, MemoryError) as e:
         print(e)
         if return_error:
-            return np.nan, None
+            return np.nan, None, np.nan
         else:
-            return None         
+            return None, np.nan         
             
     if return_error:
-        return r2_score, symbolic_reg
+        return r2_score, symbolic_reg, time_required
     
-    return symbolic_reg
+    return symbolic_reg, time_required
         
     
 def symbolic_metamodeling(lambda_net, 
@@ -1815,6 +1817,7 @@ def symbolic_metamodeling(lambda_net,
     from pysymbolic_adjusted.algorithms.symbolic_metamodeling import symbolic_metamodel
     from pysymbolic_adjusted.algorithms.symbolic_expressions import get_symbolic_model
     
+        
     
     ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
             
@@ -1834,6 +1837,8 @@ def symbolic_metamodeling(lambda_net,
     ########################################### OPTIMIZATION ########################################################
     
     if function_metamodeling:    
+        start = time.time()
+
         symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'], verbosity=printing)
         symbolic_model.approximation_order = d
         
@@ -1843,8 +1848,10 @@ def symbolic_metamodeling(lambda_net,
         elif return_expression == 'approx':
             metamodel_function = symbolic_model.approx_expression()       
             
+        end = time.time()
+        runtime = end-start
         if return_error:
-            return r2_score, metamodel_function
+            return r2_score, metamodel_function, runtime
             
     else:   
         random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(metamodeling_hyperparams['dataset_size'], max(1, n)))
@@ -1852,6 +1859,8 @@ def symbolic_metamodeling(lambda_net,
         if metamodeling_hyperparams['batch_size'] == None:
             metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
 
+        start = time.time()
+        
         metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", approximation_order = d, force_polynomial=force_polynomial, verbosity=printing)
         metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
 
@@ -1863,15 +1872,18 @@ def symbolic_metamodeling(lambda_net,
             metamodel_function = metamodel.approx_expression
             #print(metamodel_function)
 
+        end = time.time()
+        runtime = end-start
+        
         if return_error:
             random_lambda_input_data_preds_metamodel = metamodel.evaluate(random_lambda_input_data)
             random_lambda_input_data_preds_lambda_net = model.predict(random_lambda_input_data)
 
             error = mean_absolute_error(random_lambda_input_data_preds_lambda_net, random_lambda_input_data_preds_metamodel)        
 
-            return error, metamodel_function
+            return error, metamodel_function, runtime
     
-    return metamodel_function
+    return metamodel_function, runtime
 
 
 
@@ -1907,15 +1919,17 @@ def symbolic_metamodeling_original(lambda_net,
     
     ########################################### OPTIMIZATION ########################################################
     if function_metamodeling:    
+        start = time.time()
+        
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
                 symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], verbosity=printing)
         except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
             print(e)
             if return_error:
-                return np.nan, None
+                return np.nan, None, np.nan
             else:
-                return None
+                return None, np.nan
         
         symbolic_model.approximation_order = d
         
@@ -1925,14 +1939,20 @@ def symbolic_metamodeling_original(lambda_net,
         elif return_expression == 'approx':
             metamodel_function = symbolic_model.approx_expression()       
             
+        end = time.time()
+        runtime = end-start
+        
         if return_error:
-            return r2_score, metamodel_function
+            return r2_score, metamodel_function, runtime
             
     else:   
         random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(metamodeling_hyperparams['dataset_size'], max(1, n)))
         
         if metamodeling_hyperparams['batch_size'] == None:
             metamodeling_hyperparams['batch_size'] = random_lambda_input_data.shape[0]
+            
+        start = time.time()
+            
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
                 metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", verbosity=printing)
@@ -1942,9 +1962,9 @@ def symbolic_metamodeling_original(lambda_net,
         except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
             print(e)
             if return_error:
-                return np.nan, None
+                return np.nan, None, np.nan
             else:
-                return None
+                return None, np.nan
             
         if return_expression == 'exact':
             metamodel_function = metamodel.exact_expression
@@ -1953,15 +1973,18 @@ def symbolic_metamodeling_original(lambda_net,
             metamodel_function = metamodel.approx_expression
             #print(metamodel_function)
 
+        end = time.time()
+        runtime = end-start
+        
         if return_error:
             random_lambda_input_data_preds_metamodel = metamodel.evaluate(random_lambda_input_data)
             random_lambda_input_data_preds_lambda_net = model.predict(random_lambda_input_data)
 
             error = mean_absolute_error(random_lambda_input_data_preds_lambda_net, random_lambda_input_data_preds_metamodel)        
 
-            return error, metamodel_function
+            return error, metamodel_function, runtime
     
-    return metamodel_function
+    return metamodel_function, runtime
 
 
 
