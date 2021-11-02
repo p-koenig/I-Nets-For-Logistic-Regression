@@ -39,6 +39,8 @@ from IPython.display import display, Math, Latex, clear_output
 import os
 import shutil
 import pickle
+
+import traceback
     
 #udf import
 from utilities.LambdaNet import *
@@ -1788,10 +1790,11 @@ def symbolic_regression(lambda_net,
     if x_min == 0:
         x_min = 1e-5 
     try:
-        with timeout(60*(max_optimization_minutes + 10), exception=RuntimeError):
-            symbolic_reg, r2_score, time_required   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing, max_optimization_minutes=max_optimization_minutes)
-    except (RuntimeError, MemoryError) as e:
+        
+        symbolic_reg, r2_score, time_required   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing, max_optimization_minutes=max_optimization_minutes)
+    except MemoryError as e:
         print(e)
+        print(traceback.print_exc())     
         if return_error:
             return np.nan, None, np.nan
         else:
@@ -1926,6 +1929,8 @@ def symbolic_metamodeling_original(lambda_net,
                 symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], verbosity=printing)
         except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
             print(e)
+            print(traceback.print_exc())            
+            
             if return_error:
                 return np.nan, None, np.nan
             else:
@@ -1961,6 +1966,7 @@ def symbolic_metamodeling_original(lambda_net,
                               learning_rate=metamodeling_hyperparams['learning_rate'])    
         except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
             print(e)
+            print(traceback.print_exc())                 
             if return_error:
                 return np.nan, None, np.nan
             else:

@@ -34,6 +34,10 @@ import types
 
 from interruptingcow import timeout
 
+from copy import deepcopy
+
+import traceback
+
 
 def load_hyperparameter_config():
 
@@ -168,7 +172,7 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
                                #p_point_mutation=0.1,
                                #max_samples=0.9, 
                                verbose=1 if printing else 0,
-                               parsimony_coefficient=0,#0.0001,#0.001,#0,#0.01, 
+                               #parsimony_coefficient=1e-5,#'auto',#1e-5#1e-10,#0,#0.0001,#0.001,#0,#0.01, 
                                random_state=0,
                                metric=metric,#
                                #low_memory=True,
@@ -181,7 +185,7 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
     try:
         with timeout(60*max_optimization_minutes, exception=RuntimeError):    
             for generation in range(generations):
-                est_gp_old = est_gp
+                est_gp_old = deepcopy(est_gp)
                 est_gp.fit(X, y)
                 current_generation += 1
                 est_gp.set_params(generations=current_generation+1, warm_start=True)
@@ -200,12 +204,19 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
                     break
             
     except (RuntimeError, MemoryError) as e:
+        print(e)
+        print(traceback.print_exc())
         est_gp = est_gp_old
         #SymbolicRegressor(population_size=1000, generations=20, tournament_size=20, stopping_criteria=0.0, const_range=(-1.0, 1.0), init_depth=(2, 6), init_method='half and half', function_set=('add', 'sub', 'mul', 'div'), metric='mean absolute error', parsimony_coefficient=0.001, p_crossover=0.9, p_subtree_mutation=0.01, p_hoist_mutation=0.01, p_point_mutation=0.01, p_point_replace=0.05, max_samples=1.0, feature_names=None, warm_start=False, low_memory=False, n_jobs=1, verbose=0, random_state=None)    
     
     
     sym_expr = str(est_gp._program)
 
+    end = time.time()
+
+    time_required = end - start
+    
+    
     converter = {
         'sub': lambda x, y : x - y,
         'div': lambda x, y : x/y,
@@ -229,26 +240,31 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
     #if len(function_vars) >= 1:
     #    Y_est = [lambda_function(data_point) for data_point in X]
     #else:
-    #Y_est = [lambda_function() for i in range(X.shape[0])]    
-    function_values = []
-    for data_point in X:
-        function_value = sym_reg.evalf(subs={var: data_point[index] for index, var in enumerate(list(function_vars))})
-        try:
-            function_value = float(function_value)
-        except TypeError as te:
-            function_value = np.inf
-        function_values.append(function_value)
-    Y_est = np.nan_to_num(function_values).ravel()
-                
-    #Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
-    if printing:
-        print(sym_reg)
-    
-    R2_perf = compute_Rsquared(Y_true, Y_est)
+    #Y_est = [lambda_function() for i in range(X.shape[0])]  
+    try:
+        with timeout(60*max_optimization_minutes, exception=RuntimeError):
+            function_values = []
+            for data_point in X:
+                function_value = sym_reg.evalf(subs={var: data_point[index] for index, var in enumerate(list(function_vars))})
+                try:
+                    function_value = float(function_value)
+                except TypeError as te:
+                    function_value = np.inf
+                function_values.append(function_value)
+            Y_est = np.nan_to_num(function_values).ravel()
 
-    end = time.time()
+            #Y_est   = np.array([sympify(str(sym_reg)).subs(x,X[k]) for k in range(len(X))]).reshape((-1,1))
+            if printing:
+                print(sym_reg)
+
+            R2_perf = compute_Rsquared(Y_true, Y_est)
+
+    except (RuntimeError, MemoryError) as e:
+        print(e)
+        print(traceback.print_exc())
+        return None, np.nan, np.nan
     
-    time_required = end - start
+    del est_gp, est_gp_old
     
     return sym_reg, R2_perf, time_required
 
