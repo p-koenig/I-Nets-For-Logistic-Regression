@@ -640,7 +640,11 @@ def generate_decision_tree_from_array(parameter_array, config):
 
 
 
-def generate_random_data_points_custom(low, high, size, variables, distrib='uniform'):
+def generate_random_data_points_custom(low, high, size, variables, seed=42, distrib='uniform'):
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    
     if distrib=='normal':
         list_of_data_points = []
         for _ in range(size):
@@ -1360,7 +1364,52 @@ def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variable
 ######################################################################################################################################################################################################################
 
 
-        
+
+#################################################################################################################################################################################### Normalization #################################################################################### ################################################################################################################################################################################################################
+
+def get_order_sum(arrays):
+    arrays = np.array(arrays)
+    values = [np.sum(arrays[0])]
+    order = [0]
+    for i in range(1, len(arrays)):
+        value = np.sum(arrays[i])
+        pos = 0
+        while pos<len(values) and value>=values[pos]:
+            if value == values[pos]:
+                print("!!!!!!!!!!!!!!!!KOLLISION!!!!!!!!!!!!!!!!!!")
+                print(value)
+                print(arrays[i])
+                print(arrays[order[pos]])
+            pos += 1
+        values.insert(pos, value)
+        order.insert(pos, i)
+    return order
+
+## source for sort_array: https://www.geeksforgeeks.org/permute-the-elements-of-an-array-following-given-order/
+
+def sort_array(arr, order):
+    length = len(order)
+    #ordered_arr = np.zeros(length)
+    ordered_arr = [None] * length
+    for i in range(length):
+        ordered_arr[i] = arr[order[i]]
+    arr=ordered_arr
+    return arr    
+
+def normal_neural_net(model_arr, config):
+    for i in range(len(config['lambda_net']['lambda_network_layers'])):
+        index = 2*(i)
+        dense_arr = np.transpose(model_arr[index])
+        order = get_order_sum(dense_arr)
+        for j in range(len(model_arr[index])):
+            model_arr[index][j] = sort_array(model_arr[index][j], order)
+        model_arr[index+1] = np.array(sort_array(model_arr[index+1], order))
+        model_arr[index+2] = np.array(sort_array(model_arr[index+2], order))
+    return model_arr
+
+
+#################################################################################################################################################################################### Normalization #################################################################################### 
+
 def split_LambdaNetDataset(dataset, test_split, random_seed=42):
     
     from utilities.LambdaNet import LambdaNetDataset

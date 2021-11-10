@@ -55,7 +55,7 @@ class LambdaNetDataset():
     target_function_list = None
     
     X_test_lambda_array = None
-    y_test_lambda_array = None
+    #y_test_lambda_array = None
     
     def __init__(self, lambda_net_list):
         
@@ -71,7 +71,7 @@ class LambdaNetDataset():
         self.target_function_list = [lambda_net.target_function for lambda_net in lambda_net_list]
       
         self.X_test_lambda_array = np.array([lambda_net.X_test_lambda for lambda_net in lambda_net_list])
-        self.y_test_lambda_array = np.array([lambda_net.y_test_lambda for lambda_net in lambda_net_list])
+        #self.y_test_lambda_array = np.array([lambda_net.y_test_lambda for lambda_net in lambda_net_list])
     
         self.shape = (self.network_parameters_array.shape[0], 1 + 1 + self.network_parameters_array.shape[1] + self.target_function_parameters_array.shape[1])
     
@@ -82,8 +82,6 @@ class LambdaNetDataset():
     
     def __len__(self):
         return len(self.lambda_net_list)
-    
-
         
     def predict(self, X_data, n_jobs=1):  
         y_pred_list = []
@@ -222,9 +220,12 @@ class LambdaNet():
     target_function = None
     
     X_test_lambda = None
-    y_test_lambda = None
+    #y_test_lambda = None
     
-    def __init__(self, line_weights, line_X_data, line_y_data, config):
+    config = None
+    
+    #def __init__(self, line_weights, line_X_data, line_y_data, config):
+    def __init__(self, line_weights, config):
         from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array
         
         assert isinstance(line_weights, np.ndarray), 'line is no array: ' + str(line_weights) 
@@ -244,14 +245,25 @@ class LambdaNet():
         
         self.network_parameters = line_weights[self.function_parameter_size+2:].astype(float)
         
+        if config['i_net']['normalize_lambda_nets']:
+            self.network_parameters = shaped_network_parameters_to_array(normal_neural_net(shape_flat_network_parameters(copy.deepcopy(self.network_parameters), generate_base_model(config).get_weights()), config), config)        
+        
         assert self.network_parameters.shape[0] == self.network_parameter_size, 'weights have incorrect shape ' + str(self.network_parameters.shape[0]) + ' but should be ' + str(self.network_parameter_size)
         
-        assert self.index == line_X_data[0] == line_y_data[0], 'indices do not match: ' + str(self.index) + ', ' + str(line_X_data[0]) + ', ' + str(line_y_data[0])
+        #assert self.index == line_X_data[0] == line_y_data[0], 'indices do not match: ' + str(self.index) + ', ' + str(line_X_data[0]) + ', ' + str(line_y_data[0])
         
-        line_X_data = line_X_data[1:]
-        line_y_data = line_y_data[1:]
-        self.X_test_lambda = np.transpose(np.array([line_X_data[i::self.number_of_variables] for i in range(self.number_of_variables)]))
-        self.y_test_lambda = line_y_data.reshape(-1,1)
+        #line_X_data = line_X_data[1:]
+        #line_y_data = line_y_data[1:]
+        #self.X_test_lambda = np.transpose(np.array([line_X_data[i::self.number_of_variables] for i in range(self.number_of_variables)]))
+        #self.y_test_lambda = line_y_data.reshape(-1,1)
+                
+        data_generation_seed = self.seed + self.index
+        self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
+                                                            high=config['data']['x_max'], 
+                                                            size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                            variables=config['data']['number_of_variables'], 
+                                                            seed=data_generation_seed)          
+        
         
         #self.network = network_parameters_to_network(self.network_parameters, config)           
         #self.target_function = generate_decision_tree_from_array(self.target_function_parameters, config)
@@ -276,6 +288,7 @@ class LambdaNet():
         return y_pred
         
     def predict_test_data(self):
+                
         if self.network is not None:
             y_pred = self.network.predict(self.X_test_lambda)
         else:
@@ -445,8 +458,9 @@ def train_lambda_net(config,
                   'X_valid': X_valid, 
                   'y_valid': y_valid,
                   'y_valid_pred': y_valid_pred,
-                  #'X_test': X_test, 
-                  #'y_test': y_test
+                  'X_test': X_test, 
+                  'y_test': y_test,
+                  'y_test_pred': y_test_pred,
                 }
 
     scores_train = None#evaluate_lambda_net(y_train, y_train_pred, 'TRAIN')
@@ -462,8 +476,8 @@ def train_lambda_net(config,
         directory = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data']
         
         path_weights = directory  + '/' + 'weights' + '.txt' 
-        path_X_data = directory + '/' + 'X_test_lambda' + '.txt'
-        path_y_data = directory + '/' + 'y_test_lambda' + '.txt'
+        #path_X_data = directory + '/' + 'X_test_lambda' + '.txt'
+        #path_y_data = directory + '/' + 'y_test_lambda' + '.txt'
         
         with open(path_weights, 'a') as text_file: 
             text_file.write(str(lambda_index))
@@ -482,22 +496,20 @@ def train_lambda_net(config,
 
             text_file.close()          
 
-        with open(path_X_data, 'a') as text_file: 
-            text_file.write(str(lambda_index))
-            for row in X_test:
-                for value in row:
-                    text_file.write(', ' + str(value))
-            text_file.write('\n')
+        #with open(path_X_data, 'a') as text_file: 
+        #    text_file.write(str(lambda_index))
+        #    for row in X_test:
+        #        for value in row:
+        #            text_file.write(', ' + str(value))
+        #    text_file.write('\n')
+        #    text_file.close()                
 
-            text_file.close()                
-
-        with open(path_y_data, 'a') as text_file: 
-            text_file.write(str(lambda_index))          
-            for value in y_test.flatten():
-                text_file.write(', ' + str(value))
-            text_file.write('\n')
-
-            text_file.close()                    
+        #with open(path_y_data, 'a') as text_file: 
+        #    text_file.write(str(lambda_index))          
+        #    for value in y_test.flatten():
+        #        text_file.write(', ' + str(value))
+        #    text_file.write('\n')
+        #    text_file.close()                    
 
 
             

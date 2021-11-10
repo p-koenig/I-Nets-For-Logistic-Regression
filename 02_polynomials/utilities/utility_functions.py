@@ -927,7 +927,7 @@ def parallel_fv_calculation_from_sympy(function_list, lambda_input_list, n_jobs_
     backend='sequential'            
     lambda_input_list = return_numpy_representation(lambda_input_list)
     
-    assert len(function_list) == lambda_input_list.shape[0]
+    assert len(function_list) == lambda_input_list.shape[0], str(len(function_list)) + '\t' +  str(lambda_input_list.shape[0])
              
     parallel = Parallel(n_jobs=n_jobs_parallel_fv, verbose=1, backend=backend)
     polynomial_true_fv = parallel(delayed(calculate_function_values_from_sympy)(function, lambda_inputs, variable_names=variable_names) for function, lambda_inputs in zip(function_list, lambda_input_list))  
@@ -1842,9 +1842,20 @@ def symbolic_metamodeling(lambda_net,
     if function_metamodeling:    
         start = time.time()
 
-        symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'], verbosity=printing)
-        symbolic_model.approximation_order = d
-        
+        try: 
+            with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
+                symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], n_vars=config['n'])
+                symbolic_model.approximation_order = d
+                
+        except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
+            print(e)
+            print(traceback.print_exc())                   
+                
+            if return_error:
+                return np.nan, None, np.nan
+            else:
+                return None, np.nan
+            
         if return_expression == 'exact':
             metamodel_function = symbolic_model.exact_expression()
             #print(metamodel_function)
@@ -1864,9 +1875,19 @@ def symbolic_metamodeling(lambda_net,
 
         start = time.time()
         
-        metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", approximation_order = d, force_polynomial=force_polynomial, verbosity=printing)
-        metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
-
+        try: 
+            with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
+                metamodel = symbolic_metamodel(model, random_lambda_input_data, mode="regression", approximation_order = d, force_polynomial=force_polynomial)
+                metamodel.fit(num_iter=metamodeling_hyperparams['num_iter'], batch_size=metamodeling_hyperparams['batch_size'], learning_rate=metamodeling_hyperparams['learning_rate'])    
+        except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
+            print(e)
+            print(traceback.print_exc())            
+        
+            if return_error:
+                return np.nan, None, np.nan
+            else:
+                return None, np.nan
+        
 
         if return_expression == 'exact':
             metamodel_function = metamodel.exact_expression
@@ -1926,7 +1947,9 @@ def symbolic_metamodeling_original(lambda_net,
         
         try:
             with timeout(60*max_optimization_minutes, exception=RuntimeError): #in seconds
-                symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], verbosity=printing)
+                symbolic_model, r2_score = get_symbolic_model(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max])
+                symbolic_model.approximation_order = d
+                
         except (RuntimeError, AttributeError, MemoryError, ValueError) as e:
             print(e)
             print(traceback.print_exc())            
@@ -1936,7 +1959,6 @@ def symbolic_metamodeling_original(lambda_net,
             else:
                 return None, np.nan
         
-        symbolic_model.approximation_order = d
         
         if return_expression == 'exact':
             metamodel_function = symbolic_model.exact_expression()

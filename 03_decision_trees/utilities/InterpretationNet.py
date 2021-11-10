@@ -992,7 +992,7 @@ def restructure_data_cnn_lstm(X_data, config, subsequences=None):
 def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_array, 
                                                          dt_inet, 
                                                          X_test_lambda, 
-                                                         y_test_lambda,
+                                                         #y_test_lambda,
                                                          config):
         
     lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)

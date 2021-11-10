@@ -59,7 +59,7 @@ def Optimize(Loss, theta_0):
     return theta_opt, Loss_ 
 
 
-def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None):
+def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None, printing=False):
         
     if data is not None:
         X = data
@@ -76,8 +76,10 @@ def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None)
             loss_ = np.mean((f(X) - G.evaluate(X))**2)
         else:
             loss_ = np.mean((f.predict(X) - G.evaluate(X))**2)
-        print("Expression:", G.expression())
-        print("Loss:", loss_)
+            
+        if printing:
+            print("Expression:", G.expression())
+            print("Loss:", loss_)
         
         return loss_
     
@@ -86,7 +88,7 @@ def symbolic_modeling(f, G_order, theta_0, npoints, xrange, n_vars=1, data=None)
 
     return symbolic_model, Loss_ 
 
-def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
+def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None, printing=False):
 
     hyperparameter_space = load_hyperparameter_config() 
     loss_threshold       = 10e-5
@@ -97,7 +99,7 @@ def get_symbolic_model(f, npoints, xrange, n_vars=1, data=None):
     for k in range(len(hyperparameter_space)):
 
         symbolic_model, Loss_ = symbolic_modeling(f, hyperparameter_space['hyper_'+str(k+1)][1], 
-                                                  hyperparameter_space['hyper_'+str(k+1)][0], npoints, xrange, n_vars)
+                                                  hyperparameter_space['hyper_'+str(k+1)][0], npoints, xrange, n_vars, printing=printing)
 
         symbol_exprs.append(symbolic_model)
         losses_.append(Loss_)

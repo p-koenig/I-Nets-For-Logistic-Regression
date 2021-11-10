@@ -202,7 +202,7 @@ def compose_features(params, X, approximation_order=3):
 class symbolic_metamodel:
     
     def __init__(self, model, X, mode="classification", approximation_order=3, force_polynomial=False, verbosity=False):
-        
+                
         self.verbosity = verbosity
         
         self.feature_expander = PolynomialFeatures(2, include_bias=False, interaction_only=True)
@@ -217,7 +217,7 @@ class symbolic_metamodel:
         
         self.approximation_order = approximation_order
         self.force_polynomial = force_polynomial
-                
+                        
         if mode == "classification": 
         
             self.Y                = model.predict_proba(self.X)[:, 1]

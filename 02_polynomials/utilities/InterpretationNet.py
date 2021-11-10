@@ -1001,11 +1001,19 @@ def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
 
         try:
             print('metamodel_functions_no_GD')
-            variable_names = ['X' + str(i) for i in range(n)]
-            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metametamodel_functions_no_GD'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
+            #variable_names = ['X' + str(i) for i in range(n)] if n > 1 else ['x']
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metametamodel_functions_no_GD'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)
             function_value_dict['metamodel_functions_no_GD'] = function_values#np.nan_to_num(function_values)
         except KeyError as ke:
             print('Exit', KeyError)    
+            
+        try:
+            print('metamodel_functions_no_GD_poly')
+            #variable_names = ['X' + str(i) for i in range(n)] if n > 1 else ['x']
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['metamodel_functions_no_GD_poly'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)
+            function_value_dict['metamodel_functions_no_GD_poly'] = function_values#np.nan_to_num(function_values)
+        except KeyError as ke:
+            print('Exit', KeyError)             
 
         try:
             print('symbolic_regression_functions')
@@ -1226,9 +1234,7 @@ def per_network_poly_generation(lambda_net_dataset, optimization_type='scipy', b
     return per_network_optimization_polynomials
 
 def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
-    
-    print('TIMEOUT')
-    
+        
     printing = True if n_jobs == 1 else False
     
     #backend='multiprocessing'
@@ -1288,7 +1294,7 @@ def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
 
 
 def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):
-        
+                
     printing = True if n_jobs == 1 else False
         
     metamodeling_hyperparams = {
@@ -1332,6 +1338,8 @@ def symbolic_metamodeling_function_generation(lambda_net_dataset, return_express
     parallel_metamodeling = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
 
     return_error = False 
+    
+    force_polynomial = True 
     
     if adjusted_symbolic_metamodeling_code:
     
@@ -1549,7 +1557,7 @@ def plot_and_save_single_polynomial_prediction_evaluation(lambda_net_test_datase
     
     custom_representation_keys_fixed = ['target_polynomials']#['target_polynomials', 'lstsq_target_polynomials', 'lstsq_lambda_pred_polynomials']
     custom_representation_keys_dynamic = ['inet_polynomials']#['inet_polynomials', 'per_network_polynomials']
-    sympy_representation_keys = ['metamodel_functions', 'symbolic_regression_functions']#['metamodel_poly', 'metamodel_functions', 'metamodel_functions_no_GD', 'symbolic_regression_functions']
+    sympy_representation_keys = ['metamodel_functions', 'metamodel_poly', 'symbolic_regression_functions']#['metamodel_poly', 'metamodel_functions', 'metamodel_functions_no_GD', 'symbolic_regression_functions']
     
     #keys = ['target_polynomials', 'lstsq_target_polynomials', 'lstsq_lambda_pred_polynomials', 'inet_polynomials', 'per_network_polynomials', 'metamodel_functions']
     
