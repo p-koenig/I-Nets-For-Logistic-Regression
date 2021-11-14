@@ -215,7 +215,6 @@ def symbolic_regressor(f, npoints, xrange, sparsity, n_vars=1, data=None, printi
     sym_expr = str(est_gp._program)
 
     end = time.time()
-
     time_required = end - start
     
     

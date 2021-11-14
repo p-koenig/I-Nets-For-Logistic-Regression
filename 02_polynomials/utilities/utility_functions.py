@@ -54,6 +54,7 @@ from sympy import Symbol, sympify, lambdify, abc, SympifyError
 
 # Function Generation 0 1 import
 from sympy.sets.sets import Union
+from sympy import Number
 import math
 
 from numba import jit, njit
@@ -62,6 +63,10 @@ import itertools
 from interruptingcow import timeout
 
 import time
+
+from sklearn.linear_model import Lasso
+from sklearn.preprocessing import PolynomialFeatures
+
 
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
@@ -126,6 +131,10 @@ def initialize_utility_functions_config_from_curent_notebook(config):
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
 #######################################################################################################################################################
+
+
+def round_expr(expr, num_digits):
+    return expr.xreplace({n : round(n, num_digits) for n in expr.atoms(Number)})
 
 def nCr(n,r):
     f = math.factorial
@@ -272,6 +281,84 @@ def flatten(l):
             yield from flatten(el)
         else:
             yield el
+
+def shape_flat_network_parameters(flat_network_parameters, target_network_parameters):
+    
+    #from utilities.utility_functions import flatten_list
+    
+    #def recursive_len(item):
+    #    if type(item) == list:
+    #        return sum(recursive_len(subitem) for subitem in item)
+    #    else:
+    #        return 1      
+        
+    shaped_network_parameters =[]
+    start = 0  
+    
+    for parameters in target_network_parameters:
+        target_shape = parameters.shape
+        size = np.prod(target_shape)#recursive_len(el)#len(list(flatten_list(el)))
+        shaped_parameters = np.reshape(flat_network_parameters[start:start+size], target_shape)
+        shaped_network_parameters.append(shaped_parameters)
+        start += size
+
+    return shaped_network_parameters
+
+
+def shaped_network_parameters_to_array(shaped_network_parameters):
+    network_parameter_list = []
+    for layer_weights, biases in pairwise(shaped_network_parameters):    #clf.get_weights()
+        for neuron in layer_weights:
+            for weight in neuron:
+                network_parameter_list.append(weight)
+        for bias in biases:
+            network_parameter_list.append(bias)
+                
+    return np.array(network_parameter_list)
+
+#################################################################################################################################################################################### Normalization #################################################################################### ################################################################################################################################################################################################################
+
+def get_order_sum(arrays):
+    arrays = np.array(arrays)
+    values = [np.sum(arrays[0])]
+    order = [0]
+    for i in range(1, len(arrays)):
+        value = np.sum(arrays[i])
+        pos = 0
+        while pos<len(values) and value>=values[pos]:
+            if value == values[pos]:
+                print("!!!!!!!!!!!!!!!!KOLLISION!!!!!!!!!!!!!!!!!!")
+                print(value)
+                print(arrays[i])
+                print(arrays[order[pos]])
+            pos += 1
+        values.insert(pos, value)
+        order.insert(pos, i)
+    return order
+
+## source for sort_array: https://www.geeksforgeeks.org/permute-the-elements-of-an-array-following-given-order/
+
+def sort_array(arr, order):
+    length = len(order)
+    #ordered_arr = np.zeros(length)
+    ordered_arr = [None] * length
+    for i in range(length):
+        ordered_arr[i] = arr[order[i]]
+    arr=ordered_arr
+    return arr    
+
+def normal_neural_net(model_arr):
+    for i in range(len(lambda_network_layers)):
+        index = 2*(i)
+        dense_arr = np.transpose(model_arr[index])
+        order = get_order_sum(dense_arr)
+        for j in range(len(model_arr[index])):
+            model_arr[index][j] = sort_array(model_arr[index][j], order)
+        model_arr[index+1] = np.array(sort_array(model_arr[index+1], order))
+        model_arr[index+2] = np.array(sort_array(model_arr[index+2], order))
+    return model_arr
+
+
             
             
 def print_polynomial_from_coefficients(coefficient_array, force_complete_poly_representation=False, round_digits=None):
@@ -945,18 +1032,12 @@ def sleep_hours(hours):
     time.sleep(int(60*60*hours))
     
     
-def generate_paths(path_type='interpretation_net'):
+def generate_paths(config=None, path_type='interpretation_net'):
     
-    noise_path = noise  
-    RANDOM_SEED_path = RANDOM_SEED
-    
-    if path_type=='interpretation_net_no_noise':
-        lambda_nets_total_path = 50000#50000
-        noise_path = 0
-        RANDOM_SEED_path = 42
+    if config is not None:
+        locals().update(config)
     
     paths_dict = {}
-    
         
     training_string = '_sameX' if same_training_all_lambda_nets else '_diffX'
         
@@ -976,7 +1057,9 @@ def generate_paths(path_type='interpretation_net'):
                                    #'_xmin_' + str(x_min) + 
                                    #'_xmax_' + str(x_max) + 
                                    '_xdist_' + str(x_distrib) + 
-                                   '_noise_' + str(noise_distrib) + '_' + str(noise_path))
+                                   '_noise_' + str(noise_distrib) + '_' + str(noise) 
+                                   #+ function_generation_type
+                                 )
         
     if shift_polynomial:         
         adjusted_dataset_string = ('bmin' + str(border_min) +
@@ -998,10 +1081,7 @@ def generate_paths(path_type='interpretation_net'):
 
         paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
     
-    if path_type == 'lambda_net' or path_type == 'interpretation_net' or path_type == 'interpretation_net_no_noise': #Lambda-Net
-        
-        if path_type == 'lambda_net' or path_type == 'interpretation_net':
-            lambda_nets_total_path = lambda_nets_total
+    if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
         
         if fixed_seed_lambda_training and fixed_initialization_lambda_training:
             seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
@@ -1018,11 +1098,11 @@ def generate_paths(path_type='interpretation_net'):
         lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
         lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + early_stopping_string + str(batch_lambda) + 'b' + '_' + optimizer_lambda + '_' + loss_lambda
 
-        path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total_path) +
+        path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total) +
                                            lambda_net_identifier + 
                                            '_train_' + str(lambda_dataset_size) + 
                                            training_string + 
-                                           seed_init_string + '_' + str(RANDOM_SEED_path) +
+                                           seed_init_string + '_' + str(RANDOM_SEED) +
                                            '/' +
                                            dataset_description_string[1:] + 
                                            adjusted_dataset_string)        
@@ -1030,7 +1110,7 @@ def generate_paths(path_type='interpretation_net'):
         paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
     
     
-    if path_type == 'interpretation_net' or path_type == 'interpretation_net_no_noise': #Interpretation-Net   
+    if path_type == 'interpretation_net': #Interpretation-Net   
             
         interpretation_network_layers_string = 'dense' + ''.join([str(neurons) + '-' for neurons in dense_layers])
         
@@ -1046,7 +1126,7 @@ def generate_paths(path_type='interpretation_net'):
                                                    lambda_net_identifier + 
                                                    '_train_' + str(lambda_dataset_size) + 
                                                    training_string + 
-                                                   seed_init_string + '_' + str(RANDOM_SEED_path) +
+                                                   seed_init_string + '_' + str(RANDOM_SEED) +
                                                    '/' +
                                                    dataset_description_string[1:] + 
                                                    adjusted_dataset_string)       
@@ -1772,7 +1852,7 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
 
 def symbolic_regression(lambda_net, 
                           config,
-                          metamodeling_hyperparams,
+                          symbolic_regression_hyperparams,
                           printing = True,
                           return_error = False):
 
@@ -1780,18 +1860,16 @@ def symbolic_regression(lambda_net,
         
     globals().update(config) 
     
-    global x_min
     
     if isinstance(lambda_net, tf.keras.Sequential):
         model = lambda_net
     else:
         model = lambda_net.return_model(config=config)
     
-    if x_min == 0:
-        x_min = 1e-5 
+        
     try:
         
-        symbolic_reg, r2_score, time_required   = symbolic_regressor(model, metamodeling_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing, max_optimization_minutes=max_optimization_minutes)
+        symbolic_reg, r2_score, time_required   = symbolic_regressor(model, symbolic_regression_hyperparams['dataset_size'], [x_min, x_max], sample_sparsity, n_vars=config['n'], printing=printing, max_optimization_minutes=max_optimization_minutes)
     except MemoryError as e:
         print(e)
         print(traceback.print_exc())     
@@ -1804,7 +1882,82 @@ def symbolic_regression(lambda_net,
         return r2_score, symbolic_reg, time_required
     
     return symbolic_reg, time_required
+      
+    
+    
+    
+
+def polynomial_regression(lambda_net, 
+                          config,
+                          polynomial_regression_hyperparams,
+                          printing = True,
+                          return_error = False):
+
+    from pysymbolic_adjusted.algorithms.symbolic_expressions import symbolic_regressor
         
+    globals().update(config) 
+    
+    if isinstance(lambda_net, tf.keras.Sequential):
+        model = lambda_net
+    else:
+        model = lambda_net.return_model(config=config)
+    
+    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(polynomial_regression_hyperparams['dataset_size'], max(1, n)))
+    
+    model_preds = model.predict(random_lambda_input_data)
+    time_required = 0
+    start = time.time()
+
+    try:
+        with timeout(60*max_optimization_minutes, exception=RuntimeError):  
+            poly = PolynomialFeatures(degree = d, interaction_only=False, include_bias=False)
+            poly.fit(random_lambda_input_data)
+            random_lambda_input_data_poly = poly.transform(random_lambda_input_data)                
+            
+            clf = Lasso(alpha=0.01,#1.0,
+                        max_iter=1000,
+                         #tol=0.0001, 
+                         random_state=RANDOM_SEED).fit(random_lambda_input_data_poly, model_preds)            
+            
+            
+            
+            variable_identifier_list = [variable_identifier.replace(' ', '*') for variable_identifier in poly.get_feature_names()]
+            
+            coef = ' + '.join([str(np.round(coefficient, 300)) + '*' + variable_identifier for variable_identifier, coefficient in zip(variable_identifier_list, clf.coef_)])
+            intercept = str(np.round(clf.intercept_[0], 300))
+            coef_intercept = coef + ' + ' + intercept
+
+            #logistic_regression_function = '1/(1+exp(-(' + coef_intercept + ')))'
+            polynomial_regression_function_sympy = sympify(coef_intercept)            
+            
+    except (RuntimeError, MemoryError, StateException) as e:
+        print(e)
+        print(traceback.print_exc())
+        
+        if return_error:
+            return np.nan, None, np.nan
+        else:
+            return None, np.nan      
+    
+        end = time.time()
+        time_required = end - start
+        
+    
+        lasso_preds = clf.predict(random_lambda_input_data_poly)
+        r2_score = r2_score(model_preds, lasso_preds)
+        
+        
+
+       
+            
+    if return_error:
+        return r2_score, polynomial_regression_function_sympy, time_required
+    
+    return polynomial_regression_function_sympy, time_required
+
+
+
+
     
 def symbolic_metamodeling(lambda_net, 
                           config,

@@ -187,10 +187,7 @@ def flatten_list(l):
     
 def generate_paths(config, path_type='interpretation_net'):
 
-    paths_dict = {}
-    
-                
-
+    paths_dict = {}    
         
     data_specification_string = ('_var' + str(config['data']['number_of_variables']) +
                                   '_class' + str(config['data']['num_classes']) +

@@ -7,6 +7,7 @@ import itertools
 #import pickle
 import cloudpickle
 import dill 
+from numba import cuda
 
 import traceback
 
@@ -258,6 +259,10 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         loss_function_list = [result[3] for result in results_list]
         metrics_list = [result[4] for result in results_list]
         
+        #cuda.select_device(int(gpu_numbers))
+        #cuda.close()    
+        tf.keras.backend.clear_session()
+    
         print('---------------------------------------------------------------------------------------------------------------------------')
         print('------------------------------------------------------ LOADING MODELS -----------------------------------------------------')
         
@@ -309,6 +314,10 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         
         loss_function_list = [result[3] for result in results_list]
         metrics_list = [result[4] for result in results_list]
+        
+        #cuda.select_device(int(gpu_numbers))
+        #cuda.close()  
+        tf.keras.backend.clear_session()
         
         print('---------------------------------------------------------------------------------------------------------------------------')
         print('------------------------------------------------------ LOADING MODELS -----------------------------------------------------')
@@ -1036,7 +1045,20 @@ def calculate_all_function_values(lambda_net_dataset, polynomial_dict):
             #print(function_value_dict['symbolic_regression_functions'][-2])
 
         except KeyError as ke:
-            print('Exit', KeyError)    
+            print('Exit', KeyError)   
+            
+        try:
+            print('polynomial_regression_functions')
+            variable_names = ['x' + str(i) for i in range(n)]
+            #variable_names[0] = 'x'        
+            function_values = parallel_fv_calculation_from_sympy(polynomial_dict['polynomial_regression_functions'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend, variable_names=variable_names)
+            function_value_dict['polynomial_regression_functions'] = function_values#np.nan_to_num(function_values)
+
+        except KeyError as ke:
+            print('Exit', KeyError)               
+            
+            
+            
         try:
             print('per_network_polynomials')
             function_values = parallel_fv_calculation_from_polynomial(polynomial_dict['per_network_polynomials'], lambda_net_dataset.X_test_data_list, n_jobs_parallel_fv=n_jobs_parallel_fv, backend=backend)        
@@ -1291,6 +1313,67 @@ def symbolic_regression_function_generation(lambda_net_dataset, backend='loky'):
         return symbolic_regression_functions, symbolic_regression_runtimes
     
     return symbolic_regression_errors, symbolic_regression_functions, symbolic_regression_runtimes
+
+
+def polynomial_regression_function_generation(lambda_net_dataset, backend='loky'):
+        
+    printing = True if n_jobs == 1 else False
+    
+    #backend='multiprocessing'
+    
+    polynomial_regression_hyperparams = {
+        'dataset_size': per_network_optimization_dataset_size,
+    }
+    #backend='sequential'
+    
+    config = {
+            'n': n,
+            'd': d,
+            'inet_loss': inet_loss,
+            'sparsity': sparsity,
+            'sample_sparsity': sample_sparsity,
+            'lambda_network_layers': lambda_network_layers,
+            'interpretation_net_output_shape': interpretation_net_output_shape,
+            'RANDOM_SEED': RANDOM_SEED,
+            'nas': nas,
+            'number_of_lambda_weights': number_of_lambda_weights,
+            'interpretation_net_output_monomials': interpretation_net_output_monomials,
+            'fixed_initialization_lambda_training': fixed_initialization_lambda_training,
+            'dropout': dropout,
+            'lambda_network_layers': lambda_network_layers,
+            'optimizer_lambda': optimizer_lambda,
+            'loss_lambda': loss_lambda,        
+             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
+             'x_min': x_min,
+             'x_max': x_max,
+             'sparse_poly_representation_version': sparse_poly_representation_version,
+            'max_optimization_minutes': max_optimization_minutes,
+             }
+
+    parallel_polynomial_regression = Parallel(n_jobs=n_jobs, verbose=11, backend=backend)
+
+    return_error = False
+    
+    result_list_polynomial_regression = parallel_polynomial_regression(delayed(polynomial_regression)(lambda_net, 
+                                                                                  config,
+                                                                                  polynomial_regression_hyperparams,
+                                                                                  printing = printing,
+                                                                                  return_error = return_error) for lambda_net in lambda_net_dataset.lambda_net_list)      
+
+    del parallel_polynomial_regression  
+    
+    if return_error:
+        polynomial_regression_errors = [result[0] for result in result_list_polynomial_regression]
+        polynomial_regression_functions = [result[1] for result in result_list_polynomial_regression]   
+        polynomial_regression_runtimes = [result[2] for result in result_list_polynomial_regression]   
+    else:
+        polynomial_regression_functions = [result[0] for result in result_list_polynomial_regression]   
+        polynomial_regression_runtimes = [result[1] for result in result_list_polynomial_regression] 
+        
+        return polynomial_regression_functions, polynomial_regression_runtimes
+    
+    return polynomial_regression_errors, polynomial_regression_functions, polynomial_regression_runtimes
+
 
 
 def symbolic_metamodeling_function_generation(lambda_net_dataset, return_expression='approx', function_metamodeling=True, force_polynomial=False, backend='loky'):

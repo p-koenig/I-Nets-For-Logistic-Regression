@@ -36,6 +36,8 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 from utilities.metrics import *
 from utilities.utility_functions import *
 
+import copy
+
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
 #######################################################################################################################################################
@@ -276,6 +278,8 @@ class LambdaNet():
     def __init__(self, line_weights, line_X_data, line_y_data):
         assert isinstance(line_weights, np.ndarray), 'line is no array: ' + str(line_weights) 
         
+        from utilities.utility_functions import shaped_network_parameters_to_array, normal_neural_net, shape_flat_network_parameters, generate_base_model
+        
         self.index = int(line_weights[0])
         try:
             self.train_settings = {'seed': int(line_weights[1])}
@@ -297,7 +301,19 @@ class LambdaNet():
         line_y_data = line_y_data[1:]
         self.X_test_data = np.transpose(np.array([line_X_data[i::n] for i in range(n)]))
         self.y_test_data = line_y_data.reshape(-1,1)
+                
+        if normalize_lambda_nets:
+            if self.index == 1:
+                print('NORMALIZE PRE')
+                print(self.weights)
+                print(weights_to_pred(self.weights, self.X_test_data[:5]))
+            self.weights = shaped_network_parameters_to_array(normal_neural_net(shape_flat_network_parameters(copy.deepcopy(self.weights), generate_base_model().get_weights())))            
+            if self.index == 1:
+                print('NORMALIZE AFTER')
+                print(self.weights)    
+                print(weights_to_pred(self.weights, self.X_test_data[:5]))
         
+
     def __repr__(self):
         return str(self.weights)
     def __str__(self):
@@ -405,7 +421,9 @@ def split_LambdaNetDataset(dataset, test_split, random_seed='RANDOM_SEED'):
     
     lambda_nets_list = dataset.lambda_net_list
     
-    if isinstance(test_split, int) or isinstance(test_split, float):
+    if len(lambda_nets_list) == test_split:
+        return None, dataset
+    elif isinstance(test_split, int) or isinstance(test_split, float):
         lambda_nets_train_list, lambda_nets_test_list = train_test_split(lambda_nets_list, test_size=test_split, random_state=random_seed)     
     elif isinstance(test_split, list):
         lambda_nets_test_list = [lambda_nets_list[i] for i in test_split]
@@ -536,7 +554,6 @@ def train_nn(lambda_index,
              printing=False, 
              return_model=False):
     
-    
     from utilities.utility_functions import generate_paths, calculate_function_values_from_polynomial, pairwise
     
     global loss_lambda
@@ -626,6 +643,12 @@ def train_nn(lambda_index,
 
     
     terms_matrix_train = generate_term_matric_for_lstsq(X_train_lambda, list_of_monomial_identifiers)
+        
+
+    #y_train_real_lambda = y_train_real_lambda.astype(float)  
+    #y_valid_real_lambda = y_valid_real_lambda.astype(float)
+    #y_test_real_lambda = y_test_real_lambda.astype(float)
+
         
     if each_epochs_save == None or each_epochs_save==epochs_lambda:
         
