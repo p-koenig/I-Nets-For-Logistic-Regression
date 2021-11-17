@@ -677,6 +677,7 @@ def train_nn(lambda_index,
         polynomial_lstsq_pred_list.append(polynomial_lstsq_pred)
         polynomial_lstsq_true_list.append(polynomial_lstsq_true)
         
+        
         y_train_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_train_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
         y_train_real_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_true, X_train_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)
         y_valid_pred_lambda_poly_lstsq = calculate_function_values_from_polynomial(polynomial_lstsq_pred, X_valid_lambda, force_complete_poly_representation=True, list_of_monomial_identifiers=list_of_monomial_identifiers)

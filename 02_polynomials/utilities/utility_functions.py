@@ -1035,104 +1035,205 @@ def sleep_hours(hours):
 def generate_paths(config=None, path_type='interpretation_net'):
     
     if config is not None:
-        locals().update(config)
-    
-    paths_dict = {}
-        
-    training_string = '_sameX' if same_training_all_lambda_nets else '_diffX'
-        
-    laurent_str = '_laurent' if laurent else ''
-    monomial_vars_str = '_monvars_' + str(monomial_vars) if monomial_vars != None else ''
-    neg_d_str = '_negd_' + str(neg_d) + '_prob_' + str(neg_d_prob) if neg_d != None else ''
 
+        paths_dict = {}
         
-    dataset_description_string = ('_var_' + str(n) + 
-                                  '_d_' + str(d) + 
-                                   laurent_str + 
-                                   monomial_vars_str + 
-                                   neg_d_str + 
-                                   '_spars_' + str(sample_sparsity) + 
-                                   '_amin_' + str(a_min) + 
-                                   '_amax_' + str(a_max) + 
-                                   #'_xmin_' + str(x_min) + 
-                                   #'_xmax_' + str(x_max) + 
-                                   '_xdist_' + str(x_distrib) + 
-                                   '_noise_' + str(noise_distrib) + '_' + str(noise) 
-                                   #+ function_generation_type
-                                 )
+        training_string = '_sameX' if config['data']['same_training_all_lambda_nets'] else '_diffX'
+
+        laurent_str = '_laurent' if config['data']['laurent'] else ''
+        monomial_vars_str = '_monvars_' + str(config['data']['monomial_vars']) if config['data']['monomial_vars'] != None else ''
+        neg_d_str = '_negd_' + str(config['data']['neg_d']) + '_prob_' + str(config['data']['neg_d_prob']) if config['data']['neg_d'] != None else ''
+
+
+        dataset_description_string = ('_var_' + str(config['data']['n']) + 
+                                      '_d_' + str(config['data']['d']) + 
+                                       laurent_str + 
+                                       monomial_vars_str + 
+                                       neg_d_str + 
+                                       '_spars_' + str(config['data']['sample_sparsity']) + 
+                                       '_amin_' + str(config['data']['a_min']) + 
+                                       '_amax_' + str(config['data']['a_max']) + 
+                                       #'_xmin_' + str(x_min) + 
+                                       #'_xmax_' + str(x_max) + 
+                                       '_xdist_' + str(config['data']['x_distrib']) + 
+                                       '_noise_' + str(config['data']['noise_distrib']) + '_' + str(config['data']['noise']) 
+                                       + '_' + config['data']['function_generation_type']
+                                     )
+
+        if config['data']['shift_polynomial']:         
+            adjusted_dataset_string = ('bmin' + str(config['data']['border_min']) +
+                                        'bmax' + str(config['data']['border_max']) +
+                                        'lowd' + str(config['data']['lower_degree_prob']) +
+                                        'arand' + str(config['data']['a_random_prob']))
+        else:
+            adjusted_dataset_string = ''
+
+
+
+        if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
+
+            path_identifier_polynomial_data = ('poly_' + str(config['data']['polynomial_data_size']) + 
+                                               '_train_' + str(config['lambda_net']['lambda_dataset_size']) + 
+                                               dataset_description_string + 
+                                               adjusted_dataset_string +
+                                               training_string)            
+
+            paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
+
+        if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
+
+            if config['data']['fixed_seed_lambda_training'] and config['data']['fixed_initialization_lambda_training']:
+                seed_init_string = '_' + str(config['data']['number_different_lambda_trainings']) + '-FixSeedInit'
+            elif config['data']['fixed_seed_lambda_training'] and not config['data']['fixed_initialization_lambda_training']:
+                seed_init_string = '_' + str(config['data']['number_different_lambda_trainings']) + '-FixSeed'
+            elif not config['data']['fixed_seed_lambda_training'] and config['data']['fixed_initialization_lambda_training']:
+                seed_init_string = '_' + str(config['data']['number_different_lambda_trainings']) + '-FixInit'
+            elif not config['data']['fixed_seed_lambda_training'] and not config['data']['fixed_initialization_lambda_training']:            
+                seed_init_string = '_NoFixSeedInit'
+
+
+            early_stopping_string = '_ES' + str(config['lambda_net']['early_stopping_min_delta_lambda']) + '_' if config['lambda_net']['early_stopping_lambda'] else ''
+
+            lambda_layer_str = ''.join([str(neurons) + '-' for neurons in config['lambda_net']['lambda_network_layers']])
+            lambda_net_identifier = '_' + lambda_layer_str + str(config['lambda_net']['epochs_lambda']) + 'e' + early_stopping_string + str(config['lambda_net']['batch_lambda']) + 'b' + '_' + config['lambda_net']['optimizer_lambda'] + '_' + config['lambda_net']['loss_lambda']
+
+            path_identifier_lambda_net_data = ('lnets_' + str(config['data']['lambda_nets_total']) +
+                                               lambda_net_identifier + 
+                                               '_train_' + str(lambda_dataset_size) + 
+                                               training_string + 
+                                               seed_init_string + '_' + str(config['computation']['RANDOM_SEED']) +
+                                               '/' +
+                                               dataset_description_string[1:] + 
+                                               adjusted_dataset_string)        
+
+            paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
+
+
+        if path_type == 'interpretation_net': #Interpretation-Net   
+
+            interpretation_network_layers_string = 'dense' + ''.join([str(neurons) + '-' for neurons in config['i_net']['dense_layers']])
+
+            if config['i_net']['convolution_layers'] != None:
+                interpretation_network_layers_string += 'conv' + str(config['i_net']['convolution_layers'])
+            if config['i_net']['lstm_layers'] != None:
+                interpretation_network_layers_string += 'lstm' + str(config['i_net']['lstm_layers'])
+
+            interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(config['i_net']['interpretation_net_output_shape']) + '_drop' + str(config['i_net']['dropout']) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer']
+
+            path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier +
+                                                       '/lnets_' + str(config['i_net']['interpretation_dataset_size']) +
+                                                       lambda_net_identifier + 
+                                                       '_train_' + str(config['lambda_net']['lambda_dataset_size']) + 
+                                                       training_string + 
+                                                       seed_init_string + '_' + str(config['computation']['RANDOM_SEED']) +
+                                                       '/' +
+                                                       dataset_description_string[1:] + 
+                                                       adjusted_dataset_string)       
+
+
+            paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
+            
         
-    if shift_polynomial:         
-        adjusted_dataset_string = ('bmin' + str(border_min) +
-                                    'bmax' + str(border_max) +
-                                    'lowd' + str(lower_degree_prob) +
-                                    'arand' + str(a_random_prob))
+        
+        
     else:
-        adjusted_dataset_string = ''
-        
-        
 
-    if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
-  
-        path_identifier_polynomial_data = ('poly_' + str(polynomial_data_size) + 
-                                           '_train_' + str(lambda_dataset_size) + 
-                                           dataset_description_string + 
-                                           adjusted_dataset_string +
-                                           training_string)            
+        paths_dict = {}
 
-        paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
-    
-    if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
-        
-        if fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
-        elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
-            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
-        elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
-            seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
-        elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
-            seed_init_string = '_NoFixSeedInit'
+        training_string = '_sameX' if same_training_all_lambda_nets else '_diffX'
 
-            
-        early_stopping_string = '_ES' + str(early_stopping_min_delta_lambda) + '_' if early_stopping_lambda else ''
-            
-        lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
-        lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + early_stopping_string + str(batch_lambda) + 'b' + '_' + optimizer_lambda + '_' + loss_lambda
+        laurent_str = '_laurent' if laurent else ''
+        monomial_vars_str = '_monvars_' + str(monomial_vars) if monomial_vars != None else ''
+        neg_d_str = '_negd_' + str(neg_d) + '_prob_' + str(neg_d_prob) if neg_d != None else ''
 
-        path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total) +
-                                           lambda_net_identifier + 
-                                           '_train_' + str(lambda_dataset_size) + 
-                                           training_string + 
-                                           seed_init_string + '_' + str(RANDOM_SEED) +
-                                           '/' +
-                                           dataset_description_string[1:] + 
-                                           adjusted_dataset_string)        
 
-        paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
-    
-    
-    if path_type == 'interpretation_net': #Interpretation-Net   
-            
-        interpretation_network_layers_string = 'dense' + ''.join([str(neurons) + '-' for neurons in dense_layers])
-        
-        if convolution_layers != None:
-            interpretation_network_layers_string += 'conv' + str(convolution_layers)
-        if lstm_layers != None:
-            interpretation_network_layers_string += 'lstm' + str(lstm_layers)
+        dataset_description_string = ('_var_' + str(n) + 
+                                      '_d_' + str(d) + 
+                                       laurent_str + 
+                                       monomial_vars_str + 
+                                       neg_d_str + 
+                                       '_spars_' + str(sample_sparsity) + 
+                                       '_amin_' + str(a_min) + 
+                                       '_amax_' + str(a_max) + 
+                                       #'_xmin_' + str(x_min) + 
+                                       #'_xmax_' + str(x_max) + 
+                                       '_xdist_' + str(x_distrib) + 
+                                       '_noise_' + str(noise_distrib) + '_' + str(noise) 
+                                       + '_' + function_generation_type
+                                     )
 
-        interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(interpretation_net_output_shape) + '_drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + optimizer
-        
-        path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier +
-                                                   '/lnets_' + str(interpretation_dataset_size) +
-                                                   lambda_net_identifier + 
-                                                   '_train_' + str(lambda_dataset_size) + 
-                                                   training_string + 
-                                                   seed_init_string + '_' + str(RANDOM_SEED) +
-                                                   '/' +
-                                                   dataset_description_string[1:] + 
-                                                   adjusted_dataset_string)       
-        
-        
-        paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
+        if shift_polynomial:         
+            adjusted_dataset_string = ('bmin' + str(border_min) +
+                                        'bmax' + str(border_max) +
+                                        'lowd' + str(lower_degree_prob) +
+                                        'arand' + str(a_random_prob))
+        else:
+            adjusted_dataset_string = ''
+
+
+
+        if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
+
+            path_identifier_polynomial_data = ('poly_' + str(polynomial_data_size) + 
+                                               '_train_' + str(lambda_dataset_size) + 
+                                               dataset_description_string + 
+                                               adjusted_dataset_string +
+                                               training_string)            
+
+            paths_dict['path_identifier_polynomial_data'] = path_identifier_polynomial_data
+
+        if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
+
+            if fixed_seed_lambda_training and fixed_initialization_lambda_training:
+                seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeedInit'
+            elif fixed_seed_lambda_training and not fixed_initialization_lambda_training:
+                seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixSeed'
+            elif not fixed_seed_lambda_training and fixed_initialization_lambda_training:
+                seed_init_string = '_' + str(number_different_lambda_trainings) + '-FixInit'
+            elif not fixed_seed_lambda_training and not fixed_initialization_lambda_training:            
+                seed_init_string = '_NoFixSeedInit'
+
+
+            early_stopping_string = '_ES' + str(early_stopping_min_delta_lambda) + '_' if early_stopping_lambda else ''
+
+            lambda_layer_str = ''.join([str(neurons) + '-' for neurons in lambda_network_layers])
+            lambda_net_identifier = '_' + lambda_layer_str + str(epochs_lambda) + 'e' + early_stopping_string + str(batch_lambda) + 'b' + '_' + optimizer_lambda + '_' + loss_lambda
+
+            path_identifier_lambda_net_data = ('lnets_' + str(lambda_nets_total) +
+                                               lambda_net_identifier + 
+                                               '_train_' + str(lambda_dataset_size) + 
+                                               training_string + 
+                                               seed_init_string + '_' + str(RANDOM_SEED) +
+                                               '/' +
+                                               dataset_description_string[1:] + 
+                                               adjusted_dataset_string)        
+
+            paths_dict['path_identifier_lambda_net_data'] = path_identifier_lambda_net_data
+
+
+        if path_type == 'interpretation_net': #Interpretation-Net   
+
+            interpretation_network_layers_string = 'dense' + ''.join([str(neurons) + '-' for neurons in dense_layers])
+
+            if convolution_layers != None:
+                interpretation_network_layers_string += 'conv' + str(convolution_layers)
+            if lstm_layers != None:
+                interpretation_network_layers_string += 'lstm' + str(lstm_layers)
+
+            interpretation_net_identifier = '_' + interpretation_network_layers_string + 'output_' + str(interpretation_net_output_shape) + '_drop' + str(dropout) + 'e' + str(epochs) + 'b' + str(batch_size) + '_' + optimizer
+
+            path_identifier_interpretation_net_data = ('inet' + interpretation_net_identifier +
+                                                       '/lnets_' + str(interpretation_dataset_size) +
+                                                       lambda_net_identifier + 
+                                                       '_train_' + str(lambda_dataset_size) + 
+                                                       training_string + 
+                                                       seed_init_string + '_' + str(RANDOM_SEED) +
+                                                       '/' +
+                                                       dataset_description_string[1:] + 
+                                                       adjusted_dataset_string)       
+
+
+            paths_dict['path_identifier_interpretation_net_data'] = path_identifier_interpretation_net_data
         
     return paths_dict
     
@@ -1150,7 +1251,7 @@ def create_folders_inet():
 
 def generate_directory_structure():
     
-    directory_names = ['parameters', 'plotting', 'saved_polynomial_lists', 'results', 'saved_models', 'weights', 'weights_training']
+    directory_names = ['plotting', 'saved_polynomial_lists', 'results', 'saved_models', 'weights']
     if not os.path.exists('./data'):
         os.makedirs('./data')
         
@@ -1417,86 +1518,93 @@ def calculate_monomial_without_coefficient_tf_wrapper(evaluation_entry):
 
 
 
-def gen_regression_symbolic(polynomial_array=None,n_samples=100,noise=0.0, noise_dist='normal', seed=42, sympy_calculation=True):
-    """
-    Generates regression sample based on a symbolic expression. Calculates the output of the symbolic expression 
-    at randomly generated (drawn from a Gaussian distribution) points
-    m: The symbolic expression. Needs x1, x2, etc as variables and regular python arithmatic symbols to be used.
-    n_samples: Number of samples to be generated
-    n_features: Number of variables. This is automatically inferred from the symbolic expression. So this is ignored 
-                in case a symbolic expression is supplied. However if no symbolic expression is supplied then a 
-                default simple polynomial can be invoked to generate regression samples with n_features.
-    noise: Magnitude of Gaussian noise to be introduced (added to the output).
-    noise_dist: Type of the probability distribution of the noise signal. 
-    Currently supports: Normal, Uniform, t, Beta, Gamma, Poission, Laplace
-
-    Returns a numpy ndarray with dimension (n_samples,n_features+1). Last column is the response vector.
-    """
+def gen_regression_symbolic(polynomial_array=None,
+                            n_samples=100,
+                            noise=0.0, 
+                            noise_dist='normal', 
+                            seed=42, 
+                            sympy_calculation=True):
+    
+    from sklearn.datasets import make_friedman1, make_friedman2, make_friedman3
+    from sklearn.preprocessing import MinMaxScaler    
         
     np.random.seed(seed)
-                
-    if polynomial_array is not None:
-        sympy_string = get_sympy_string_from_coefficients(polynomial_array)
-        sympy_function=sympify(sympy_string)
+    random.seed(seed)
         
-    if polynomial_array is None:
-        sympy_function=''
-        for i in range(1,n_features+1):
-            c='x'+str(i)
-            c+=np.random.choice(['+','-'],p=[0.5,0.5])
-            sympy_function+=c
-        sympy_function=sympy_function[:-1]
-        
-    n_features=len(sympy_function.atoms(Symbol))
-        
-    eval_results=[]
-    
-    eval_dataset = generate_random_data_points(low=x_min, high=x_max, size=n_samples, variables=max(1, n), distrib=x_distrib)
-    
-    
-    config = {'list_of_monomial_identifiers': list_of_monomial_identifiers, 
-              'interpretation_net_output_monomials': interpretation_net_output_monomials}
-    
-    if sympy_calculation:
-        for i in range(n_samples):
-            eval_results.append(eval_multinomial(sympy_string, vals=list(eval_dataset[i])))
-    elif not sympy_calculation and polynomial_array is not None:
-        config = {
-             'n': n,
-             #'inet_loss': inet_loss,
-             'sparsity': sparsity,
-             #'lambda_network_layers': lambda_network_layers,
-             #'interpretation_net_output_shape': interpretation_net_output_shape,
-             'RANDOM_SEED': RANDOM_SEED,
-             #'nas': nas,
-             #'number_of_lambda_weights': number_of_lambda_weights,
-             'interpretation_net_output_monomials': interpretation_net_output_monomials,
-             #'list_of_monomial_identifiers': list_of_monomial_identifiers,
-             'x_min': x_min,
-             'x_max': x_max,
-             }
-        
-    try:
-        config['interpretation_net_output_monomials'] = interpretation_net_output_monomials
-    except:
-        config['interpretation_net_output_monomials'] = None        
-        
-    eval_results = calculate_poly_fv_tf_wrapper_new(return_float_tensor_representation(list_of_monomial_identifiers), return_float_tensor_representation(polynomial_array), return_float_tensor_representation(eval_dataset), force_complete_poly_representation=True, config=config)
+    if function_generation_type == 'polynomial':
 
+        if polynomial_array is not None:
+            sympy_string = get_sympy_string_from_coefficients(polynomial_array)
+            sympy_function=sympify(sympy_string)
+
+        if polynomial_array is None:
+            sympy_function=''
+            for i in range(1,n_features+1):
+                c='x'+str(i)
+                c+=np.random.choice(['+','-'],p=[0.5,0.5])
+                sympy_function+=c
+            sympy_function=sympy_function[:-1]
+
+        n_features=len(sympy_function.atoms(Symbol))
+
+        eval_results=[]
+
+        eval_dataset = generate_random_data_points(low=x_min, high=x_max, size=n_samples, variables=max(1, n), distrib=x_distrib)
+
+
+        config = {'list_of_monomial_identifiers': list_of_monomial_identifiers, 
+                  'interpretation_net_output_monomials': interpretation_net_output_monomials}
+
+        if sympy_calculation:
+            for i in range(n_samples):
+                eval_results.append(eval_multinomial(sympy_string, vals=list(eval_dataset[i])))
+        elif not sympy_calculation and polynomial_array is not None:
+            config = {
+                 'n': n,
+                 #'inet_loss': inet_loss,
+                 'sparsity': sparsity,
+                 #'lambda_network_layers': lambda_network_layers,
+                 #'interpretation_net_output_shape': interpretation_net_output_shape,
+                 'RANDOM_SEED': RANDOM_SEED,
+                 #'nas': nas,
+                 #'number_of_lambda_weights': number_of_lambda_weights,
+                 'interpretation_net_output_monomials': interpretation_net_output_monomials,
+                 #'list_of_monomial_identifiers': list_of_monomial_identifiers,
+                 'x_min': x_min,
+                 'x_max': x_max,
+                 }
+
+        try:
+            config['interpretation_net_output_monomials'] = interpretation_net_output_monomials
+        except:
+            config['interpretation_net_output_monomials'] = None        
+
+        eval_results = calculate_poly_fv_tf_wrapper_new(return_float_tensor_representation(list_of_monomial_identifiers), return_float_tensor_representation(polynomial_array), return_float_tensor_representation(eval_dataset), force_complete_poly_representation=True, config=config)
+
+
+
+        eval_results=np.array(eval_results)
+        eval_results=eval_results.reshape(n_samples,1)
+
+        if noise_dist=='normal':
+            noise_sample=noise*np.random.normal(loc=0, scale=np.max(eval_results)-np.min(eval_results),size=n_samples)
+        elif noise_dist=='uniform':
+            noise_sample=noise*np.random.uniform(low=-(np.max(eval_results)-np.min(eval_results)), high=np.max(eval_results)-np.min(eval_results),size=n_samples)
+
+        noise_sample=noise_sample.reshape(n_samples,1)
+
+        eval_results=eval_results+noise_sample
         
+    elif function_generation_type == 'friedman1':
         
-    eval_results=np.array(eval_results)
-    eval_results=eval_results.reshape(n_samples,1)
-    
-    if noise_dist=='normal':
-        noise_sample=noise*np.random.normal(loc=0, scale=np.max(eval_results)-np.min(eval_results),size=n_samples)
-    elif noise_dist=='uniform':
-        noise_sample=noise*np.random.uniform(low=-(np.max(eval_results)-np.min(eval_results)), high=np.max(eval_results)-np.min(eval_results),size=n_samples)
-        
-    noise_sample=noise_sample.reshape(n_samples,1)
-    
-    eval_results=eval_results+noise_sample
-        
+        eval_dataset, eval_results = make_friedman1(n_samples=n_samples, 
+                                                    n_features=n, 
+                                                    noise=noise, 
+                                                    random_state=seed)
+
+        if True:
+            eval_results = MinMaxScaler(feature_range=(0, random.uniform(1, sample_sparsity*a_max))).fit_transform(eval_results.reshape(-1, 1))        
+                  
     
     return polynomial_array, eval_dataset, eval_results
 

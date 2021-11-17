@@ -241,7 +241,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         if train_model:
             history_list = [result[0] for result in results_list]
         else:
-            paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
+            paths_dict = generate_paths(path_type = 'interpretation_net')
 
             path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_epochs' + '.pkl'
             with open(path, 'rb') as f:
@@ -297,7 +297,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
         if train_model:
             history_list = [result[0] for result in results_list]
         else:
-            paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
+            paths_dict = generate_paths(path_type = 'interpretation_net')
 
             path = './data/results/' + paths_dict['path_identifier_interpretation_net_data'] + '/history_samples' + '.pkl'
             with open(path, 'rb') as f:
@@ -369,7 +369,7 @@ def interpretation_net_training(lambda_net_train_dataset_list,
 def load_inets(identifier_type, path_identifier_list, loss_function_list, metrics_list):
     
     
-    paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
+    paths_dict = generate_paths(path_type = 'interpretation_net')
 
     generic_path_identifier = str(data_reshape_version) + '_' + paths_dict['path_identifier_interpretation_net_data']
     if nas:
@@ -656,7 +656,7 @@ def train_inet(lambda_net_train_dataset,
     global loss
     global data_reshape_version
     
-    paths_dict = generate_paths(path_type = 'interpretation_net_no_noise')
+    paths_dict = generate_paths(path_type = 'interpretation_net')
     
     ############################## DATA PREPARATION ###############################
     
