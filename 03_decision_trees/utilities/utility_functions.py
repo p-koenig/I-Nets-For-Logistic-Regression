@@ -740,6 +740,8 @@ def generate_data_random_decision_tree_trained(config, seed=42):
 
     X_data = generate_random_data_points(config, seed)
 
+    np.random.seed(seed)
+    random.seed(seed)
     y_data_tree = np.random.randint(0,2,X_data.shape[0])
         
     if config['function_family']['dt_type'] == 'SDT':    
@@ -866,12 +868,17 @@ def generate_data_make_classification(config, seed=42):
                                                        random_state=seed) 
     
     scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
-    X_data = scaler.fit_transform(X_data)        
-        
-    placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
+    X_data = scaler.fit_transform(X_data)                
+    
+    function_representation_length = ( 
+       ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']  if config['function_family']['dt_type'] == 'SDT'
+  else ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth']) if config['function_family']['dt_type'] == 'vanilla'
+  else None
+                                                            ) 
+    
+    placeholder = [0 for i in range(function_representation_length)]
         
     return placeholder, X_data, np.round(y_data), y_data 
-
 
 
 
@@ -885,11 +892,13 @@ def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer
     splits = splits.numpy()
     leaf_classes = leaf_classes.numpy()
     
+    
     if normalizer_list is not None: 
         transpose = splits.transpose()
         transpose_normalized = []
         for i, column in enumerate(transpose):
-            column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
+            column_new = column
+            column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()
             transpose_normalized.append(column_new)
         splits = np.array(transpose_normalized).transpose()
 

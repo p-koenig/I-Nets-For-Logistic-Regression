@@ -267,7 +267,8 @@ def train_inet(lambda_net_train_dataset,
     loss_function = None
     
     if config['i_net']['function_value_loss']:
-        metrics.append(tf.keras.losses.get('mae'))
+        if config['i_net']['function_representation_type'] == 1:
+            metrics.append(tf.keras.losses.get('mae'))
         if config['i_net']['optimize_decision_function']:
             loss_function = inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config)
             metrics.append(inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config))
@@ -298,7 +299,7 @@ def train_inet(lambda_net_train_dataset,
         valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
               
     loss_function = inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config)
-    metrics = [inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, 'binary_accuracy')]
+    metrics = [inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, 'binary_crossentropy'), inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, 'mae'), inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, random_model, network_parameters_structure, config, 'binary_accuracy')]
         
     ############################## BUILD MODEL ###############################
     if not config['computation']['load_model']:
@@ -450,7 +451,18 @@ def train_inet(lambda_net_train_dataset,
 
                     
             if config['i_net']['function_representation_type'] == 1:
-                outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], name='output_' + str(config['function_family']['function_representation_length']))(hidden)
+                if config['function_family']['dt_type'] == 'SDT':
+                    outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], name='output_' + str(config['function_family']['function_representation_length']))(hidden)
+                elif config['function_family']['dt_type'] == 'vanilla':
+                    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
+                    
+                    outputs_coeff = tf.keras.layers.Dense(internal_node_num_ * config['function_family']['decision_sparsity'], activation='sigmoid', name='outputs_coeff_' + str(internal_node_num_ * config['function_family']['decision_sparsity']))(hidden)        
+                    outputs_index = tf.keras.layers.Dense(internal_node_num_ * config['function_family']['decision_sparsity'], activation='linear', name='outputs_index_' + str(internal_node_num_ * config['function_family']['decision_sparsity']))(hidden)      
+                    outputs_leaf = tf.keras.layers.Dense(leaf_node_num_, activation='sigmoid', name='outputs_leaf_' + str(leaf_node_num_))(hidden) 
+                    
+                    outputs = concatenate([outputs_coeff, outputs_index, outputs_leaf], name='output_combined')
+                    
             elif config['i_net']['function_representation_type'] == 2:
                 if config['function_family']['dt_type'] == 'SDT':
 
