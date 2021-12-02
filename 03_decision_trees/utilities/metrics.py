@@ -35,6 +35,7 @@ from utilities.LambdaNet import *
 from utilities.utility_functions import *
 from utilities.DecisionTree_BASIC import *
 
+import copy
 
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
@@ -86,33 +87,36 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
  
     def inet_target_function_fv_loss(function_true_with_network_parameters, function_pred):    
-        
-        #network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
+                
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
-        #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
+        network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
-        #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)         
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
+        config_target = copy.deepcopy(config)
+        config_target['i_net']['function_representation_type'] = 1
+        
         if config['function_family']['dt_type'] == 'SDT':
             if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)       
+                function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)       
             else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))    
+                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32))    
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         elif config['function_family']['dt_type'] == 'vanilla':
             if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)        
+                function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)        
             else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)) 
+                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)) 
             
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
@@ -147,7 +151,7 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
 
 def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lambda_placeholder, network_parameters_structure, config):
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
-    
+        
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):    
         network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
@@ -161,7 +165,7 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
-        
+                
         assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)  
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
@@ -211,14 +215,13 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
 
 
 
-
 def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder):
     
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
     
-    @tf.function(experimental_compile=True)
+    @tf.function(jit_compile=True)
     def calculate_function_value_from_lambda_net_parameters(network_parameters):
-
+        
         #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
         # build models
         start = 0
@@ -242,6 +245,51 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
         return lambda_fv
     return calculate_function_value_from_lambda_net_parameters
 
+def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
+        
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
+        
+    maximum_depth = config['function_family']['maximum_depth']
+    leaf_node_num_ = 2 ** maximum_depth
+    
+    @tf.function(jit_compile=True)
+    def calculate_function_value_from_decision_tree_parameters(function_array):
+        
+        from utilities.utility_functions import get_shaped_parameters_for_decision_tree
+        
+        weights, biases, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+        
+        function_values_sdt = tf.vectorized_map(calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth), random_evaluation_dataset)
+        
+        return function_values_sdt
+    return calculate_function_value_from_decision_tree_parameters
+
+
+
+def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
+                
+    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
+    
+    maximum_depth = config['function_family']['maximum_depth']
+    leaf_node_num_ = 2 ** maximum_depth
+    internal_node_num_ = 2 ** maximum_depth - 1
+
+    @tf.function(jit_compile=True)
+    def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
+                            
+        from utilities.utility_functions import get_shaped_parameters_for_decision_tree
+            
+        #tf.print('function_array', function_array)
+        weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+        #tf.print('weights', weights)
+        #tf.print('leaf_probabilities', leaf_probabilities)
+        
+        function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
+        #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
+        
+        
+        return function_values_vanilla_dt
+    return calculate_function_value_from_vanilla_decision_tree_parameters
 
 def calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth):
     
@@ -249,6 +297,7 @@ def calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(
     biases = tf.cast(biases, tf.float32)
     leaf_probabilities = tf.cast(leaf_probabilities, tf.float32)   
     
+    #@tf.function(experimental_compile=True)
     def calculate_function_value_from_decision_tree_parameter_single_sample(evaluation_entry):
         
         evaluation_entry = tf.cast(evaluation_entry, tf.float32)
@@ -281,67 +330,21 @@ def calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(
         _mu = tf.where(cond, _mu, tf.zeros_like(_mu))
         #tf.print(_mu)
 
-        y_pred = tf.reduce_max(_mu * leaf_probabilities, axis=1)
+        y_pred = tf.reduce_sum(_mu * leaf_probabilities, axis=1)
         #tf.print(y_pred)
         y_pred = tf.nn.softmax(y_pred)[1]
         
         return y_pred
     
     return calculate_function_value_from_decision_tree_parameter_single_sample
- 
-
-def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
-        
-    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
-        
-    maximum_depth = config['function_family']['maximum_depth']
-    leaf_node_num_ = 2 ** maximum_depth
-    
-    @tf.function(experimental_compile=True)
-    def calculate_function_value_from_decision_tree_parameters(function_array):
-        
-        from utilities.utility_functions import get_shaped_parameters_for_decision_tree
-        
-        weights, biases, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
-        
-        function_values_sdt = tf.vectorized_map(calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth), random_evaluation_dataset)
-        
-        return function_values_sdt
-    return calculate_function_value_from_decision_tree_parameters
-
-
-
-def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
-                
-    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
-    
-    maximum_depth = config['function_family']['maximum_depth']
-    leaf_node_num_ = 2 ** maximum_depth
-    internal_node_num_ = 2 ** maximum_depth - 1
-
-    @tf.function(experimental_compile=True)
-    def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
-                            
-        from utilities.utility_functions import get_shaped_parameters_for_decision_tree
-            
-        #tf.print('function_array', function_array)
-        weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
-        #tf.print('weights', weights)
-        #tf.print('leaf_probabilities', leaf_probabilities)
-        
-        function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
-        #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
-        
-        
-        return function_values_vanilla_dt
-    return calculate_function_value_from_vanilla_decision_tree_parameters
 
 
 def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, number_of_variables):
         
     weights = tf.cast(weights, tf.float32)
     leaf_probabilities = tf.cast(leaf_probabilities, tf.float32)   
-        
+    
+    #@tf.function(experimental_compile=True)
     def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample(evaluation_entry):
      
         evaluation_entry = tf.cast(evaluation_entry, tf.float32)
@@ -418,32 +421,35 @@ def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, me
  
     def inet_target_function_fv_metric(function_true_with_network_parameters, function_pred):    
         
-        #network_parameters = function_true_with_network_parameters[:,config['function_family']['function_representation_length']:]
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
           
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
-        #network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
+        network_parameters = tf.dtypes.cast(tf.convert_to_tensor(network_parameters), tf.float32)
         function_true = tf.dtypes.cast(tf.convert_to_tensor(function_true), tf.float32)
         function_pred = tf.dtypes.cast(tf.convert_to_tensor(function_pred), tf.float32)
         
-        #assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
+        assert network_parameters.shape[1] == config['lambda_net']['number_of_lambda_weights'], 'Shape of Network Parameters: ' + str(network_parameters.shape)            
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
+        config_target = copy.deepcopy(config)
+        config_target['i_net']['function_representation_type'] = 1
+        
         if config['function_family']['dt_type'] == 'SDT':
             if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)       
+                function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)       
             else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))         
+                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32))         
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         elif config['function_family']['dt_type'] == 'vanilla':
             if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32)        
+                function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)        
             else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_true, fn_output_signature=tf.float32))           
+                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32))           
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         

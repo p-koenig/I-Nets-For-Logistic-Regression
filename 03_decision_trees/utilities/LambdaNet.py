@@ -236,13 +236,22 @@ class LambdaNet():
         
         self.function_parameter_size = get_number_of_function_parameters(config['function_family']['dt_type'], config['function_family']['maximum_depth'], self.number_of_variables, self.number_of_classes)#(2 ** config['function_family']['maximum_depth'] - 1) * (self.number_of_variables + 1) + (2 ** config['function_family']['maximum_depth']) * self.number_of_classes
         
-        
         self.network_parameter_size = get_number_of_lambda_net_parameters(config['lambda_net']['lambda_network_layers'], self.number_of_variables, self.number_of_classes)
         
         self.index = int(line_weights[0])
         self.seed = int(line_weights[1])
+        
+        try:
+            condition = config['data']['dt_type_train'] == None or config['data']['maximum_depth_train'] == None or config['data']['decision_sparsity_train'] == None
+        except:
+            condition = False
             
-        self.target_function_parameters = line_weights[range(2, self.function_parameter_size+2)].astype(float)
+        if config['data']['function_generation_type'] == 'make_classification' or condition:
+            function_parameter_size_actual = self.function_parameter_size
+            self.function_parameter_size = len(line_weights) - self.network_parameter_size - 2 #2 for seed and index
+            self.target_function_parameters = np.array([0 for i in range(function_parameter_size_actual)])
+        else:
+            self.target_function_parameters = line_weights[range(2, self.function_parameter_size+2)].astype(float)
         
         self.network_parameters = line_weights[self.function_parameter_size+2:].astype(float)
         
@@ -263,6 +272,7 @@ class LambdaNet():
                                                             high=config['data']['x_max'], 
                                                             size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
                                                             variables=config['data']['number_of_variables'], 
+                                                            categorical_indices=config['data']['categorical_indices'],
                                                             seed=data_generation_seed)          
         
         

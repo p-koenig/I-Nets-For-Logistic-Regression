@@ -126,7 +126,7 @@ class SDT(nn.Module):
                                     bias=False)
         
         
-        if self.decision_sparsity != -1:
+        if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
             vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
 
             weights = torch.zeros_like(self.inner_nodes[0].weight)
@@ -153,6 +153,8 @@ class SDT(nn.Module):
         if self.maximum_path_probability:
             cond = torch.eq(_mu, torch.max(_mu, axis=1).values.reshape(-1,1))
             _mu = torch.where(cond, _mu, torch.zeros_like(_mu))
+            if self.verbosity >= 3:
+                print('_mu', _mu)
             
         y_pred = self.leaf_nodes(_mu)
         
@@ -278,10 +280,8 @@ class SDT(nn.Module):
             loss_list = []
             for index, (data, target) in enumerate(zip(batch(X, batch_size), batch(y, batch_size))):
 
-                #print(data)
-
-                data = torch.stack(data).to(self.device)
-                target =  torch.stack(target).to(self.device)    
+                #data = torch.stack(data).to(self.device)
+                #target =  torch.stack(target).to(self.device)    
 
                 output, penalty = self.forward(data, is_training_data=True)
                 loss = self.criterion(output, target.view(-1))
@@ -296,7 +296,7 @@ class SDT(nn.Module):
                 
 
                 
-                if self.decision_sparsity != -1:
+                if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
                     vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
 
                     weights = torch.zeros_like(self.inner_nodes[0].weight)
@@ -500,15 +500,21 @@ class SDT(nn.Module):
 
         return None
         
-    def initialize_from_parameter_array(self, parameters):
-        
-        weights = parameters[:self.input_dim*self.internal_node_num_]
-        weights = weights.reshape(self.internal_node_num_, self.input_dim)
-        
-        biases = parameters[self.input_dim*self.internal_node_num_:(self.input_dim+1)*self.internal_node_num_]
-        
-        leaf_probabilities = parameters[(self.input_dim+1)*self.internal_node_num_:]
-        leaf_probabilities = leaf_probabilities.reshape(self.leaf_node_num_, self.output_dim).T
+    def initialize_from_parameter_array(self, parameters, reshape=False, config=None):
+        from utilities.utility_functions import get_shaped_parameters_for_decision_tree        
+        if reshape == True:
+            weights, biases, leaf_probabilities  = get_shaped_parameters_for_decision_tree(parameters, config, eager_execution=True)
+            weights = weights.numpy()
+            #biases = biases.numpy()
+            leaf_probabilities = leaf_probabilities.numpy()
+        else:    
+            weights = parameters[:self.input_dim*self.internal_node_num_]
+            weights = weights.reshape(self.internal_node_num_, self.input_dim)
+
+            biases = parameters[self.input_dim*self.internal_node_num_:(self.input_dim+1)*self.internal_node_num_]
+
+            leaf_probabilities = parameters[(self.input_dim+1)*self.internal_node_num_:]
+            leaf_probabilities = leaf_probabilities.reshape(self.leaf_node_num_, self.output_dim).T
 
         
         self.inner_nodes[0].weight = torch.nn.Parameter(torch.FloatTensor(weights))

@@ -17,6 +17,7 @@ import operator
 import math
 
 from joblib import Parallel, delayed
+import collections
 from collections.abc import Iterable
 #from scipy.integrate import quad
 import matplotlib.pyplot as plt 
@@ -179,7 +180,15 @@ def flatten_list(l):
     
     return list(flat_l)
 
-
+def flatten_dict(d, parent_key='', sep='_'):
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 #######################################################################################################################################################
 ###########################Manual calculations for comparison of polynomials based on function values (no TF!)#########################################
 #######################################################################################################################################################
@@ -188,20 +197,35 @@ def flatten_list(l):
 def generate_paths(config, path_type='interpretation_net'):
 
     paths_dict = {}    
+    
+    try:
+        dt_type = config['data']['dt_type_train'] if config['data']['dt_type_train'] is not None else config['function_family']['dt_type']
+        maximum_depth = config['data']['maximum_depth_train'] if config['data']['maximum_depth_train'] is not None else config['function_family']['maximum_depth']
+        decision_sparsity = config['data']['decision_sparsity_train'] if config['data']['decision_sparsity_train'] is not None else config['function_family']['decision_sparsity']
+    except:
+        dt_type = config['function_family']['dt_type']
+        maximum_depth = config['function_family']['maximum_depth']
+        decision_sparsity = config['function_family']['decision_sparsity']
         
-    data_specification_string = ('_var' + str(config['data']['number_of_variables']) +
+    decision_sparsity = -1 if decision_sparsity == config['data']['number_of_variables'] else decision_sparsity
+        
+    dt_str = (
+              '_depth' + str(maximum_depth) +
+              '_beta' + str(config['function_family']['beta']) +
+              '_decisionSpars' +  str(decision_sparsity) + 
+              '_' + str(dt_type) +
+              '_' + ('fullyGrown' if config['function_family']['fully_grown'] else 'partiallyGrown')
+             ) if config['data']['function_generation_type'] != 'make_classification' else ''
+
+    data_specification_string = (
+                                  '_var' + str(config['data']['number_of_variables']) +
                                   '_class' + str(config['data']['num_classes']) +
                                   '_' + str(config['data']['function_generation_type']) +
                                   #'_' + str(config['data']['objective']) +
                                   '_xMax' + str(config['data']['x_max']) +
                                   '_xMin' + str(config['data']['x_min']) +
                                   '_xDist' + str(config['data']['x_distrib']) +
-                                  
-                                  '_depth' + str(config['function_family']['maximum_depth']) +
-                                  '_beta' + str(config['function_family']['beta']) +
-                                  '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
-                                  '_' + str(config['function_family']['dt_type']) +
-                                  '_' + ('fullyGrown' if config['function_family']['fully_grown'] else 'partiallyGrown')
+                                  dt_str
                                  )
 
         
@@ -475,7 +499,7 @@ def get_parameters_from_sklearn_decision_tree(tree, config, printing=False):
 
 
 
-def get_shaped_parameters_for_decision_tree(flat_parameters, config):
+def get_shaped_parameters_for_decision_tree(flat_parameters, config, eager_execution=False):
     
     input_dim = config['data']['number_of_variables']
     output_dim = config['data']['num_classes']
@@ -487,23 +511,52 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
 
     if config['i_net']['function_representation_type'] == 1:
         if config['function_family']['dt_type'] == 'SDT':
-            weights_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
-            weights_coeff_list = tf.split(weights_coeff, internal_node_num_)
-            weights_index = tf.cast(tf.clip_by_value(tf.round(flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]), clip_value_min=0, clip_value_max=config['data']['number_of_variables']-1), tf.int64)
-            weights_index_list = tf.split(weights_index, internal_node_num_)
-            
-            weights_list = []
-            for values_node, indices_node in zip(weights_coeff_list, weights_index_list):
-                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
-                dense_tensor = tf.sparse.to_dense(sparse_tensor)
-                weights_list.append(dense_tensor)             
-            
-            weights = tf.stack(weights_list)#tf.reshape(weights, (internal_node_num_, input_dim))
+                   
+            if False:
+                weights_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
+                weights_coeff_list = tf.split(weights_coeff, internal_node_num_)
+                weights_index = tf.cast(tf.clip_by_value(tf.round(flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]), clip_value_min=0, clip_value_max=config['data']['number_of_variables']-1), tf.int64)
+                weights_index_list = tf.split(weights_index, internal_node_num_)
 
-            biases = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2: (config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_]
+                weights_list = []
+                for values_node, indices_node in zip(weights_coeff_list, weights_index_list):
+                    sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                    dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                    weights_list.append(dense_tensor)             
 
-            leaf_probabilities = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_:]
-            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+                weights = tf.stack(weights_list)#tf.reshape(weights, (internal_node_num_, input_dim))
+
+                biases = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2: (config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_]
+
+                leaf_probabilities = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_:]
+                leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+            else:
+                weights = flat_parameters[:input_dim*internal_node_num_]
+                weights = tf.reshape(weights, (internal_node_num_, input_dim))
+                
+                if config['function_family']['decision_sparsity'] != -1 and config['function_family']['decision_sparsity'] !=  config['data']['number_of_variables']:
+                    vals_list, idx_list = tf.nn.top_k(tf.abs(weights), k=config['function_family']['decision_sparsity'], sorted=False)
+                    idx_list = tf.cast(idx_list, tf.int64)
+
+                    sparse_index_list = []
+                    for i, idx in enumerate(tf.unstack(idx_list)):
+                        #idx = tf.sort(idx, direction='ASCENDING')
+                        for ind in tf.unstack(idx):
+                            sparse_index = tf.stack([tf.constant(i, dtype=tf.int64), ind], axis=0)
+                            sparse_index_list.append(sparse_index)
+                    sparse_index_list = tf.stack(sparse_index_list)
+
+                    sparse_tensor = tf.sparse.SparseTensor(indices=sparse_index_list, values=tf.squeeze(tf.reshape(vals_list, (1, -1))), dense_shape=weights.shape)
+                    if eager_execution:
+                        dense_tensor = tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
+                    else:
+                        dense_tensor = tf.sparse.to_dense(sparse_tensor)#tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
+                    weights = dense_tensor
+
+                biases = flat_parameters[input_dim*internal_node_num_:(input_dim+1)*internal_node_num_]
+
+                leaf_probabilities = flat_parameters[(input_dim+1)*internal_node_num_:]
+                leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
             
             #tf.print(weights, biases, leaf_probabilities)
             
@@ -554,12 +607,37 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config):
             for tensor in weights_index_list_by_internal_node_by_decision_sparsity_argmax:
                 weights_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tf.squeeze(tensor, axis=0))
             weights_index_list_by_internal_node_by_decision_sparsity_argmax = weights_index_list_by_internal_node_by_decision_sparsity_argmax_new
-
             dense_tensor_list = []
-            for indices_node, values_node in zip(weights_index_list_by_internal_node_by_decision_sparsity_argmax,  weights_coeff_list_by_internal_node):
-                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
-                dense_tensor = tf.sparse.to_dense(sparse_tensor)
-                dense_tensor_list.append(dense_tensor)
+                                    
+            if False: #duplicates in predicted index not considered/summarized
+                for indices_node, values_node in zip(weights_index_list_by_internal_node_by_decision_sparsity_argmax,  weights_coeff_list_by_internal_node):
+                    sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                    if eager_execution == True:
+                        dense_tensor = tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
+                    else:
+                        dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                    dense_tensor_list.append(dense_tensor)
+            else:
+                dense_tensor_list = []
+                for indices_node, values_node in zip(weights_index_list_by_internal_node_by_decision_sparsity_argmax,  weights_coeff_list_by_internal_node):
+                    if False:
+                        dense_tensor = []
+                        for i in range(config['data']['number_of_variables']):
+                            index_identifier = tf.where(tf.equal(indices_node, i))
+                            values_by_index = tf.reduce_sum(tf.gather_nd(values_node, index_identifier))
+                            dense_tensor.append(values_by_index)
+                    else:
+                        dense_tensor = []#[0 for _ in range(config['data']['number_of_variables'])]
+                        for i in range(config['data']['number_of_variables']):
+                            index_identifier = []
+                            for j, variable_index in enumerate(tf.unstack(indices_node)):
+                                if tf.equal(variable_index, i):
+                                    index_identifier.append(j)
+                            index_identifier = tf.cast(tf.expand_dims(tf.stack(index_identifier), axis=1), tf.int64)
+                            values_by_index = tf.reduce_sum(tf.gather_nd(values_node, index_identifier))
+                            dense_tensor.append(values_by_index)
+                    dense_tensor = tf.stack(dense_tensor)
+                    dense_tensor_list.append(dense_tensor)
 
             weights = tf.stack(dense_tensor_list) 
             #tf.print(weights, biases, leaf_probabilities)
@@ -637,7 +715,7 @@ def generate_decision_tree_from_array(parameter_array, config):
 
 
 
-def generate_random_data_points_custom(low, high, size, variables, seed=42, distrib='uniform'):
+def generate_random_data_points_custom(low, high, size, variables, categorical_indices, seed=42, distrib='uniform'):
     
     random.seed(seed)
     np.random.seed(seed)
@@ -653,6 +731,10 @@ def generate_random_data_points_custom(low, high, size, variables, seed=42, dist
         
     elif distrib=='uniform':
         list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
+        
+    if categorical_indices is not None:
+        for categorical_index in categorical_indices:
+            list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])       
         
     return list_of_data_points
 
@@ -673,6 +755,10 @@ def generate_random_data_points(config, seed):
         
     elif config['data']['x_distrib']=='uniform':
         list_of_data_points = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['data']['lambda_dataset_size'], config['data']['number_of_variables']))
+        
+    if config['data']['categorical_indices'] is not None:
+        for categorical_index in config['data']['categorical_indices']:
+            list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])        
         
     return list_of_data_points 
 
@@ -745,9 +831,9 @@ def generate_data_random_decision_tree_trained(config, seed=42):
     y_data_tree = np.random.randint(0,2,X_data.shape[0])
         
     if config['function_family']['dt_type'] == 'SDT':    
-
+        
         decision_tree.fit(X_data, y_data_tree, epochs=50)    
-
+        
         y_data = decision_tree.predict_proba(X_data)
         counter = 1
 
@@ -813,11 +899,15 @@ def generate_data_make_classification_decision_tree_trained(config, seed=42):
                                                        shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
                                                        scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
-                                                       random_state=seed) 
+                                                       random_state=seed)     
 
     scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
-    X_data = scaler.fit_transform(X_data)            
-        
+    X_data = scaler.fit_transform(X_data)    
+    
+    if config['data']['categorical_indices'] is not None:
+        for categorical_index in config['data']['categorical_indices']:
+            X_data[:,categorical_index] = np.round(X_data[:,categorical_index])      
+            
     decision_tree = generate_random_decision_tree(config, seed)
         
     if config['function_family']['dt_type'] == 'SDT':   
@@ -870,8 +960,13 @@ def generate_data_make_classification(config, seed=42):
     scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
     X_data = scaler.fit_transform(X_data)                
     
+    if config['data']['categorical_indices'] is not None:
+        for categorical_index in config['data']['categorical_indices']:
+            X_data[:,categorical_index] = np.round(X_data[:,categorical_index])    
+            
     function_representation_length = ( 
-       ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']  if config['function_family']['dt_type'] == 'SDT'
+       ((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables']) + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']
+  if config['function_family']['dt_type'] == 'SDT'
   else ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth']) if config['function_family']['dt_type'] == 'vanilla'
   else None
                                                             ) 
@@ -887,7 +982,7 @@ def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer
     from anytree import Node, RenderTree
     from anytree.exporter import DotExporter
     
-    splits, leaf_classes = get_shaped_parameters_for_decision_tree(dt_parameter_array, config)
+    splits, leaf_classes = get_shaped_parameters_for_decision_tree(dt_parameter_array, config, eager_execution=True)
 
     splits = splits.numpy()
     leaf_classes = leaf_classes.numpy()
@@ -898,7 +993,8 @@ def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer
         transpose_normalized = []
         for i, column in enumerate(transpose):
             column_new = column
-            column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()
+            #column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()
+            column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
             transpose_normalized.append(column_new)
         splits = np.array(transpose_normalized).transpose()
 
@@ -959,7 +1055,7 @@ def treelib_decision_tree_from_parameters(dt_parameter_array, config, normalizer
     
     from treelib import Node, Tree
     
-    splits, leaf_classes = get_shaped_parameters_for_decision_tree(dt_parameter_array, config)
+    splits, leaf_classes = get_shaped_parameters_for_decision_tree(dt_parameter_array, config, eager_execution=True)
 
     splits = splits.numpy()
     leaf_classes = leaf_classes.numpy()
@@ -1129,7 +1225,7 @@ def dt_array_to_sklearn(vanilla_dt_array, config,X_data, y_data, printing=False)
 
         return ans    
     
-    splits, leaf_classes= get_shaped_parameters_for_decision_tree(vanilla_dt_array, config)
+    splits, leaf_classes= get_shaped_parameters_for_decision_tree(vanilla_dt_array, config, eager_execution=True)
     
     if printing:
         print('splits', splits)
@@ -1361,8 +1457,8 @@ def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variable
     if dt_type == 'SDT':
         number_of_function_parameters = (2 ** maximum_depth - 1) * (number_of_variables + 1) + (2 ** maximum_depth) * number_of_classes
     elif dt_type == 'vanilla':
-        number_of_function_parameters = 2*(2 ** maximum_depth - 1) + (2 ** maximum_depth)
-    
+        number_of_function_parameters = (2 ** maximum_depth - 1) * 2 + (2 ** maximum_depth)
+
     return number_of_function_parameters
 
 ######################################################################################################################################################################################################################
