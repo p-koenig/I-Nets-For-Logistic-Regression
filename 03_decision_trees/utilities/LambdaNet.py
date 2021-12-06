@@ -242,10 +242,10 @@ class LambdaNet():
         self.seed = int(line_weights[1])
         
         try:
-            condition = config['data']['dt_type_train'] == None or config['data']['maximum_depth_train'] == None or config['data']['decision_sparsity_train'] == None
+            condition = config['data']['dt_type_train'] != None or config['data']['maximum_depth_train'] != None or config['data']['decision_sparsity_train'] != None
         except:
             condition = False
-            
+                        
         if config['data']['function_generation_type'] == 'make_classification' or condition:
             function_parameter_size_actual = self.function_parameter_size
             self.function_parameter_size = len(line_weights) - self.network_parameter_size - 2 #2 for seed and index

@@ -30,6 +30,7 @@ from sklearn.preprocessing import MinMaxScaler
 import time
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
@@ -684,10 +685,53 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config, eager_execu
             #tf.print(splits, leaf_classes)
             return splits, leaf_classes
 
-       
+    elif config['i_net']['function_representation_type'] == 3:
+        if config['function_family']['dt_type'] == 'SDT':    
+            
+            split_values_num_params = config['data']['number_of_variables'] * internal_node_num_#config['function_family']['decision_sparsity']
+            split_index_num_params = config['data']['number_of_variables'] * internal_node_num_
+            leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
 
+            split_values = flat_parameters[:split_values_num_params]
+            split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
 
-        return None
+            split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
+            split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)         
+            
+            
+            biases = flat_parameters[split_values_num_params+split_index_num_params:split_values_num_params+split_index_num_params+internal_node_num_]
+            
+            split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(split_index_list_by_internal_node)
+            
+            weights = tf.stack(tf.multiply(split_values_list_by_internal_node, split_index_list_by_internal_node_max))
+            
+            leaf_probabilities = flat_parameters[split_values_num_params+split_index_num_params+internal_node_num_:]
+            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+            
+            return weights, biases, leaf_probabilities
+        elif config['function_family']['dt_type'] == 'vanilla':    
+            split_values_num_params = config['data']['number_of_variables'] * internal_node_num_#config['function_family']['decision_sparsity']
+            split_index_num_params = config['data']['number_of_variables'] * internal_node_num_
+            leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
+
+            split_values = flat_parameters[:split_values_num_params]
+            split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
+
+            split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
+            split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)         
+            
+            split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(split_index_list_by_internal_node)
+            
+            splits = tf.stack(tf.multiply(split_values_list_by_internal_node, split_index_list_by_internal_node_max))
+            
+            leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
+            split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
+
+            leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))
+            
+            return splits, leaf_classes
+        
+    return None
 
     
 
@@ -975,8 +1019,6 @@ def generate_data_make_classification(config, seed=42):
         
     return placeholder, X_data, np.round(y_data), y_data 
 
-
-
 def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer_list=None, path='./data/plotting/temp.png'):
     
     from anytree import Node, RenderTree
@@ -993,8 +1035,9 @@ def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer
         transpose_normalized = []
         for i, column in enumerate(transpose):
             column_new = column
-            #column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()
-            column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
+            if len(column_new[column_new != 0]) != 0:
+                column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()
+            #column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
             transpose_normalized.append(column_new)
         splits = np.array(transpose_normalized).transpose()
 
@@ -1063,7 +1106,9 @@ def treelib_decision_tree_from_parameters(dt_parameter_array, config, normalizer
         transpose = splits.transpose()
         transpose_normalized = []
         for i, column in enumerate(transpose):
-            column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
+            column_new = column
+            if len(column_new[column_new != 0]) != 0:
+                column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()            
             transpose_normalized.append(column_new)
         splits = np.array(transpose_normalized).transpose()
         
@@ -1638,6 +1683,124 @@ def shaped_network_parameters_to_array(shaped_network_parameters, config):
     return np.array(network_parameter_list)
 
 
+
+
+def per_network_dt_optimization_tf(network_parameters,
+                                   config, 
+                                  optimizer = tf.optimizers.Adam,
+                                  lr=0.05, 
+                                  max_steps = 1000, 
+                                  early_stopping=10, 
+                                  restarts=5, 
+                                  printing=True,
+                                  return_error=False):
+    
+    
+    from utilities.metrics import calculate_function_value_from_lambda_net_parameters_wrapper, calculate_function_value_from_decision_tree_parameters_wrapper, calculate_function_value_from_vanilla_decision_tree_parameters_wrapper
+
+    ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
+                    
+    random.seed(config['computation']['RANDOM_SEED'])
+    np.random.seed(config['computation']['RANDOM_SEED'])    
+    if int(tf.__version__[0]) >= 2:
+        tf.random.set_seed(config['computation']['RANDOM_SEED'])
+    else:
+        tf.set_random_seed(config['computation']['RANDOM_SEED'])       
+    
+    random_model = generate_base_model(config)
+    #random_evaluation_dataset =  np.random.uniform(low=0, high=0.2, size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
+    np.random.seed(config['computation']['RANDOM_SEED'])
+    random_evaluation_dataset =  np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['per_network_dataset_size'], config['data']['number_of_variables']))
+        
+    random_network_parameters = random_model.get_weights()
+    network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]       
+    
+    network_parameters_structure = [np_arrays.shape for np_arrays in weights_structure]
+
+
+
+    function_values_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)
+    
+    if config['i_net']['soft_labels'] != True:
+        function_values_true = tf.math.round(function_values_true)
+    
+    ########################################### OPTIMIZATION ########################################################
+        
+    best_result = np.inf
+
+    for current_iteration in range(restarts):
+                
+        @tf.function(experimental_compile=True) 
+        def function_to_optimize():
+            
+            function_pred = dt_optimize_input[0]
+
+            if config['function_family']['dt_type'] == 'SDT':
+                function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+            elif config['function_family']['dt_type'] == 'vanilla':
+                function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+            #tf.print('function_values_array_function_pred', function_values_array_function_pred)
+
+            def loss_function_wrapper(loss_function_name):
+                def loss_function(input_list):
+
+                    function_values_true = input_list[0]
+                    function_values_pred = input_list[1]
+
+                    loss = tf.keras.losses.get(loss_function_name)
+
+                    loss_value = loss(function_values_true, function_values_pred)
+
+                    return loss_value
+
+                return loss_function
+
+            loss_per_sample = tf.vectorized_map(loss_function_wrapper(config['i_net']['loss']), (function_values_array_function_true, function_values_array_function_pred))
+            #tf.print(loss_per_sample)
+            loss_value = tf.math.reduce_mean(loss_per_sample)
+            #tf.print(loss_value)
+
+            return loss_value 
+
+    
+            
+        opt = optimizer(learning_rate=lr)
+        
+        dt_optimize_input = tf.Variable(tf.random.uniform([1, config['function_family']['function_representation_length']]))
+        
+        stop_counter = 0
+        best_result_iteration = np.inf
+
+        for current_step in range(max_steps):
+            if stop_counter>=early_stopping:
+                break
+            
+            opt.minimize(function_to_optimize, var_list=[dt_optimize_input])
+            current_result = function_to_optimize()
+            if printing:
+                clear_output(wait=True)
+                print("Current best: {} \n Curr_res: {} \n Iteration {}, Step {}".format(best_result_iteration,current_result, current_iteration, current_step))
+ 
+            stop_counter += 1
+            if current_result < best_result_iteration:
+                best_result_iteration = current_result
+                stop_counter = 0
+                best_dt_optimize_iteration = tf.identity(dt_optimize_input)
+                
+        if best_result_iteration < best_result:
+            best_result = best_result_iteration
+            best_dt_optimize = tf.identity(best_dt_optimize_iteration)
+            
+
+    per_network_dt = best_dt_optimize[0].numpy()
+    
+    if printing:
+        print("Optimization terminated at {}".format(best_result))
+        
+    if return_error:
+        return best_result, per_network_dt
+    
+    return per_network_dt
 
 ######################################################################################################################################################################################################################
 ###########################################################################################  PER NETWORK OPTIMIZATION ################################################################################################ 

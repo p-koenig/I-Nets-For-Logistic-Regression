@@ -460,6 +460,8 @@ class SDT(nn.Module):
         return Image(path)
     
     def to_array(self, config=None):
+        from utilities.utility_functions import largest_indices        
+        
         if config is None or config['i_net']['function_representation_type'] == 1:
             filters = self.inner_nodes[0].weight.detach().numpy()
             biases = self.inner_nodes[0].bias.detach().numpy()
@@ -475,14 +477,14 @@ class SDT(nn.Module):
             
             topk_softmax_output_filter_list = []
             
-            print('self.internal_node_num_', self.internal_node_num_)
+            #print('self.internal_node_num_', self.internal_node_num_)
             for i in range(self.internal_node_num_):
-                print('i', i)
+                #print('i', i)
                 topk = largest_indices(np.abs(filters[i]), config['function_family']['decision_sparsity'])[0]
                 topk_index_filter_list.append(topk)
-                print('topk', topk)
+                #print('topk', topk)
                 for top_value_index in topk:
-                    print('top_value_index', top_value_index)
+                    #print('top_value_index', top_value_index)
                     zeros = np.zeros_like(filters[i])
                     zeros[top_value_index] = 1#filters[i][top_value_index]
                     topk_softmax_output_filter_list.append(zeros)

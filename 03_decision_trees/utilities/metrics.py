@@ -252,12 +252,18 @@ def calculate_function_value_from_decision_tree_parameters_wrapper(random_evalua
     maximum_depth = config['function_family']['maximum_depth']
     leaf_node_num_ = 2 ** maximum_depth
     
-    @tf.function(jit_compile=True)
+    #@tf.function(jit_compile=True)
     def calculate_function_value_from_decision_tree_parameters(function_array):
         
         from utilities.utility_functions import get_shaped_parameters_for_decision_tree
         
+        #tf.print('function_array', function_array, summarize=-1)
+        
         weights, biases, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+        
+        #tf.print('weights', weights, summarize=-1)
+        #tf.print('biases', biases, summarize=-1)
+        #tf.print('leaf_probabilities', leaf_probabilities, summarize=-1)
         
         function_values_sdt = tf.vectorized_map(calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth), random_evaluation_dataset)
         

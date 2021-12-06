@@ -253,6 +253,7 @@ def train_inet(lambda_net_train_dataset,
     
     random_model = generate_base_model(config)
     #random_evaluation_dataset =  np.random.uniform(low=0, high=0.2, size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
+    np.random.seed(config['computation']['RANDOM_SEED'])
     random_evaluation_dataset =  np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
         
     random_network_parameters = random_model.get_weights()
@@ -411,7 +412,7 @@ def train_inet(lambda_net_train_dataset,
                         leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
 
                         number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
-                        outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='sigmoid')(hidden_node)
+                        outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='linear')(hidden_node)
                         outputs_list = [outputs_coeff]
                         for outputs_index in range(internal_node_num_):
                             for var_index in range(config['function_family']['decision_sparsity']):
@@ -480,16 +481,15 @@ def train_inet(lambda_net_train_dataset,
                     hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
                                                      name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
 
+            internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+            leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
                     
             if config['i_net']['function_representation_type'] == 1:
                 if config['function_family']['dt_type'] == 'SDT':
                     outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], 
                                                     #activation='tanh', 
                                                     name='output_' + str(config['function_family']['function_representation_length']))(hidden)
-                elif config['function_family']['dt_type'] == 'vanilla':
-                    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
-                    
+                elif config['function_family']['dt_type'] == 'vanilla':                               
                     outputs_coeff = tf.keras.layers.Dense(internal_node_num_ * config['function_family']['decision_sparsity'], 
                                                           activation='sigmoid', 
                                                           name='outputs_coeff_' + str(internal_node_num_ * config['function_family']['decision_sparsity']))(hidden)        
@@ -504,9 +504,6 @@ def train_inet(lambda_net_train_dataset,
                     
             elif config['i_net']['function_representation_type'] == 2:
                 if config['function_family']['dt_type'] == 'SDT':
-                    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
-
                     number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']                    
                         
                     outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, 
@@ -537,11 +534,6 @@ def train_inet(lambda_net_train_dataset,
                     
                     
                 elif config['function_family']['dt_type'] == 'vanilla':
-                    #input_dim = config['data']['number_of_variables']
-                    #output_dim = config['data']['num_classes']
-                    internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                    leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
-
                     number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']                    
                     
                     outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, 
@@ -564,6 +556,55 @@ def train_inet(lambda_net_train_dataset,
 
                     outputs = concatenate(outputs_list, name='output_combined')
                 
+            elif config['i_net']['function_representation_type'] == 3:
+                if config['function_family']['dt_type'] == 'SDT':
+                    outputs_coeff = tf.keras.layers.Dense(internal_node_num_*config['data']['number_of_variables'], 
+                                                          #activation='tanh', 
+                                                          name='output_coeff_' + str(internal_node_num_*config['data']['number_of_variables']))(hidden)
+                    outputs_list = [outputs_coeff]
+                    
+                    
+                    for outputs_index in range(internal_node_num_):
+                        output_name = 'output_identifier_' + str(outputs_index+1)
+                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], 
+                                                                  activation='softmax', 
+                                                                  name=output_name)(hidden)
+                        outputs_list.append(outputs_identifer)    
+
+                    outputs_bias = tf.keras.layers.Dense(internal_node_num_, 
+                                                         #activation='tanh', 
+                                                         name='output_bias_' + str(internal_node_num_))(hidden)
+                    outputs_list.append(outputs_bias)    
+                    
+                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], 
+                                                               #activation='tanh', 
+                                                               name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
+                    outputs_list.append(outputs_leaf_nodes)     
+
+                    outputs = concatenate(outputs_list, name='output_combined')                    
+                    
+                elif config['function_family']['dt_type'] == 'vanilla':                    
+                    outputs_coeff = tf.keras.layers.Dense(internal_node_num_*config['data']['number_of_variables'], 
+                                                          activation='sigmoid', 
+                                                          name='output_coeff_' + str(internal_node_num_*config['data']['number_of_variables']))(hidden)
+                    outputs_list = [outputs_coeff]
+                    
+                    
+                    for outputs_index in range(internal_node_num_):
+                        output_name = 'output_identifier_' + str(outputs_index+1)
+                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], 
+                                                                  activation='softmax', 
+                                                                  name=output_name)(hidden)
+                        outputs_list.append(outputs_identifer)    
+
+
+                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_, 
+                                                               activation='sigmoid', 
+                                                               name='output_leaf_node_' + str(leaf_node_num_))(hidden)
+                    outputs_list.append(outputs_leaf_nodes)    
+
+                    outputs = concatenate(outputs_list, name='output_combined')
+                                
                 
 
             model = Model(inputs=inputs, outputs=outputs)
