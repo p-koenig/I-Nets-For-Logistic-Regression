@@ -21,6 +21,7 @@ import collections
 from collections.abc import Iterable
 #from scipy.integrate import quad
 import matplotlib.pyplot as plt 
+import datetime
 
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
@@ -146,7 +147,7 @@ def mergeDict(dict1, dict2):
     return newDict
 
 
-def return_callbacks_from_string(callback_string_list):
+def return_callbacks_from_string(callback_string_list, config=None):
     callbacks = [] if len(callback_string_list) > 0 else None
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
@@ -159,6 +160,14 @@ def return_callbacks_from_string(callback_string_list):
     if 'plot_losses' in callback_string_list:
         plotLosses = PlotLossesKerasTF()
         callbacks.append(plotLosses) 
+    if 'tensorboard' in callback_string_list:
+        paths_dict = generate_paths(config, path_type = 'interpretation_net')
+        log_dir = './data/logging/' + paths_dict['path_identifier_interpretation_net'] + '/tensorboard'+ datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        #log_dir = './data/logging/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        callbacks.append(tensorboard_callback) 
+
     #if not multi_epoch_analysis and samples_list == None: 
         #callbacks.append(TQDMNotebookCallback())        
     return callbacks
@@ -309,6 +318,7 @@ def create_folders_inet(config):
     
     try:
         # Create target Directory
+        os.makedirs('./data/logging/' + paths_dict['path_identifier_interpretation_net'] + '/')
         os.makedirs('./data/plotting/' + paths_dict['path_identifier_interpretation_net'] + '/')
         os.makedirs('./data/results/' + paths_dict['path_identifier_interpretation_net'] + '/')
     except FileExistsError:
@@ -317,7 +327,7 @@ def create_folders_inet(config):
 
 def generate_directory_structure():
     
-    directory_names = ['parameters', 'plotting', 'saved_function_lists', 'results', 'saved_models', 'weights', 'weights_training']
+    directory_names = ['parameters', 'plotting', 'saved_function_lists', 'results', 'saved_models', 'weights', 'weights_training', 'logging']
     if not os.path.exists('./data'):
         os.makedirs('./data')
         
@@ -1891,7 +1901,7 @@ def per_network_poly_optimization_tf(per_network_dataset_size,
 
     for current_iteration in range(restarts):
                 
-        @tf.function(experimental_compile=True) 
+        @tf.function(jit_compile=True) 
         def function_to_optimize():
             
             poly_optimize = poly_optimize_input[0]
@@ -2054,7 +2064,7 @@ def per_network_poly_optimization_scipy(per_network_dataset_size,
     for current_iteration in range(restarts):
 
         def function_to_optimize_scipy_wrapper(current_monomial_degree):
-            @tf.function(experimental_compile=True) 
+            @tf.function(jit_compile=True) 
             def function_to_optimize_scipy(poly_optimize_input):   
 
                 #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)

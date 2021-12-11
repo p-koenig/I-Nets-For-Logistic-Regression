@@ -106,30 +106,37 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
         config_target['i_net']['function_representation_type'] = 1
         
         if config['function_family']['dt_type'] == 'SDT':
-            if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)       
-            else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32))    
+            function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)       
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         elif config['function_family']['dt_type'] == 'vanilla':
-            if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)        
-            else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)) 
+            function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)        
+
             
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
             
         def loss_function_wrapper(loss_function_name):
-            def loss_function(input_list):
-                
+            def loss_function(input_list):                    
+                nonlocal loss_function_name
                 function_values_true = input_list[0]
                 function_values_pred = input_list[1]
                 
-                loss = tf.keras.losses.get(loss_function_name)
-                
-                loss_value = loss(function_values_true, function_values_pred)
+                if loss_function_name == 'soft_binary_crossentropy':
+                    function_values_true_diff = tf.math.subtract(1.0, function_values_true)
+                    function_values_true_softmax = tf.stack([function_values_true, function_values_true_diff], axis=1)
+                    
+                    function_values_pred_diff = tf.math.subtract(1.0, function_values_pred)
+                    function_values_pred_softmax = tf.stack([function_values_pred, function_values_pred_diff], axis=1)
+                    
+                    loss_value = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(function_values_true_softmax, function_values_pred_softmax))
+                else:
+                    if 'soft_' not in loss_function_name:
+                        function_values_true = tf.math.round(function_values_true)  
+                        loss_function_name = loss_function_name.replace('soft_','')
+                    
+                    loss = tf.keras.losses.get(loss_function_name)
+                    loss_value = loss(function_values_true, function_values_pred)
                 
                 return loss_value
                 
@@ -172,10 +179,7 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         
         #tf.print('GO function_values_array_function_true')
         
-        if config['i_net']['soft_labels'] == True:
-            function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)           
-        else:
-            function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
+        function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)
         #tf.print('function_values_array_function_true', function_values_array_function_true)
         
         if config['function_family']['dt_type'] == 'SDT':
@@ -185,14 +189,26 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
         #tf.print('function_values_array_function_pred', function_values_array_function_pred)
                 
         def loss_function_wrapper(loss_function_name):
-            def loss_function(input_list):
-                
+            
+            def loss_function(input_list):                    
+                nonlocal loss_function_name
                 function_values_true = input_list[0]
                 function_values_pred = input_list[1]
-                
-                loss = tf.keras.losses.get(loss_function_name)
-                
-                loss_value = loss(function_values_true, function_values_pred)
+                if loss_function_name == 'soft_binary_crossentropy':
+                    function_values_true_diff = tf.math.subtract(1.0, function_values_true)
+                    function_values_true_softmax = tf.stack([function_values_true, function_values_true_diff], axis=1)
+                    
+                    function_values_pred_diff = tf.math.subtract(1.0, function_values_pred)
+                    function_values_pred_softmax = tf.stack([function_values_pred, function_values_pred_diff], axis=1)
+                    
+                    loss_value = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(function_values_true_softmax, function_values_pred_softmax))
+                else:
+                    if 'soft_' not in loss_function_name:
+                        function_values_true = tf.math.round(function_values_true)  
+                        loss_function_name = loss_function_name.replace('soft_','')
+                    
+                    loss = tf.keras.losses.get(loss_function_name)
+                    loss_value = loss(function_values_true, function_values_pred)
                 
                 return loss_value
                 
@@ -445,36 +461,40 @@ def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, me
         config_target['i_net']['function_representation_type'] = 1
         
         if config['function_family']['dt_type'] == 'SDT':
-            if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)       
-            else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32))         
+            function_values_array_function_true = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)       
+     
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         elif config['function_family']['dt_type'] == 'vanilla':
-            if config['i_net']['soft_labels'] == True:
-                function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)        
-            else:
-                function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32))           
+            function_values_array_function_true = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target), function_true, fn_output_signature=tf.float32)         
             
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
         
         def loss_function_wrapper(metric_name):
-            def loss_function(input_list):
-                
+            def loss_function(input_list):                    
+                nonlocal metric_name
                 function_values_true = input_list[0]
                 function_values_pred = input_list[1]
                 
-                if 'accuracy' in metric_name or 'crossentropy' in metric_name:
-                    function_values_true = tf.math.round(function_values_true)
+                if metric_name == 'soft_binary_crossentropy':
+                    function_values_true_diff = tf.math.subtract(1.0, function_values_true)
+                    function_values_true_softmax = tf.stack([function_values_true, function_values_true_diff], axis=1)
                     
-                loss = tf.keras.metrics.get(metric_name)
+                    function_values_pred_diff = tf.math.subtract(1.0, function_values_pred)
+                    function_values_pred_softmax = tf.stack([function_values_pred, function_values_pred_diff], axis=1)
                     
-                loss_value = loss(function_values_true, function_values_pred)
+                    loss_value = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(function_values_true_softmax, function_values_pred_softmax))
+                else:
+                    if 'soft_' not in metric_name:
+                        function_values_true = tf.math.round(function_values_true)  
+                        metric_name = metric_name.replace('soft_','')
+                    
+                    loss = tf.keras.metrics.get(metric_name)
+                    loss_value = loss(function_values_true, function_values_pred)
                 
                 return loss_value
                 
-            return loss_function
+            return loss_function        
         
         loss_per_sample = tf.vectorized_map(loss_function_wrapper(metric), (function_values_array_function_true, function_values_array_function_pred))
                                                                                                  
@@ -511,10 +531,7 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
         #tf.print('GO function_values_array_function_true')
-        if config['i_net']['soft_labels'] == True:
-            function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)           
-        else:
-            function_values_array_function_true = tf.math.round(tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32))
+        function_values_array_function_true = tf.map_fn(calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder), network_parameters, fn_output_signature=tf.float32)           
         #tf.print(function_values_array_function_true)
         
         #tf.print('function_pred', function_pred)
@@ -524,20 +541,26 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
             function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)            
             
         def loss_function_wrapper(metric_name):
-            def loss_function(input_list):
-                
+            def loss_function(input_list):                    
+                nonlocal metric_name
                 function_values_true = input_list[0]
                 function_values_pred = input_list[1]
                 
-                #tf.print('function_values_true', function_values_true, summarize=-1)
-                #tf.print('function_values_pred', function_values_pred, summarize=-1)
-                
-                if 'accuracy' in metric_name or 'crossentropy' in metric_name:
-                    function_values_true = tf.math.round(function_values_true)
+                if metric_name == 'soft_binary_crossentropy':
+                    function_values_true_diff = tf.math.subtract(1.0, function_values_true)
+                    function_values_true_softmax = tf.stack([function_values_true, function_values_true_diff], axis=1)
                     
-                loss = tf.keras.metrics.get(metric_name)
-                
-                loss_value = loss(function_values_true, function_values_pred)
+                    function_values_pred_diff = tf.math.subtract(1.0, function_values_pred)
+                    function_values_pred_softmax = tf.stack([function_values_pred, function_values_pred_diff], axis=1)
+                    
+                    loss_value = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(function_values_true_softmax, function_values_pred_softmax))
+                else:
+                    if 'soft_' not in metric_name:
+                        function_values_true = tf.math.round(function_values_true)  
+                        metric_name = metric_name.replace('soft_','')
+                    
+                    loss = tf.keras.metrics.get(metric_name)
+                    loss_value = loss(function_values_true, function_values_pred)
                 
                 return loss_value
                 
