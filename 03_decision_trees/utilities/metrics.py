@@ -37,6 +37,16 @@ from utilities.DecisionTree_BASIC import *
 
 import copy
 
+import warnings
+warnings.filterwarnings('ignore')
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+import logging
+
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+tf.autograph.set_verbosity(3)
+
 #######################################################################################################################################################
 #############################################################Setting relevant parameters from current config###########################################
 #######################################################################################################################################################

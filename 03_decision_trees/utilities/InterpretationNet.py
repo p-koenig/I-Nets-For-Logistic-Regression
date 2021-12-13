@@ -58,7 +58,15 @@ from utilities.DecisionTree_BASIC import *
 
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 
+import warnings
+warnings.filterwarnings('ignore')
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+import logging
 
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+tf.autograph.set_verbosity(3)
 
             
 #######################################################################################################################################################
@@ -102,6 +110,44 @@ class CombinedOutputInet(ak.Head):
             )
         return hyper_preprocessors            
 
+class OutputInet(ak.Head):
+
+    def __init__(self, loss = None, metrics = None, output_dim=None, **kwargs):
+        super().__init__(loss=loss, metrics=metrics, **kwargs)
+        self.output_dim = output_dim
+
+    def get_config(self):
+        config = super().get_config()
+        return config
+
+    def build(self, hp, inputs=None):    
+        #inputs = nest.flatten(inputs)
+        #if len(inputs) == 1:
+        #    return inputs
+        output_node = inputs#concatenate(inputs)           
+        return output_node
+
+    def config_from_analyser(self, analyser):
+        super().config_from_analyser(analyser)
+        self._add_one_dimension = len(analyser.shape) == 1
+
+    def get_adapter(self):
+        return adapters.RegressionAdapter(name=self.name)
+
+    def get_analyser(self):
+        return analysers.RegressionAnalyser(
+            name=self.name, output_dim=self.output_dim
+        )
+
+    def get_hyper_preprocessors(self):
+        hyper_preprocessors = []
+        if self._add_one_dimension:
+            hyper_preprocessors.append(
+                hpps_module.DefaultHyperPreprocessor(preprocessors.AddOneDimension())
+            )
+        return hyper_preprocessors            
+
+    
 class CustomDenseInet(ak.Block):
     
     neurons=None
@@ -365,20 +411,32 @@ def train_inet(lambda_net_train_dataset,
                     hidden_node = ak.DenseBlock()(hidden_node)
 
                 if config['i_net']['function_representation_type'] == 1:
-                    if config['function_family']['dt_type'] == 'SDT':                    
-                        output_node = ak.RegressionHead()(hidden_node)
+                    if config['function_family']['dt_type'] == 'SDT':     
+                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
+
+                        outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'], 
+                                                              activation='linear')(hidden_node)        
+                        outputs_bias = CustomDenseInet(internal_node_num_, 
+                                                       activation='linear', 
+                                                              name='outputs_index_')(hidden_node)      
+                        outputs_leaf = CustomDenseInet(leaf_node_num_*config['data']['num_classes'], 
+                                                             activation='linear')(hidden_node)                         
+                        
+                        
+                        output_node = CombinedOutputInet()([outputs_coeff, outputs_bias, outputs_leaf])#ak.RegressionHead(output_dim=config['function_family']['function_representation_length'])(hidden_node)
                         
                     elif config['function_family']['dt_type'] == 'vanilla':                    
                         internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
                         leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
 
                         outputs_coeff = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                              activation='sigmoid')(hidden)        
+                                                              activation='sigmoid')(hidden_node)        
                         outputs_index = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
                                                               activation='linear', 
-                                                              name='outputs_index_')(hidden)      
+                                                              name='outputs_index_')(hidden_node)      
                         outputs_leaf = CustomDenseInet(leaf_node_num_, 
-                                                             activation='sigmoid')(hidden) 
+                                                             activation='sigmoid')(hidden_node) 
 
                         
                         output_node = CombinedOutputInet()([outputs_coeff, outputs_index, outputs_leaf])
@@ -1169,8 +1227,11 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
             end_dt_distilled = time.time()     
             dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)        
 
-            y_data_random_distilled_dt = dt_distilled.predict_proba(X_data_random)
-            y_test_distilled_dt = dt_distilled.predict_proba(X_test_lambda)        
+            y_data_random_distilled_dt = dt_distilled.predict_proba(X_data_random).ravel()
+            y_test_distilled_dt = dt_distilled.predict_proba(X_test_lambda).ravel()
+            
+            #tf.print('y_data_random_distilled_dt', y_data_random_distilled_dt, summarize=-1)
+            #tf.print('y_test_distilled_dt', y_test_distilled_dt, summarize=-1)
 
             y_test_inet_dt  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
         elif config['function_family']['dt_type'] == 'vanilla':

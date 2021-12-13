@@ -67,6 +67,15 @@ from livelossplot import PlotLossesKerasTF
 from sklearn.datasets import make_classification
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 
+import warnings
+warnings.filterwarnings('ignore')
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+import logging
+
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+tf.autograph.set_verbosity(3)
 
                                     
 #######################################################################################################################################################
@@ -210,14 +219,24 @@ def generate_paths(config, path_type='interpretation_net'):
     
     try:
         dt_type = config['data']['dt_type_train'] if config['data']['dt_type_train'] is not None else config['function_family']['dt_type']
-        maximum_depth = config['data']['maximum_depth_train'] if config['data']['maximum_depth_train'] is not None else config['function_family']['maximum_depth']
-        decision_sparsity = config['data']['decision_sparsity_train'] if config['data']['decision_sparsity_train'] is not None else config['function_family']['decision_sparsity']
     except:
         dt_type = config['function_family']['dt_type']
+     
+    try:
+        maximum_depth = config['data']['maximum_depth_train'] if config['data']['maximum_depth_train'] is not None else config['function_family']['maximum_depth']
+    except:
         maximum_depth = config['function_family']['maximum_depth']
-        decision_sparsity = config['function_family']['decision_sparsity']
         
+    try:
+        decision_sparsity = config['data']['decision_sparsity_train'] if config['data']['decision_sparsity_train'] is not None else config['function_family']['decision_sparsity']
+    except:
+        decision_sparsity = config['function_family']['decision_sparsity']       
+                
     decision_sparsity = -1 if decision_sparsity == config['data']['number_of_variables'] else decision_sparsity
+     
+    categorical_sting = ''
+    if len(config['data']['categorical_indices']) > 0:
+        categorical_sting = '_cat' + '-'.join(str(e) for e in config['data']['categorical_indices'])
         
     dt_str = (
               '_depth' + str(maximum_depth) +
@@ -235,6 +254,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   '_xMax' + str(config['data']['x_max']) +
                                   '_xMin' + str(config['data']['x_min']) +
                                   '_xDist' + str(config['data']['x_distrib']) +
+                                  categorical_sting +
                                   dt_str
                                  )
 
@@ -523,51 +543,33 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config, eager_execu
     if config['i_net']['function_representation_type'] == 1:
         if config['function_family']['dt_type'] == 'SDT':
                    
-            if False:
-                weights_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
-                weights_coeff_list = tf.split(weights_coeff, internal_node_num_)
-                weights_index = tf.cast(tf.clip_by_value(tf.round(flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]), clip_value_min=0, clip_value_max=config['data']['number_of_variables']-1), tf.int64)
-                weights_index_list = tf.split(weights_index, internal_node_num_)
 
-                weights_list = []
-                for values_node, indices_node in zip(weights_coeff_list, weights_index_list):
-                    sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
-                    dense_tensor = tf.sparse.to_dense(sparse_tensor)
-                    weights_list.append(dense_tensor)             
+            weights = flat_parameters[:input_dim*internal_node_num_]
+            weights = tf.reshape(weights, (internal_node_num_, input_dim))
 
-                weights = tf.stack(weights_list)#tf.reshape(weights, (internal_node_num_, input_dim))
+            if config['function_family']['decision_sparsity'] != -1 and config['function_family']['decision_sparsity'] !=  config['data']['number_of_variables']:
+                vals_list, idx_list = tf.nn.top_k(tf.abs(weights), k=config['function_family']['decision_sparsity'], sorted=False)
+                idx_list = tf.cast(idx_list, tf.int64)
 
-                biases = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2: (config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_]
+                sparse_index_list = []
+                for i, idx in enumerate(tf.unstack(idx_list)):
+                    #idx = tf.sort(idx, direction='ASCENDING')
+                    for ind in tf.unstack(idx):
+                        sparse_index = tf.stack([tf.constant(i, dtype=tf.int64), ind], axis=0)
+                        sparse_index_list.append(sparse_index)
+                sparse_index_list = tf.stack(sparse_index_list)
 
-                leaf_probabilities = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2 + internal_node_num_:]
-                leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
-            else:
-                weights = flat_parameters[:input_dim*internal_node_num_]
-                weights = tf.reshape(weights, (internal_node_num_, input_dim))
-                
-                if config['function_family']['decision_sparsity'] != -1 and config['function_family']['decision_sparsity'] !=  config['data']['number_of_variables']:
-                    vals_list, idx_list = tf.nn.top_k(tf.abs(weights), k=config['function_family']['decision_sparsity'], sorted=False)
-                    idx_list = tf.cast(idx_list, tf.int64)
+                sparse_tensor = tf.sparse.SparseTensor(indices=sparse_index_list, values=tf.squeeze(tf.reshape(vals_list, (1, -1))), dense_shape=weights.shape)
+                if eager_execution:
+                    dense_tensor = tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
+                else:
+                    dense_tensor = tf.sparse.to_dense(sparse_tensor)#tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
+                weights = dense_tensor
 
-                    sparse_index_list = []
-                    for i, idx in enumerate(tf.unstack(idx_list)):
-                        #idx = tf.sort(idx, direction='ASCENDING')
-                        for ind in tf.unstack(idx):
-                            sparse_index = tf.stack([tf.constant(i, dtype=tf.int64), ind], axis=0)
-                            sparse_index_list.append(sparse_index)
-                    sparse_index_list = tf.stack(sparse_index_list)
+            biases = flat_parameters[input_dim*internal_node_num_:(input_dim+1)*internal_node_num_]
 
-                    sparse_tensor = tf.sparse.SparseTensor(indices=sparse_index_list, values=tf.squeeze(tf.reshape(vals_list, (1, -1))), dense_shape=weights.shape)
-                    if eager_execution:
-                        dense_tensor = tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
-                    else:
-                        dense_tensor = tf.sparse.to_dense(sparse_tensor)#tf.sparse.to_dense(tf.sparse.reorder(sparse_tensor))
-                    weights = dense_tensor
-
-                biases = flat_parameters[input_dim*internal_node_num_:(input_dim+1)*internal_node_num_]
-
-                leaf_probabilities = flat_parameters[(input_dim+1)*internal_node_num_:]
-                leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
+            leaf_probabilities = flat_parameters[(input_dim+1)*internal_node_num_:]
+            leaf_probabilities = tf.transpose(tf.reshape(leaf_probabilities, (leaf_node_num_, output_dim)))
             
             #tf.print(weights, biases, leaf_probabilities)
             
