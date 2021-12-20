@@ -1695,6 +1695,26 @@ def shaped_network_parameters_to_array(shaped_network_parameters, config):
     return np.array(network_parameter_list)
 
 
+def calculate_network_distance(mean, std, network_parameters, lambda_net_parameters_train, config):
+    z_score = (network_parameters-mean)/std
+    z_score_aggregate = np.sum(np.abs(z_score))
+
+    initialization_array = shaped_network_parameters_to_array(generate_base_model(config).get_weights(), config)
+
+    distance_to_initialization = network_parameters - initialization_array
+    distance_to_initialization_aggregate = np.sum(np.abs(distance_to_initialization))
+
+    distance_to_sample_aggregate_list = []
+    for sample in lambda_net_parameters_train:
+        distance_to_sample = network_parameters - sample
+        distance_to_sample_aggregate = np.sum(np.abs(distance_to_sample))
+        distance_to_sample_aggregate_list.append(distance_to_sample_aggregate)
+
+    distance_to_sample_average = np.mean(distance_to_sample_aggregate_list)
+    distance_to_sample_min = np.min(distance_to_sample_aggregate_list)    
+    
+    return z_score_aggregate, distance_to_initialization_aggregate, distance_to_sample_average, distance_to_sample_min
+    
 
 
 def per_network_dt_optimization_tf(network_parameters,

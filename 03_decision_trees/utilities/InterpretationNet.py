@@ -188,7 +188,8 @@ def interpretation_net_training(lambda_net_train_dataset,
      (X_valid, y_valid), 
      (X_test, y_test), 
      loss_function, 
-     metrics) = train_inet(lambda_net_train_dataset,
+     metrics,
+     encoder_model) = train_inet(lambda_net_train_dataset,
                         lambda_net_valid_dataset,
                         lambda_net_test_dataset,
                         config,
@@ -234,7 +235,8 @@ def interpretation_net_training(lambda_net_train_dataset,
             loss_function,
             metrics,
             
-            model)
+            model,
+            encoder_model)
     
     
 #######################################################################################################################################################
@@ -267,7 +269,7 @@ def load_inet(loss_function, metrics, config):
  
     
         
-def generate_inet_train_data(lambda_net_dataset, config):
+def generate_inet_train_data(lambda_net_dataset, config, encoder_model=None):
     #X_data = None
     X_data_flat = None
     y_data = None
@@ -281,11 +283,18 @@ def generate_inet_train_data(lambda_net_dataset, config):
     else:
         y_data = np.zeros_like(lambda_net_dataset.target_function_parameters_array)
         
-    if (config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL')) and config['i_net']['data_reshape_version'] is not None:
+    if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
         print('RESTRUCTURING DATA')
         X_data, X_data_flat = restructure_data_cnn_lstm(X_data, config, subsequences=None)
-
-    return X_data, X_data_flat, y_data
+    elif config['i_net']['data_reshape_version'] == 3: #autoencoder
+        if encoder_model is None:
+            X_data, X_data_flat, autoencoder = autoencode_data(X_data, config)
+            return X_data, X_data_flat, y_data, autoencoder
+        else:
+            X_data, X_data_flat, _ = autoencode_data(X_data, config, encoder_model)
+            #return X_data, X_data_flat, y_data, None
+        
+    return X_data, X_data_flat, y_data, None
 
 
 def train_inet(lambda_net_train_dataset,
@@ -306,9 +315,9 @@ def train_inet(lambda_net_train_dataset,
     random_network_parameters = random_model.get_weights()
     network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]         
 
-    (X_train, X_train_flat, y_train) = generate_inet_train_data(lambda_net_train_dataset, config)
-    (X_valid, X_valid_flat, y_valid) = generate_inet_train_data(lambda_net_valid_dataset, config)
-    (X_test, X_test_flat, y_test) = generate_inet_train_data(lambda_net_test_dataset, config)
+    (X_train, X_train_flat, y_train, encoder_model) = generate_inet_train_data(lambda_net_train_dataset, config)
+    (X_valid, X_valid_flat, y_valid, _) = generate_inet_train_data(lambda_net_valid_dataset, config, encoder_model)
+    (X_test, X_test_flat, y_test, _) = generate_inet_train_data(lambda_net_test_dataset, config, encoder_model)
     
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
@@ -341,7 +350,7 @@ def train_inet(lambda_net_train_dataset,
                 loss_function = tf.keras.losses.get('mae') #inet_coefficient_loss_wrapper(inet_loss)
             else:
                 raise SystemExit('Coefficient Loss not implemented for selected function representation')
-    if config['i_net']['convolution_layers'] != None or config['i_net']['lstm_layers'] != None or (config['i_net']['nas'] and config['i_net']['nas_type'] != 'SEQUENTIAL'):
+    if config['i_net']['data_reshape_version'] is not None:
         y_train_model = np.hstack((y_train, X_train_flat))   
         valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
     else:
@@ -385,8 +394,7 @@ def train_inet(lambda_net_train_dataset,
                                                 num_units=hyperparameters.Choice("num_units", [64, 128, 256, 512, 1024, 2048], default=128),
                                                 use_batchnorm=False,
                                                 dropout=hyperparameters.Choice("dropout", [0.0, 0.1, 0.3, 0.5], default=0.0),
-                                               )(input_node)
-
+                                               )(input_node)                    
                 elif config['i_net']['nas_type'] == 'CNN': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
@@ -740,7 +748,7 @@ def train_inet(lambda_net_train_dataset,
     else:
         history = None
         
-    return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics) 
+    return history, (X_valid, y_valid), (X_test, y_test), dill.dumps(loss_function), dill.dumps(metrics), encoder_model
 
 
 
@@ -1142,6 +1150,60 @@ def restructure_network_parameters(shaped_network_parameters, config):
     return None
     
     
+def autoencode_data(X_data, config, encoder_model=None):
+    
+    X_data_flat = X_data
+    
+    class AutoEncoders(Model):
+
+        def __init__(self, num_features, reduction_size):
+
+            super().__init__()
+            self.encoder = Sequential(
+                [
+                  Dense(num_features//2, activation="relu"),
+                  Dense(num_features//4, activation="relu"),
+                  Dense(reduction_size, activation="relu", name='sequential')
+                ]
+            )
+
+            self.decoder = Sequential(
+                [
+                  Dense(num_features//2, activation="relu"),
+                  Dense(num_features//4, activation="relu"),
+                  Dense(num_features, activation="linear")
+                ]
+            )
+
+        def call(self, inputs):
+
+            encoded = self.encoder(inputs)
+            decoded = self.decoder(encoded)
+            return decoded
+    
+    if encoder_model is None:
+        
+        encoder_model = AutoEncoders(num_features=X_data.shape[1], reduction_size=500)
+
+        encoder_model.compile(
+            loss='mae',
+            metrics=['mae'],
+            optimizer='adam'
+        )
+
+        history = encoder_model.fit(
+            X_data[100:], 
+            X_data[100:], 
+            epochs=25,
+            batch_size=256, 
+            validation_data=(X_data[:100], X_data[:100])
+        )
+    
+    encoder_layer = encoder_model.encoder#auto_encoder.get_layer('sequential')
+    X_data = encoder_layer.predict(X_data)    
+    
+    return X_data, X_data_flat, encoder_model
+    
 def restructure_data_cnn_lstm(X_data, config, subsequences=None):
     import multiprocessing
     import psutil
@@ -1200,12 +1262,6 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
     with tf.device('/CPU:0'):
         
-        lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)      
-
-        #dt_inet = model.predict(np.array([lambda_net_parameters]))[0]
-        if config['i_net']['nas']:
-            dt_inet = dt_inet[:config['function_family']['function_representation_length']]
-
         if train_data is None:
             X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
                                                                config['data']['x_max'],
@@ -1214,9 +1270,65 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                                                                config['data']['categorical_indices'])
         else:
             X_data_random = train_data
-
+        
+        
+        lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)  
+        
         y_data_random_lambda_pred = lambda_net.predict(X_data_random).ravel()
-        #y_data_random_lambda_pred = np.round(y_data_random_lambda_pred).astype(np.int64)
+        y_test_lambda_pred = lambda_net.predict(X_test_lambda).ravel()
+        
+        if config['i_net']['nas']:
+            dt_inet = dt_inet[:config['function_family']['function_representation_length']]
+
+        y_test_lambda_pred_diff = tf.math.subtract(1.0, y_test_lambda_pred)
+        y_test_lambda_pred_softmax = tf.stack([y_test_lambda_pred, y_test_lambda_pred_diff], axis=1)         
+
+        if config['function_family']['dt_type'] == 'SDT':
+            y_test_inet_dt  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
+        elif config['function_family']['dt_type'] == 'vanilla':
+            y_test_inet_dt  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
+
+        y_test_inet_dt_diff = tf.math.subtract(1.0, y_test_inet_dt)
+        y_test_inet_dt_softmax = tf.stack([y_test_inet_dt, y_test_inet_dt_diff], axis=1)       
+
+        soft_binary_crossentropy_inet_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_inet_dt_softmax)).numpy()  
+        binary_crossentropy_inet_dt = log_loss(np.round(y_test_lambda_pred), y_test_inet_dt, labels=[0,1])
+        accuracy_inet_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
+        f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))        
+        
+        if config['evaluation']['per_network_optimization_dataset_size'] > 50_000 and config['function_family']['dt_type'] == 'SDT': 
+        
+            results =  {
+                            'function_values': {
+                                'y_test_inet_dt': y_test_inet_dt,
+                                'y_test_distilled_dt': None,
+                            },
+                            'dt_scores': {
+                                'soft_binary_crossentropy': np.nan,
+                                'soft_binary_crossentropy_data_random': np.nan,                            
+                                'binary_crossentropy': np.nan,
+                                'binary_crossentropy_data_random': np.nan,
+                                'accuracy': np.nan,
+                                'accuracy_data_random': np.nan,
+                                'f1_score': np.nan,   
+                                'f1_score_data_random': np.nan,   
+                                'runtime': np.nan
+                            },
+                        'inet_scores': {
+                            'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_inet_dt),
+                            'binary_crossentropy': np.nan_to_num(binary_crossentropy_inet_dt),
+                            'accuracy': np.nan_to_num(accuracy_inet_dt),
+                            'f1_score': np.nan_to_num(f1_score_inet_dt),           
+                            #'runtime': inet_runtime
+                        },                
+                       }
+
+
+
+            return results, None        
+        
+        
+
 
         start_dt_distilled = time.time() 
 
@@ -1233,7 +1345,6 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
             #tf.print('y_data_random_distilled_dt', y_data_random_distilled_dt, summarize=-1)
             #tf.print('y_test_distilled_dt', y_test_distilled_dt, summarize=-1)
 
-            y_test_inet_dt  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
         elif config['function_family']['dt_type'] == 'vanilla':
             dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64))
 
@@ -1252,15 +1363,10 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
             else:
                 y_test_distilled_dt = y_test_distilled_dt.ravel()            
             
-            y_test_inet_dt  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet).numpy()
-
-        y_test_lambda_pred = lambda_net.predict(X_test_lambda).ravel()
-        #y_test_lambda_pred = np.round(y_test_lambda_pred)
 
         epsilon = 1e-6
         
-        y_test_lambda_pred_diff = tf.math.subtract(1.0, y_test_lambda_pred)
-        y_test_lambda_pred_softmax = tf.stack([y_test_lambda_pred, y_test_lambda_pred_diff], axis=1)
+
 
         y_test_distilled_dt_diff = tf.math.subtract(1.0, y_test_distilled_dt)
         y_test_distilled_dt_softmax = tf.stack([y_test_distilled_dt, y_test_distilled_dt_diff], axis=1)
@@ -1270,9 +1376,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         y_data_random_distilled_dt_diff = tf.math.subtract(1.0, y_data_random_distilled_dt)
         y_data_random_distilled_dt_softmax = tf.stack([y_data_random_distilled_dt, y_data_random_distilled_dt_diff], axis=1)
-        
-        y_test_inet_dt_diff = tf.math.subtract(1.0, y_test_inet_dt)
-        y_test_inet_dt_softmax = tf.stack([y_test_inet_dt, y_test_inet_dt_diff], axis=1)      
+           
         
         soft_binary_crossentropy_distilled_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_distilled_dt_softmax)).numpy()    
         binary_crossentropy_distilled_dt = log_loss(np.round(y_test_lambda_pred), y_test_distilled_dt, labels=[0,1])
@@ -1284,10 +1388,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         accuracy_data_random_distilled_dt = accuracy_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))
         f1_score_data_random_distilled_dt = f1_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))     
 
-        soft_binary_crossentropy_inet_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_inet_dt_softmax)).numpy()  
-        binary_crossentropy_inet_dt = log_loss(np.round(y_test_lambda_pred), y_test_inet_dt, labels=[0,1])
-        accuracy_inet_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
-        f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
+
 
         #soft_binary_crossentropy_distilled_dt_median = tfp.stats.percentile(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_distilled_dt_softmax), 50.0, interpolation='midpoint').numpy()    
         #binary_crossentropy_distilled_dt_median = tf.keras.losses.get('binary_crossentropy')(np.round(tf.reshape(y_test_lambda_pred, [-1, 1])), tf.reshape(y_test_distilled_dt, [-1, 1]), labels=[0,1])  

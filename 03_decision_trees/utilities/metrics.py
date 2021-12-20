@@ -97,10 +97,10 @@ def inet_target_function_fv_loss_wrapper(random_evaluation_dataset, config):
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
  
     def inet_target_function_fv_loss(function_true_with_network_parameters, function_pred):    
-                
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
-          
+        basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights']
+        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:]
+        function_true = function_true_with_network_parameters[:,:basic_function_representation_length]
+        
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
@@ -170,11 +170,9 @@ def inet_decision_function_fv_loss_wrapper(random_evaluation_dataset, model_lamb
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
         
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):    
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
-          
-        #tf.print('network_parameters', network_parameters)
-        #tf.print('function_true', function_true)
+        basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights']
+        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:]
+        function_true = function_true_with_network_parameters[:,:basic_function_representation_length]
         
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
@@ -452,10 +450,10 @@ def inet_target_function_fv_metric_wrapper(random_evaluation_dataset, config, me
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
  
     def inet_target_function_fv_metric(function_true_with_network_parameters, function_pred):    
+        basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights']
+        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:]
+        function_true = function_true_with_network_parameters[:,:basic_function_representation_length]
         
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
-          
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
@@ -526,9 +524,10 @@ def inet_decision_function_fv_metric_wrapper(random_evaluation_dataset, model_la
     
     
     def inet_decision_function_fv_metric(function_true_with_network_parameters, function_pred):    
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']:]
-        function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
-          
+        basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights']
+        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:]
+        function_true = function_true_with_network_parameters[:,:basic_function_representation_length]
+        
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
             
