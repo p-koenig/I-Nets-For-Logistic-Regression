@@ -13,6 +13,7 @@ import traceback
 import numpy as np
 import pandas as pd
 import scipy as sp
+import time
 
 from functools import reduce
 from more_itertools import random_product 
@@ -245,11 +246,17 @@ def interpretation_net_training(lambda_net_train_dataset,
 
 def load_inet(loss_function, metrics, config):
     
+    dt_string =  ('_depth' + str(config['function_family']['maximum_depth']) +
+              '_beta' + str(config['function_family']['beta']) +
+              '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
+              '_' + str(config['function_family']['dt_type']))
+    
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
     if config['i_net']['nas']:
-        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net']
+        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string 
     else:
-        path = './data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'] #paths_dict['path_identifier_interpretation_net_data'] + '/model'
+        path = './data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
+
 
     model = []
     from tensorflow.keras.utils import CustomObjectScope
@@ -304,6 +311,11 @@ def train_inet(lambda_net_train_dataset,
               callback_names):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
+    
+    dt_string =  ('_depth' + str(config['function_family']['maximum_depth']) +
+              '_beta' + str(config['function_family']['beta']) +
+              '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
+              '_' + str(config['function_family']['dt_type']))
     
     ############################## DATA PREPARATION ###############################
     
@@ -535,8 +547,9 @@ def train_inet(lambda_net_train_dataset,
                         outputs_list.append(outputs_leaf_nodes)    
 
                         output_node = CombinedOutputInet()(outputs_list)                        
-                    
-                directory = './data/autokeras/' + paths_dict['path_identifier_interpretation_net'] + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version'])
+                
+                timestr = time.strftime("%Y%m%d-%H%M%S")
+                directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -564,7 +577,7 @@ def train_inet(lambda_net_train_dataset,
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
                 model = auto_model.export_model()
                 
-                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'], save_format='tf')
+                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string , save_format='tf')
 
         else: 
             inputs = Input(shape=X_train.shape[1], 
@@ -744,7 +757,12 @@ def train_inet(lambda_net_train_dataset,
 
             history = history.history
             
-            model.save('./data/saved_models/' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_interpretation_net'], save_format='tf')
+            
+            
+            
+
+            
+            model.save('./data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
     else:
         history = None
         
@@ -1162,15 +1180,15 @@ def autoencode_data(X_data, config, encoder_model=None):
             self.encoder = Sequential(
                 [
                   Dense(num_features//2, activation="relu"),
-                  Dense(num_features//4, activation="relu"),
+                  Dense(reduction_size*2, activation="relu"),
                   Dense(reduction_size, activation="relu", name='sequential')
                 ]
             )
 
             self.decoder = Sequential(
                 [
+                  Dense(reduction_size*2, activation="relu"),
                   Dense(num_features//2, activation="relu"),
-                  Dense(num_features//4, activation="relu"),
                   Dense(num_features, activation="linear")
                 ]
             )
@@ -1183,7 +1201,7 @@ def autoencode_data(X_data, config, encoder_model=None):
     
     if encoder_model is None:
         
-        encoder_model = AutoEncoders(num_features=X_data.shape[1], reduction_size=500)
+        encoder_model = AutoEncoders(num_features=X_data.shape[1], reduction_size=5*config['data']['number_of_variables']*config['function_family']['maximum_depth'])
 
         encoder_model.compile(
             loss='mae',
@@ -1194,9 +1212,10 @@ def autoencode_data(X_data, config, encoder_model=None):
         history = encoder_model.fit(
             X_data[100:], 
             X_data[100:], 
-            epochs=25,
+            epochs=250,
             batch_size=256, 
-            validation_data=(X_data[:100], X_data[:100])
+            validation_data=(X_data[:100], X_data[:100]),
+            callbacks=return_callbacks_from_string('early_stopping'),
         )
     
     encoder_layer = encoder_model.encoder#auto_encoder.get_layer('sequential')
