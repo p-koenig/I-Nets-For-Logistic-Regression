@@ -932,11 +932,11 @@ def generate_data_random_decision_tree_trained(config, seed=42):
 
 def generate_data_make_classification_decision_tree_trained(config, seed=42):
            
-    informative = np.random.randint(1, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
     #print('informative', informative)
     redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
     #print('redundant', redundant)
-    repeated = config['data']['number_of_variables']-informative-redundant # 0
+    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
     #print('repeated', repeated)
 
     n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
@@ -988,17 +988,17 @@ def generate_data_make_classification_decision_tree_trained(config, seed=42):
 
 def generate_data_make_classification(config, seed=42):
             
-    informative = np.random.randint(1, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
     #print('informative', informative)
     redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
     #print('redundant', redundant)
-    repeated = config['data']['number_of_variables']-informative-redundant # 0
+    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
     #print('repeated', repeated)
-    
+
     n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
     #print('n_clusters_per_class', n_clusters_per_class)
-    
-    X_data, y_data = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+
+    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -1011,7 +1011,7 @@ def generate_data_make_classification(config, seed=42):
                                                        shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
                                                        scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
-                                                       random_state=seed) 
+                                                       random_state=seed)  
     
     scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
     X_data = scaler.fit_transform(X_data)                
@@ -1695,26 +1695,46 @@ def shaped_network_parameters_to_array(shaped_network_parameters, config):
     return np.array(network_parameter_list)
 
 
-def calculate_network_distance(mean, std, network_parameters, lambda_net_parameters_train, config):
-    z_score = (network_parameters-mean)/std
-    z_score_aggregate = np.sum(np.abs(z_score))
 
+def calculate_network_distance(mean, 
+                               std, 
+                               network_parameters, 
+                               lambda_net_parameters_train, 
+                               config):
+    
+    z_score = (network_parameters-mean)/std
+    z_score = z_score[~np.isnan(z_score)]
+    z_score = z_score[~np.isinf(z_score)]
+    z_score_aggregate = np.sum(np.abs(z_score))
+    
     initialization_array = shaped_network_parameters_to_array(generate_base_model(config).get_weights(), config)
 
     distance_to_initialization = network_parameters - initialization_array
     distance_to_initialization_aggregate = np.sum(np.abs(distance_to_initialization))
 
     distance_to_sample_aggregate_list = []
+    distance_to_sample_max_list = []
     for sample in lambda_net_parameters_train:
         distance_to_sample = network_parameters - sample
+        
+        distance_to_sample_max = np.max(np.abs(distance_to_sample))
         distance_to_sample_aggregate = np.sum(np.abs(distance_to_sample))
+        
+        distance_to_sample_max_list.append(distance_to_sample_max)
         distance_to_sample_aggregate_list.append(distance_to_sample_aggregate)
-
+        
     distance_to_sample_average = np.mean(distance_to_sample_aggregate_list)
     distance_to_sample_min = np.min(distance_to_sample_aggregate_list)    
     
-    return z_score_aggregate, distance_to_initialization_aggregate, distance_to_sample_average, distance_to_sample_min
+    max_distance_to_neuron_average= np.mean(distance_to_sample_max_list) #biggest difference to a single neuron in average    
+    max_distance_to_neuron_min = np.min(distance_to_sample_max_list) #biggest difference to a single neuron for closest sample
     
+    return (z_score_aggregate, 
+            distance_to_initialization_aggregate,
+            distance_to_sample_average, 
+            distance_to_sample_min, 
+            max_distance_to_neuron_average,
+            max_distance_to_neuron_min)
 
 
 def per_network_dt_optimization_tf(network_parameters,

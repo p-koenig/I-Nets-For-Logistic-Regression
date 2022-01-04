@@ -400,7 +400,15 @@ def generate_lambda_net_from_config(config, seed=None):
                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), 
                     bias_initializer='zeros'))
 
-    model.compile(optimizer=config['lambda_net']['optimizer_lambda'],
+    
+    optimizer = tf.keras.optimizers.get(config['lambda_net']['optimizer_lambda'])
+    
+    try:
+        optimizer.learning_rate = learning_rate=config['lambda_net']['learning_rate_lambda']
+    except:
+        pass
+    
+    model.compile(optimizer=optimizer,
                   loss='binary_crossentropy',#tf.keras.losses.get(config['lambda_net']['loss_lambda']),
                   metrics=[tf.keras.metrics.get("binary_accuracy")]
                  )

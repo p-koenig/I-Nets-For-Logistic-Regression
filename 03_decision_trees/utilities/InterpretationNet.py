@@ -572,6 +572,7 @@ def train_inet(lambda_net_train_dataset,
                     epochs=config['i_net']['epochs'],
                     batch_size=config['i_net']['batch_size'],
                     callbacks=return_callbacks_from_string('early_stopping'),
+                    verbose=2,
                     )         
 
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
@@ -735,16 +736,16 @@ def train_inet(lambda_net_train_dataset,
             
             callbacks = return_callbacks_from_string(callback_names, config)            
 
-            optimizer = config['i_net']['optimizer']
-            if optimizer == "custom":
-                optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+            optimizer = tf.keras.optimizers.get(config['i_net']['optimizer'])
+            optimizer.learning_rate = config['i_net']['learning_rate']
+
 
             model.compile(optimizer=optimizer,
                           loss=loss_function,
                           metrics=metrics
                          )
 
-            verbosity = 1 #if n_jobs ==1 else 0
+            verbosity = 2 #if n_jobs ==1 else 0
 
             ############################## PREDICTION ###############################
             history = model.fit(X_train,
@@ -1216,7 +1217,7 @@ def autoencode_data(X_data, config, encoder_model=None):
             batch_size=256, 
             validation_data=(X_data[:100], X_data[:100]),
             callbacks=return_callbacks_from_string('early_stopping'),
-        )
+            verbose=2)
     
     encoder_layer = encoder_model.encoder#auto_encoder.get_layer('sequential')
     X_data = encoder_layer.predict(X_data)    
