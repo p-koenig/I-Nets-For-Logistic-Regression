@@ -48,6 +48,8 @@ import pickle
 from utilities.LambdaNet import *
 from utilities.metrics import *
 from utilities.DecisionTree_BASIC import *
+from utilities.InterpretationNet import *
+
 #from utilities.utility_functions import *
 
 from scipy.optimize import minimize
@@ -76,6 +78,14 @@ import logging
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
 tf.autograph.set_verbosity(3)
+
+from prettytable import PrettyTable
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, LabelEncoder, OrdinalEncoder
+
+from copy import deepcopy
 
                                     
 #######################################################################################################################################################
@@ -1518,6 +1528,875 @@ def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variable
 
     return number_of_function_parameters
 
+
+
+
+######################################################################################################################################################################################################################
+###########################################################################################  REAL WORLD & SYNTHETIC EVALUATION ################################################################################################ 
+######################################################################################################################################################################################################################
+
+def evaluate_real_world_dataset(model,
+                                dataset_size_list,
+                                mean_train_parameters,
+                                std_train_parameters,
+                                lambda_net_parameters_train,
+                                X_data, 
+                                y_data, 
+                                nominal_features, 
+                                ordinal_features, 
+                                config,
+                                config_train_network=None):
+    transformer = ColumnTransformer(transformers=[('cat', OneHotEncoder(), nominal_features)], remainder='passthrough', sparse_threshold=0)
+    transformer.fit(X_data)
+
+    X_data = transformer.transform(X_data)
+    X_data = pd.DataFrame(X_data, columns=transformer.get_feature_names())
+
+    for ordinal_feature in ordinal_features:
+        X_data[ordinal_feature] = OrdinalEncoder().fit_transform(X_data[ordinal_feature].values.reshape(-1, 1)).flatten()
+
+    X_data = X_data.astype(np.float64)
+    
+    print('Original Data Shape: ', X_data.shape)
+    
+    X_data = adjust_data_to_number_of_variables(X_data=X_data, 
+                                                y_data=y_data, 
+                                                number_of_variables=config['data']['number_of_variables'],
+                                                seed=config['computation']['RANDOM_SEED'])
+    X_data, normalizer_list = normalize_real_world_data(X_data)
+
+    (X_train, 
+     y_train, 
+     X_valid, 
+     y_valid, 
+     X_test, 
+     y_test) = split_train_test_valid(X_data, 
+                                      y_data, 
+                                      seed=config['computation']['RANDOM_SEED'])
+
+    X_train, y_train = rebalance_data(X_train, y_train)
+
+    if config_train_network == None:
+        config_train_network = config
+
+    test_network, model_history = train_network_real_world_data(X_train, 
+                                                                y_train, 
+                                                                X_valid, 
+                                                                y_valid, 
+                                                                config_train_network)
+
+
+    evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list = evaluate_network_real_world_data(model,
+                                                                                               test_network, 
+                                                                                                X_train, 
+                                                                                                X_test, 
+                                                                                                dataset_size_list,
+                                                                                                config)
+    distances_dict = calculate_network_distance(mean=mean_train_parameters, 
+                                                           std=std_train_parameters, 
+                                                           network_parameters=test_network_parameters, 
+                                                           lambda_net_parameters_train=lambda_net_parameters_train, 
+                                                           config=config)
+
+    data_dict = {
+        'X_train': X_train,
+        'y_train': y_train,
+        'X_valid': X_valid,
+        'y_valid': y_valid,
+        'X_test': X_test,
+        'y_test': y_test,
+    }
+        
+    return distances_dict, evaluation_result_dict, results_list, dt_inet, dt_distilled_list, data_dict, normalizer_list
+
+
+
+def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_array, 
+                                                         dt_inet, 
+                                                         X_test_lambda, 
+                                                         #y_test_lambda,
+                                                         config,
+                                                         train_data=None):
+
+    from utilities.metrics import calculate_function_value_from_decision_tree_parameters_wrapper, calculate_function_value_from_vanilla_decision_tree_parameters_wrapper
+    
+    with tf.device('/CPU:0'):
+        
+        if train_data is None:
+            X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
+                                                               config['data']['x_max'],
+                                                               config['evaluation']['per_network_optimization_dataset_size'], 
+                                                               config['data']['number_of_variables'], 
+                                                               config['data']['categorical_indices'])
+        else:
+            X_data_random = train_data
+        
+        
+        lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)  
+        
+        y_data_random_lambda_pred = lambda_net.predict(X_data_random).ravel()
+        y_test_lambda_pred = lambda_net.predict(X_test_lambda).ravel()
+        
+        if config['i_net']['nas']:
+            dt_inet = dt_inet[:config['function_family']['function_representation_length']]
+
+        y_test_lambda_pred_diff = tf.math.subtract(1.0, y_test_lambda_pred)
+        y_test_lambda_pred_softmax = tf.stack([y_test_lambda_pred, y_test_lambda_pred_diff], axis=1)         
+
+        if config['function_family']['dt_type'] == 'SDT':
+            y_test_inet_dt, _  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet)
+            y_test_inet_dt = y_test_inet_dt.numpy()
+        elif config['function_family']['dt_type'] == 'vanilla':
+            y_test_inet_dt, _  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet)
+            y_test_inet_dt = y_test_inet_dt.numpy()
+
+        y_test_inet_dt_diff = tf.math.subtract(1.0, y_test_inet_dt)
+        y_test_inet_dt_softmax = tf.stack([y_test_inet_dt, y_test_inet_dt_diff], axis=1)       
+
+        soft_binary_crossentropy_inet_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_inet_dt_softmax)).numpy()  
+        binary_crossentropy_inet_dt = log_loss(np.round(y_test_lambda_pred), y_test_inet_dt, labels=[0,1])
+        accuracy_inet_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
+        f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))        
+        
+        if config['evaluation']['per_network_optimization_dataset_size'] > 50_000 and config['function_family']['dt_type'] == 'SDT': 
+        
+            results =  {
+                            'function_values': {
+                                'y_test_inet_dt': y_test_inet_dt,
+                                'y_test_distilled_dt': None,
+                            },
+                            'dt_scores': {
+                                'soft_binary_crossentropy': np.nan,
+                                'soft_binary_crossentropy_data_random': np.nan,                            
+                                'binary_crossentropy': np.nan,
+                                'binary_crossentropy_data_random': np.nan,
+                                'accuracy': np.nan,
+                                'accuracy_data_random': np.nan,
+                                'f1_score': np.nan,   
+                                'f1_score_data_random': np.nan,   
+                                'runtime': np.nan
+                            },
+                        'inet_scores': {
+                            'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_inet_dt),
+                            'binary_crossentropy': np.nan_to_num(binary_crossentropy_inet_dt),
+                            'accuracy': np.nan_to_num(accuracy_inet_dt),
+                            'f1_score': np.nan_to_num(f1_score_inet_dt),           
+                            #'runtime': inet_runtime
+                        },                
+                       }
+
+
+
+            return results, None        
+        
+        
+
+
+        start_dt_distilled = time.time() 
+
+        dt_distilled = generate_random_decision_tree(config, config['computation']['RANDOM_SEED'])
+        if config['function_family']['dt_type'] == 'SDT':
+            dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64), epochs=50)  
+
+            end_dt_distilled = time.time()     
+            dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)        
+
+            y_data_random_distilled_dt = dt_distilled.predict_proba(X_data_random).ravel()
+            y_test_distilled_dt = dt_distilled.predict_proba(X_test_lambda).ravel()
+            
+            #tf.print('y_data_random_distilled_dt', y_data_random_distilled_dt, summarize=-1)
+            #tf.print('y_test_distilled_dt', y_test_distilled_dt, summarize=-1)
+
+        elif config['function_family']['dt_type'] == 'vanilla':
+            dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64))
+
+            end_dt_distilled = time.time()     
+            dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)     
+
+            y_data_random_distilled_dt = dt_distilled.predict_proba(X_data_random)
+            if y_data_random_distilled_dt.shape[1] > 1:
+                y_data_random_distilled_dt = y_data_random_distilled_dt[:,1:].ravel()
+            else:
+                y_data_random_distilled_dt = y_data_random_distilled_dt.ravel()
+            
+            y_test_distilled_dt = dt_distilled.predict_proba(X_test_lambda)
+            if y_test_distilled_dt.shape[1] > 1:
+                y_test_distilled_dt = y_test_distilled_dt[:,1:].ravel()
+            else:
+                y_test_distilled_dt = y_test_distilled_dt.ravel()            
+            
+
+        epsilon = 1e-6
+        
+
+
+        y_test_distilled_dt_diff = tf.math.subtract(1.0, y_test_distilled_dt)
+        y_test_distilled_dt_softmax = tf.stack([y_test_distilled_dt, y_test_distilled_dt_diff], axis=1)
+        
+        y_data_random_lambda_pred_diff = tf.math.subtract(1.0, y_data_random_lambda_pred)
+        y_data_random_lambda_pred_softmax = tf.stack([y_data_random_lambda_pred, y_data_random_lambda_pred_diff], axis=1)
+
+        y_data_random_distilled_dt_diff = tf.math.subtract(1.0, y_data_random_distilled_dt)
+        y_data_random_distilled_dt_softmax = tf.stack([y_data_random_distilled_dt, y_data_random_distilled_dt_diff], axis=1)
+           
+        
+        soft_binary_crossentropy_distilled_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_distilled_dt_softmax)).numpy()    
+        binary_crossentropy_distilled_dt = log_loss(np.round(y_test_lambda_pred), y_test_distilled_dt, labels=[0,1])
+        accuracy_distilled_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_distilled_dt))
+        f1_score_distilled_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_distilled_dt))   
+                                                           
+        soft_binary_crossentropy_data_random_distilled_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_data_random_lambda_pred_softmax, y_data_random_distilled_dt_softmax)).numpy()
+        binary_crossentropy_data_random_distilled_dt = log_loss(np.round(y_data_random_lambda_pred), y_data_random_distilled_dt, labels=[0,1])
+        accuracy_data_random_distilled_dt = accuracy_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))
+        f1_score_data_random_distilled_dt = f1_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))     
+
+
+
+        #soft_binary_crossentropy_distilled_dt_median = tfp.stats.percentile(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_distilled_dt_softmax), 50.0, interpolation='midpoint').numpy()    
+        #binary_crossentropy_distilled_dt_median = tf.keras.losses.get('binary_crossentropy')(np.round(tf.reshape(y_test_lambda_pred, [-1, 1])), tf.reshape(y_test_distilled_dt, [-1, 1]), labels=[0,1])  
+        
+        #soft_binary_crossentropy_data_random_distilled_dt_median = tfp.stats.percentile(tf.nn.softmax_cross_entropy_with_logits(y_data_random_lambda_pred_softmax, y_data_random_distilled_dt_softmax), 50.0, interpolation='midpoint').numpy()
+        #binary_crossentropy_data_random_distilled_dt_median = tf.keras.losses.get('binary_crossentropy')(np.round(tf.reshape(y_data_random_lambda_pred, [-1, 1])), tf.reshape(y_data_random_distilled_dt, [-1, 1]), labels=[0,1])   
+        
+        #soft_binary_crossentropy_inet_dt_median = tfp.stats.percentile(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_inet_dt_softmax), 50.0, interpolation='midpoint').numpy()  
+        #binary_crossentropy_inet_dt_median = tf.keras.losses.get('binary_crossentropy')(np.round(tf.reshape(y_test_lambda_pred, [-1, 1])), tf.reshape(y_test_inet_dt, [-1, 1]), labels=[0,1])     
+        
+
+        results =  {
+                        'function_values': {
+                            'y_test_inet_dt': y_test_inet_dt,
+                            'y_test_distilled_dt': y_test_distilled_dt,
+                        },
+                        'dt_scores': {
+                            'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_distilled_dt),
+                            'soft_binary_crossentropy_data_random': np.nan_to_num(soft_binary_crossentropy_data_random_distilled_dt),                            
+                            'binary_crossentropy': np.nan_to_num(binary_crossentropy_distilled_dt),
+                            'binary_crossentropy_data_random': np.nan_to_num(binary_crossentropy_data_random_distilled_dt),
+                            'accuracy': np.nan_to_num(accuracy_distilled_dt),
+                            'accuracy_data_random': np.nan_to_num(accuracy_data_random_distilled_dt),
+                            'f1_score': np.nan_to_num(f1_score_distilled_dt),   
+                            'f1_score_data_random': np.nan_to_num(f1_score_data_random_distilled_dt),   
+                            'runtime': dt_distilled_runtime
+                        },
+                        'inet_scores': {
+                            'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_inet_dt),
+                            'binary_crossentropy': np.nan_to_num(binary_crossentropy_inet_dt),
+                            'accuracy': np.nan_to_num(accuracy_inet_dt),
+                            'f1_score': np.nan_to_num(f1_score_inet_dt),           
+                            #'runtime': inet_runtime
+                        },                
+                   }
+                
+    
+    
+    return results, dt_distilled
+    
+
+
+def evaluate_interpretation_net_synthetic_data(network_parameters_array,
+                                               X_test_lambda_array, 
+                                               model,
+                                               config, 
+                                               identifier, 
+                                               mean_train_parameters, 
+                                               std_train_parameters, 
+                                               distances_dict={},
+                                               verbosity=0):
+            
+    def print_results_synthetic_evaluation_single(inet_evaluation_result_dict_mean):
+        tab = PrettyTable()
+        tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
+        
+        max_width = {}   
+        for field in tab.field_names:
+            if field == 'Metric':
+                max_width[field] = 25
+            else:
+                max_width[field] = 8
+        tab._max_width = max_width
+    
+        tab.add_rows(
+            [
+                ['Soft Binary Crossentropy (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['soft_binary_crossentropy'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['soft_binary_crossentropy'], 3)],
+                ['Binary Crossentropy (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['binary_crossentropy'], 3)],
+                ['Accuracy (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['accuracy'], 3)],
+                ['F1 Score (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['f1_score'], 3)],
+                ['Runtime (Mean)',  np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['runtime'], 3)],
+                ['Soft Binary Crossentropy (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['soft_binary_crossentropy_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['soft_binary_crossentropy_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['soft_binary_crossentropy_median'], 3)],
+                ['Binary Crossentropy (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['binary_crossentropy_median'], 3)],
+                ['Accuracy (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['accuracy_median'], 3)],
+                ['F1 Score (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['f1_score_median'], 3)],
+                ['Runtime (Median)',  np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['runtime_median'], 3)],
+            ]    
+        )
+        print(tab)       
+    
+    with tf.device('/CPU:0'):
+        number = min(X_test_lambda_array.shape[0], 100)
+
+        start_inet = time.time() 
+
+        network_parameters = np.array(network_parameters_array[:number])
+        if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
+            network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
+        elif config['i_net']['data_reshape_version'] == 3: #autoencoder
+            network_parameters, network_parameters_flat, _ = autoencode_data([network_parameters], config, encoder_model)    
+        dt_inet_list = model.predict(network_parameters)   
+
+        end_inet = time.time()     
+        inet_runtime = (end_inet - start_inet)    
+
+
+        parallel_inet_evaluation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=1, backend='loky') #loky #sequential multiprocessing
+        inet_evaluation_results_with_dt = parallel_inet_evaluation(delayed(evaluate_interpretation_net_prediction_single_sample)(lambda_net_parameters, 
+                                                                                                                       dt_inet,
+                                                                                                                       X_test_lambda, 
+                                                                                                                       #y_test_lambda,
+                                                                                                                       config) for lambda_net_parameters, 
+                                                                                                                                   dt_inet, 
+                                                                                                                                   X_test_lambda in zip(network_parameters_array[:number], 
+                                                                                                                                                        dt_inet_list, 
+                                                                                                                                                        X_test_lambda_array[:number]))      
+
+        del parallel_inet_evaluation
+
+        inet_evaluation_results = [entry[0] for entry in inet_evaluation_results_with_dt]
+        dt_distilled_list = [entry[1] for entry in inet_evaluation_results_with_dt]
+
+
+        inet_evaluation_result_dict = None
+        for some_dict in inet_evaluation_results:
+            if inet_evaluation_result_dict == None:
+                inet_evaluation_result_dict = some_dict
+            else:
+                inet_evaluation_result_dict = mergeDict(inet_evaluation_result_dict, some_dict)
+
+        inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/number for _ in range(number)]
+
+
+        inet_evaluation_result_dict_mean = {}
+
+        for key_l1, values_l1 in inet_evaluation_result_dict.items():
+            if key_l1 != 'function_values':
+                if isinstance(values_l1, dict):
+                    inet_evaluation_result_dict_mean[key_l1] = {}
+                    for key_l2, values_l2 in values_l1.items():
+                        inet_evaluation_result_dict_mean[key_l1][key_l2] = np.mean(values_l2)
+                        inet_evaluation_result_dict_mean[key_l1][key_l2 + '_median'] = np.median(values_l2)
+
+    if verbosity > 0:
+        print_results_synthetic_evaluation_single(inet_evaluation_result_dict_mean)    
+    
+    distances_dict_list = None
+
+    for network in tqdm(network_parameters_array[:number]):
+        distances_dict_single = calculate_network_distance(mean=mean_train_parameters, 
+                                                                   std=std_train_parameters, 
+                                                                   network_parameters=network, 
+                                                                   lambda_net_parameters_train=network_parameters_array, 
+                                                                   config=config)    
+
+        if distances_dict_list == None:
+            distances_dict_list = distances_dict_single
+        else:
+            distances_dict_list = mergeDict(distances_dict_list, distances_dict_single)     
+
+    distances_dict[identifier] = {}
+    for key, value in distances_dict_list.items():
+        distances_dict[identifier][key] = np.mean(value)
+    
+    
+    return inet_evaluation_result_dict, inet_evaluation_result_dict_mean, dt_distilled_list, distances_dict
+
+def print_network_distances(distances_dict):
+    tab = PrettyTable()
+    field_names = ['Measure']
+    field_names.extend(list(distances_dict.keys()))
+    tab.field_names = field_names
+    
+    max_width = {}   
+    for field in field_names:
+        if field == 'Measure':
+            max_width[field] = 25
+        else:
+            max_width[field] = 8
+    tab._max_width = max_width    
+    tab.add_rows(
+        [
+            list(flatten_list(['Average Z-Score (Sample to Train Data)', [np.round(value['z_score_aggregate'], 3) for value in distances_dict.values()]])),
+            list(flatten_list(['Average Distance to Initialization', [np.round(value['distance_to_initialization_aggregate'], 3) for value in distances_dict.values()]])),
+            list(flatten_list(['Average Mean Distance to Train Data', [np.round(value['distance_to_sample_average'], 3) for value in distances_dict.values()]])),
+            list(flatten_list(['Average Distance to closest Train Data Sample', [np.round(value['distance_to_sample_min'], 3) for value in distances_dict.values()]])),
+            list(flatten_list(['Average Biggest Distance for Single Neuron', [np.round(value['max_distance_to_neuron_average'], 3) for value in distances_dict.values()]])),
+            list(flatten_list(['Minimum Biggest Distance for Single Neuron', [np.round(value['max_distance_to_neuron_min'], 3) for value in distances_dict.values()]])),           
+        ]    
+    )
+    print(tab)
+
+def print_complete_performance_evaluation_results(results_dict, identifier_list, dataset_size_list, dataset_size=10000):
+    print('Dataset Size:\t\t', dataset_size)
+    tab = PrettyTable()
+    field_names = ['Metric']
+
+    for identifier in identifier_list:
+        #field_names.append('Dist. (Random) ' + identifier)
+        field_names.append('Dist. ' + identifier)
+        field_names.append('I-Net ' + identifier)
+
+    tab.field_names = field_names
+    
+    max_width = {}   
+    for field in field_names:
+        if field == 'Metric':
+            max_width[field] = 25
+        else:
+            max_width[field] = 6
+    tab._max_width = max_width    
+    
+    tab.add_rows(
+        [
+            flatten_list(['Soft BC', 
+                          [[
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy_data_random']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
+                            ] for identifier in identifier_list]          
+                          ]),
+            flatten_list(['BC', 
+                          [[
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy_data_random']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
+                            ] for identifier in identifier_list]                               
+                          ]),
+            flatten_list(['Acc', 
+                          [[
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_data_random']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
+                            ] for identifier in identifier_list]                               
+                          ]),
+            flatten_list(['F1 Score', 
+                          [[
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_data_random']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
+                            ] for identifier in identifier_list]                               
+                          ]),
+            flatten_list(['Runtime', 
+                          [[
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['runtime'], 3)
+                            ] for identifier in identifier_list]                               
+                          ]),
+        ]    
+    )
+    print(tab)
+    print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
+
+
+def print_results_synthetic_evaluation(inet_evaluation_result_dict_mean_train, inet_evaluation_result_dict_mean_valid, inet_evaluation_result_dict_mean_test, distances_dict):
+    
+    tab = PrettyTable()
+    tab.field_names = ['Metric', 'Train', 'Train ', ' Train ', 'Valid', 'Valid ', ' Valid ', 'Test', 'Test ', ' Test ']
+    
+    max_width = {}   
+    for field in tab.field_names:
+        if field == 'Metric':
+            max_width[field] = 25
+        else:
+            max_width[field] = 8
+    tab._max_width = max_width
+    
+    tab.add_rows(
+        [
+            ['Metric', 
+             'Dist. (Random)', 'Dist.', 'I-Net', 
+             'Dist. (Random)', 'Dist.', 'I-Net', 
+             'Dist. (Random)', 'Dist.', 'I-Net'],
+            ['Soft Binary Crossentropy (Mean)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['soft_binary_crossentropy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['soft_binary_crossentropy'], 3),
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['soft_binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['soft_binary_crossentropy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['soft_binary_crossentropy'], 3),
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['soft_binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['soft_binary_crossentropy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['soft_binary_crossentropy'], 3),
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['soft_binary_crossentropy'], 3)],
+            ['Binary Crossentropy (Mean)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['binary_crossentropy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['binary_crossentropy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['binary_crossentropy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['binary_crossentropy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['binary_crossentropy'], 3)],
+            ['Accuracy (Mean)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['accuracy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['accuracy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['accuracy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['accuracy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['accuracy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['accuracy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['accuracy_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['accuracy'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['accuracy'], 3)],
+            ['F1 Score (Mean)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['f1_score_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['f1_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['f1_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['f1_score_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['f1_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['f1_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['f1_score'], 3)],
+            ['Runtime (Mean)',  
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['runtime'], 3),  
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['runtime'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['runtime'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['runtime'], 3),  
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['runtime'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['runtime'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['runtime'], 3)],
+            ['Soft Binary Crossentropy (Median)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['soft_binary_crossentropy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['soft_binary_crossentropy_median'], 3),
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['soft_binary_crossentropy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['soft_binary_crossentropy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['soft_binary_crossentropy_median'], 3),
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['soft_binary_crossentropy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['soft_binary_crossentropy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['soft_binary_crossentropy_median'], 3),
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['soft_binary_crossentropy_median'], 3)],
+            ['Binary Crossentropy (Median)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['binary_crossentropy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['binary_crossentropy_median'], 3),
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['binary_crossentropy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['binary_crossentropy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['binary_crossentropy_median'], 3),
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['binary_crossentropy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['binary_crossentropy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['binary_crossentropy_median'], 3),
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['binary_crossentropy_median'], 3)],
+            ['Accuracy (Median)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['accuracy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['accuracy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['accuracy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['accuracy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['accuracy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['accuracy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['accuracy_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['accuracy_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['accuracy_median'], 3)],
+            ['F1 Score (Median)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['f1_score_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['f1_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['f1_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['f1_score_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['f1_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['f1_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['f1_score_median'], 3)],
+            ['Runtime (Median)',  
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['runtime_median'], 3),  
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['runtime_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['runtime_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['runtime_median'], 3),  
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['runtime_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['runtime_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['runtime_median'], 3)],
+        ]    
+    )
+    print(tab)
+    
+    print_network_distances(distances_dict)
+
+
+
+def adjust_data_to_number_of_variables(X_data, y_data, number_of_variables, seed=42):
+
+    if X_data.shape[1] > number_of_variables:
+        #X_data = X_data.sample(n=number_of_variables,axis='columns')
+
+        clf_extra = ExtraTreesClassifier(n_estimators=100,
+                                          random_state=seed)
+        clf_extra = clf_extra.fit(X_data, y_data)
+
+        selector = SelectFromModel(clf_extra, 
+                                         prefit=True,
+                                         threshold=-np.inf,
+                                         max_features=number_of_variables)
+        feature_idx = selector.get_support()   
+        X_data = X_data.loc[:,feature_idx]
+    else:
+        for i in range(number_of_variables-X_data.shape[1]):
+            column_name = 'zero_dummy_' + str(i+1)
+            X_data[column_name] = np.zeros(X_data.shape[0])
+    
+    return X_data
+
+def normalize_real_world_data(X_data):
+    normalizer_list = []
+    for column_name in X_data:
+        scaler = MinMaxScaler()
+        scaler.fit(X_data[column_name].values.reshape(-1, 1))
+        X_data[column_name] = scaler.transform(X_data[column_name].values.reshape(-1, 1)).ravel()
+        normalizer_list.append(scaler)
+    
+    return X_data, normalizer_list
+
+def split_train_test_valid(X_data, y_data, valid_frac=0.2, test_frac=0.2, seed=42):
+    data_size = X_data.shape[0]
+    
+    test_size = int(data_size*test_frac)
+    valid_size = int(data_size*valid_frac)
+    
+    X_train_with_valid, X_test, y_train_with_valid, y_test = train_test_split(X_data, y_data, test_size=test_size, random_state=seed)
+    X_train, X_valid, y_train, y_valid = train_test_split(X_train_with_valid, y_train_with_valid, test_size=valid_size, random_state=seed)
+
+    print(X_train.shape, y_train.shape)
+    print(X_valid.shape, y_valid.shape)
+    print(X_test.shape, y_test.shape)    
+    
+    return X_train, y_train, X_valid, y_valid, X_test, y_test
+
+def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE'):
+    true_labels = len(y_train[y_train >= 0.5 ]) 
+    false_labels = len(y_train[y_train < 0.5 ]) 
+
+    true_ratio = true_labels/(true_labels+false_labels)
+
+    print('True Ratio: ', str(true_ratio))
+
+
+    
+    if true_ratio <= balance_ratio or true_ratio >= (1-balance_ratio):
+        from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+
+        if strategy == 'SMOTE':
+            oversample = SMOTE()
+        elif strategy == 'ADASYN':
+            oversample = ADASYN()
+        else:
+            oversample = RandomOverSampler(sampling_strategy='minority', random_state=RANDOM_SEED)
+
+        X_train, y_train = oversample.fit_resample(X_train, y_train)
+
+        true_labels = len(y_train[y_train >= 0.5 ]) 
+        false_labels = len(y_train[y_train < 0.5 ]) 
+
+        print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
+
+    return X_train, y_train
+
+def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config):
+    
+    from utilities.LambdaNet import generate_lambda_net_from_config
+
+    with tf.device('/CPU:0'):
+
+        random.seed(config['computation']['RANDOM_SEED'])
+        np.random.seed(config['computation']['RANDOM_SEED'])
+        if int(tf.__version__[0]) >= 2:
+            tf.random.set_seed(config['computation']['RANDOM_SEED'])
+        else:
+            tf.set_random_seed(config['computation']['RANDOM_SEED'])
+
+        test_network = generate_lambda_net_from_config(config, seed=config['computation']['RANDOM_SEED'])
+
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', 
+                                                          patience=50, 
+                                                          min_delta=0.001, 
+                                                          verbose=0, 
+                                                          mode='min', 
+                                                          restore_best_weights=False)
+
+        model_history = test_network.fit(X_train,
+                                          y_train,
+                                          epochs=config['lambda_net']['epochs_lambda'], 
+                                          batch_size=config['lambda_net']['batch_lambda'], 
+                                          callbacks=[early_stopping], #PlotLossesKerasTF()
+                                          validation_data=(X_valid, y_valid),
+                                          verbose=0)
+        
+
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
+
+        axes[0].plot(model_history.history['loss'])
+        axes[0].plot(model_history.history['val_loss'])      
+        axes[0].set_title('model loss')
+        axes[0].set_ylabel('loss')
+        axes[0].set_xlabel('epoch')
+        axes[0].legend(['train loss', 'valid loss'], loc='upper left')  
+        
+        axes[1].plot(model_history.history['binary_accuracy'])
+        axes[1].plot(model_history.history['val_binary_accuracy'])  
+        axes[1].set_title('model accuracy')
+        axes[1].set_ylabel('accuracy')
+        axes[1].set_xlabel('epoch')
+        axes[1].legend(['train acc', 'valid acc'], loc='upper left')  
+        plt.show()                    
+                    
+        
+        return test_network, model_history
+
+                    
+    
+def make_inet_prediction(model, test_network, config):
+    test_network_parameters = shaped_network_parameters_to_array(test_network.get_weights(), config)
+
+    start_inet = time.time() 
+
+    network_parameters = np.array([test_network_parameters])
+    if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
+        network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
+    elif config['i_net']['data_reshape_version'] == 3: #autoencoder
+        network_parameters, network_parameters_flat, _ = autoencode_data([network_parameters], config, encoder_model)    
+    dt_inet = model.predict(network_parameters)[0]    
+
+    end_inet = time.time()     
+    inet_runtime = (end_inet - start_inet)   
+    
+    test_network_parameters = shaped_network_parameters_to_array(test_network.get_weights(), config)
+    return dt_inet, test_network_parameters, inet_runtime
+
+def evaluate_network_real_world_data(model, test_network, X_train, X_test, dataset_size_list, config, verbosity=0):
+        
+    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
+
+    results_list = []
+    dt_distilled_list = []
+    for dataset_size in dataset_size_list:
+
+        if dataset_size == 'TRAIN_DATA': 
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test.values, 
+                                                                               #y_test_lambda,
+                                                                               config,
+                                                                               train_data=X_train.values)
+
+        else:
+            config_test = deepcopy(config)
+            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
+
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test.values, 
+                                                                               #y_test_lambda,
+                                                                               config_test)
+
+
+        results['inet_scores']['runtime'] = inet_runtime
+        results_list.append(results)
+        dt_distilled_list.append(dt_distilled)
+
+        if verbosity > 0:
+            print('Dataset Size:\t\t', dataset_size)
+            tab = PrettyTable()
+            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
+            
+            max_width = {}   
+            for field in tab.field_names:
+                if field == 'Metric':
+                    max_width[field] = 25
+                else:
+                    max_width[field] = 10
+            tab._max_width = max_width
+    
+            tab.add_rows(
+                [
+                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
+                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
+                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
+                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
+                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
+                ]    
+            )
+            print(tab)
+            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
+
+    evaluation_result_dict = None
+    for some_dict in results_list:
+        if evaluation_result_dict == None:
+            evaluation_result_dict = some_dict
+        else:
+            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
+
+    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
+                
+    
+def print_results_different_data_sizes(results, dataset_size_list_print):
+    tab = PrettyTable()
+    tab.field_names = flatten_list(['Metric', [['Dist. (Random) ' + str(size), 'Dist. ' + str(size)] for size in dataset_size_list_print], 'I-Net'])
+    
+    max_width = {}   
+    for field in tab.field_names:
+        if field == 'Metric':
+            max_width[field] = 25
+        else:
+            max_width[field] = 8
+    tab._max_width = max_width
+    
+    tab.add_rows(
+        [
+            flatten_list(['Soft Binary Crossentropy', 
+                          [[np.round(result_dict['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(result_dict['dt_scores']['soft_binary_crossentropy'], 3)] for result_dict in results],
+                          np.round(results[0]['inet_scores']['soft_binary_crossentropy'], 3)]),
+            flatten_list(['Binary Crossentropy',  
+                          [[np.round(result_dict['dt_scores']['binary_crossentropy_data_random'], 3), np.round(result_dict['dt_scores']['binary_crossentropy'], 3)] for result_dict in results],
+                          np.round(results[0]['inet_scores']['binary_crossentropy'], 3)]),
+            flatten_list(['Accuracy', 
+                          [[np.round(result_dict['dt_scores']['accuracy_data_random'], 3), np.round(result_dict['dt_scores']['accuracy'], 3)] for result_dict in results],
+                          np.round(results[0]['inet_scores']['accuracy'], 3)]),
+            flatten_list(['F1 Score', 
+                          [[np.round(result_dict['dt_scores']['f1_score_data_random'], 3), np.round(result_dict['dt_scores']['f1_score'], 3)] for result_dict in results],
+                          np.round(results[0]['inet_scores']['f1_score'], 3)]),
+            flatten_list(['Runtime',  
+                          [[np.round(result_dict['dt_scores']['runtime'], 3), np.round(result_dict['dt_scores']['runtime'], 3)] for result_dict in results],
+                          np.round(results[0]['inet_scores']['runtime'], 3)])
+        ]    
+    )
+    print(tab)
+
+    
+def plot_decision_tree_from_parameters(dt_parameters, normalizer_list, config):
+    if config['function_family']['dt_type'] == 'vanilla':
+        image, nodes = anytree_decision_tree_from_parameters(dt_parameters, config=config, normalizer_list=normalizer_list)
+    else:
+        tree = generate_random_decision_tree(config)
+        tree.initialize_from_parameter_array(dt_parameters, reshape=True, config=config)
+        image = tree.plot_tree()
+    
+    return image
+
+def plot_decision_tree_from_model(dt_model, config):
+    if config['function_family']['dt_type'] == 'vanilla':
+        plt.figure(figsize=(24,12))  # set plot size (denoted in inches)
+        plot_tree(dt_model, fontsize=12)
+        image = plt.show()
+    else:
+        image = dt_model.plot_tree()
+    
+    return image
+
+
+    
+
+
+
+
+
 ######################################################################################################################################################################################################################
 ###########################################################################################  LAMBDA NET UTILITY ################################################################################################ 
 ######################################################################################################################################################################################################################
@@ -1729,12 +2608,16 @@ def calculate_network_distance(mean,
     max_distance_to_neuron_average= np.mean(distance_to_sample_max_list) #biggest difference to a single neuron in average    
     max_distance_to_neuron_min = np.min(distance_to_sample_max_list) #biggest difference to a single neuron for closest sample
     
-    return (z_score_aggregate, 
-            distance_to_initialization_aggregate,
-            distance_to_sample_average, 
-            distance_to_sample_min, 
-            max_distance_to_neuron_average,
-            max_distance_to_neuron_min)
+    distances_dict = {
+        'z_score_aggregate': z_score_aggregate,
+        'distance_to_initialization_aggregate': distance_to_initialization_aggregate,
+        'distance_to_sample_average': distance_to_sample_average,
+        'distance_to_sample_min': distance_to_sample_min,
+        'max_distance_to_neuron_average': max_distance_to_neuron_average,
+        'max_distance_to_neuron_min': max_distance_to_neuron_min,        
+    }
+    
+    return distances_dict
 
 
 def per_network_dt_optimization_tf(network_parameters,
@@ -1788,9 +2671,9 @@ def per_network_dt_optimization_tf(network_parameters,
             function_pred = dt_optimize_input[0]
 
             if config['function_family']['dt_type'] == 'SDT':
-                function_values_array_function_pred = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+                function_values_array_function_pred, _ = tf.map_fn(calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
             elif config['function_family']['dt_type'] == 'vanilla':
-                function_values_array_function_pred = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
+                function_values_array_function_pred, _ = tf.map_fn(calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config), function_pred, fn_output_signature=tf.float32)
             #tf.print('function_values_array_function_pred', function_values_array_function_pred)
 
             def loss_function_wrapper(loss_function_name):
