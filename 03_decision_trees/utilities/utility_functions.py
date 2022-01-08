@@ -1908,6 +1908,33 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
     
     return inet_evaluation_result_dict, inet_evaluation_result_dict_mean, dt_distilled_list, distances_dict
 
+def get_print_network_distances_dataframe(distances_dict): 
+    data= np.array(
+        [
+            [np.round(value['z_score_aggregate'], 3) for value in distances_dict.values()],
+            [np.round(value['distance_to_initialization_aggregate'], 3) for value in distances_dict.values()],
+            [np.round(value['distance_to_sample_average'], 3) for value in distances_dict.values()],
+            [np.round(value['distance_to_sample_min'], 3) for value in distances_dict.values()],
+            [np.round(value['max_distance_to_neuron_average'], 3) for value in distances_dict.values()],
+            [np.round(value['max_distance_to_neuron_min'], 3) for value in distances_dict.values()],           
+        ]    
+    ).T
+    
+    
+    columns = ['Average Z-Score (Sample to Train Data)',
+             'Average Distance to Initialization',
+             'Average Mean Distance to Train Data',
+             'Average Distance to closest Train Data Sample',
+             'Average Biggest Distance for Single Neuron',
+             'Minimum Biggest Distance for Single Neuron'
+            ]
+    
+    index = list(distances_dict.keys())
+    
+    dataframe = pd.DataFrame(data=data, columns=columns, index=index)
+    
+    return dataframe
+
 def print_network_distances(distances_dict):
     tab = PrettyTable()
     field_names = ['Measure']
@@ -1933,6 +1960,64 @@ def print_network_distances(distances_dict):
     )
     print(tab)
 
+def get_complete_performance_evaluation_results_dataframe(results_dict, identifier_list, dataset_size_list, dataset_size=10000):
+
+    
+    #columns=['Soft BC', 'BC', 'Acc', 'F1 Score', 'Runtime']
+    columns=['Soft BC Distilled', 'Soft BC I-Net', 'BC Distilled', 'BC I-Net', 'Acc Distilled', 'Acc I-Net', 'F1 Score Distilled', 'F1 Score I-Net', 'Runtime Distilled', 'Runtime I-Net']
+    
+    #index = [] #'Metric'
+
+    #for identifier in identifier_list:
+        #index.append('Dist. (Random) ' + identifier)
+        #index.append('Dist. ' + identifier)
+        #index.append('I-Net ' + identifier)
+        
+    data = np.array([
+                      flatten_list([[
+                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy_data_random']
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy'], 3),
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
+                        ] for identifier in identifier_list]),
+                      flatten_list([[
+                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy_data_random']
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy'], 3),
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
+                        ] for identifier in identifier_list]),
+                      flatten_list([[
+                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_data_random']
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy'], 3),
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
+                        ] for identifier in identifier_list]),   
+                      flatten_list([[
+                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_data_random']
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score'], 3),
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
+                        ] for identifier in identifier_list]),        
+                      flatten_list([[
+                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime']
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime'], 3),
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['runtime'], 3)
+                        ] for identifier in identifier_list])        
+                    ]).T
+    
+    data_new = []
+    index = 0
+    for _ in range(data.T.shape[1]//2):
+        data_new.append(np.insert(data[index+1], np.arange(len(data[index])), data[index]))
+        #data_new.append(flatten_list([, data[index+1]]))
+        index=index+2
+       
+    data = np.array(data_new)
+    
+    #dataframe = pd.DataFrame(data=data, columns=columns, index=index)
+    dataframe = pd.DataFrame(data=data, columns=columns, index=identifier_list)
+    
+    return dataframe
+
+
+
+    
 def print_complete_performance_evaluation_results(results_dict, identifier_list, dataset_size_list, dataset_size=10000):
     print('Dataset Size:\t\t', dataset_size)
     tab = PrettyTable()

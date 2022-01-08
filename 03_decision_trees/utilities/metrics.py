@@ -268,6 +268,19 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         elif config['function_family']['dt_type'] == 'vanilla':
             function_values_pred, penalty = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config)(function_array)
             
+        function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
+        function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
+        
+        threshold = 5
+        penalty_value = 0.5
+        
+        if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+            penalty = 1 + penalty_value
+        elif tf.greater(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.less(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+            penalty = 1 + penalty_value
+        else:
+            penalty = 1.0            
+            
         return function_values_true, function_values_pred, penalty
     
     return calculate_function_values_loss_decision
@@ -291,6 +304,19 @@ def calculate_function_values_loss_target_wrapper(config, config_target):
         elif config['function_family']['dt_type'] == 'vanilla':
             function_values_true, _ = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config_target)(function_array_true)
             function_values_pred, penalty = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config)(function_array_pred)
+         
+        function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
+        function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
+        
+        threshold = 10
+        penalty_value = 0.25
+        
+        if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+            penalty = 1 + penalty_value
+        elif tf.greater(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.less(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+            penalty = 1 + penalty_value
+        else:
+            penalty = 1.0
             
         return function_values_true, function_values_pred, penalty
     
@@ -347,9 +373,11 @@ def calculate_function_value_from_decision_tree_parameters_wrapper(random_evalua
         
         function_values_sdt = tf.vectorized_map(calculate_function_value_from_decision_tree_parameter_single_sample_wrapper(weights, biases, leaf_probabilities, leaf_node_num_, maximum_depth), random_evaluation_dataset)
         
-        penalty = tf.cast((tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 0)) or tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 1))), tf.float32) * 1.25
+        #penalty = tf.cast((tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 0)) or tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 1))), tf.float32) * 1.25
         
-        return function_values_sdt, penalty
+        #penalty = tf.math.maximum(tf.cast((tf.math.reduce_all(tf.equal(tf.round(function_values_sdt), 0)) or tf.math.reduce_all(tf.equal(tf.round(function_values_sdt), 1))), tf.float32) * 1.25, 1)        
+        
+        return function_values_sdt, tf.constant(1.0, dtype=tf.float32)#penalty
     return calculate_function_value_from_decision_tree_parameters
 
 
@@ -374,9 +402,12 @@ def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(rando
         
         function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
         #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
-        penalty = tf.math.maximum(tf.cast((tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 0)) or tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 1))), tf.float32) * 1.25, 1)
         
-        return function_values_vanilla_dt, penalty
+
+        
+        #penalty = tf.math.maximum(tf.cast((tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 0)) or tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 1))), tf.float32) * 1.25, 1)
+
+        return function_values_vanilla_dt, tf.constant(1.0, dtype=tf.float32)#penalty
     return calculate_function_value_from_vanilla_decision_tree_parameters
 
 
