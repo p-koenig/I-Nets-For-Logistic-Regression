@@ -282,6 +282,7 @@ class LambdaNet():
                                                             high=config['data']['x_max'], 
                                                             size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
                                                             variables=config['data']['number_of_variables'], 
+                                                            distrib=config['evaluation']['random_evaluation_dataset_distribution'],
                                                             categorical_indices=config['data']['categorical_indices'],
                                                             seed=data_generation_seed)          
         
