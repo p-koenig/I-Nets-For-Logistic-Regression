@@ -1636,6 +1636,167 @@ def get_distribution_data_from_string(distribution_name, size, seed=None):
     
     return None, None
     
+
+def distribution_evaluation_interpretation_net_synthetic_data(loss_function, 
+                                                               metrics,
+                                                               #model,
+                                                               config,
+                                                               identifier,
+                                                               lambda_net_parameters_train,
+                                                               mean_train_parameters,
+                                                               std_train_parameters,
+                                                               distances_dict={},
+                                                               distributions_per_class=1,
+                                                               flip_percentage=0.0,
+                                                               verbose=0, 
+                                                               backend='loky'):
+
+    #print(loss_function)
+    #print(metrics)
+    distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson']
+    
+    
+    #distances_dict_list_unstructured= []
+    ##inet_evaluation_result_dict = []
+    #inet_evaluation_results = []
+    #dt_inet_list = []
+    #dt_distilled_list_list = []
+    #data_dict_list = []
+    #normalizer_list_list = []
+        
+    inet_evaluation_result_dict_complete_by_distribution = {}
+    inet_evaluation_result_dict_mean_by_distribution = {}
+
+    parallel_inet_evaluation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=1000, backend=backend) #loky #sequential multiprocessing
+    evaluation_results_by_dataset = parallel_inet_evaluation(delayed(distribution_evaluation_single_model_synthetic_data)(loss_function, 
+                                                                                                               metrics,
+                                                                                                               #model,
+                                                                                                               config,
+                                                                                                               lambda_net_parameters_train=lambda_net_dataset_train.network_parameters_array,
+                                                                                                               mean_train_parameters=mean_train_parameters,
+                                                                                                               std_train_parameters=std_train_parameters,    
+                                                                                                               data_seed=i,
+                                                                                                               distribution_list = distribution_list,
+                                                                                                               distributions_per_class = distributions_per_class,
+                                                                                                               flip_percentage=flip_percentage,
+                                                                                                               verbose=verbose) for i in range(config['i_net']['test_size'])) 
+
+
+
+
+    del parallel_inet_evaluation
+
+    test_network_list = []
+    model_history_list = []
+    normalizer_list_list = []
+    data_dict_list = []
+            
+    distances_dict_list_unstructured = np.array([[None] * config['i_net']['test_size']] * len(distribution_list))
+    inet_evaluation_results = np.array([[None] * config['i_net']['test_size']] * len(distribution_list))
+    dt_inet_list = np.array([[None] * config['i_net']['test_size']] * len(distribution_list))
+    dt_distilled_list_list = np.array([[None] * config['i_net']['test_size']] * len(distribution_list))
+
+    #print(distances_dict_list_unstructured.shape)
+    #print(inet_evaluation_results.shape)
+    #print(dt_inet_list.shape)
+    #print(dt_distilled_list_list.shape)
+    for i, evaluation_result_by_dataset in enumerate(evaluation_results_by_dataset):
+        #print(len(evaluation_result_by_dataset))
+        #for (distances_dict_list, evaluation_result_dict_list, results_list_list, dt_inet_list, dt_distilled_list_list, data_dict, normalizer_list, test_network, model_history) in evaluation_result_by_dataset:
+        (distances_dict_by_dataset, _, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset, data_dict_by_dataset, normalizer_list_by_dataset, test_network_by_dataset, model_history_by_dataset) = evaluation_result_by_dataset
+        test_network_list.append(test_network_by_dataset)
+        model_history_list.append(model_history_by_dataset)
+        normalizer_list_list.append(normalizer_list_by_dataset)
+        data_dict_list.append(data_dict_by_dataset)
+
+        for j, (distances_dict_unstructured_by_distribution, results_list_by_distribution, dt_inet_by_distribution, dt_distilled_list_by_distribution) in enumerate(zip(distances_dict_by_dataset, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset)):
+            distances_dict_list_unstructured[j][i] = distances_dict_unstructured_by_distribution
+            inet_evaluation_results[j][i] = results_list_by_distribution#[0]
+            dt_inet_list[j][i] = dt_inet_by_distribution#[0]
+            dt_distilled_list_list[j][i] = dt_distilled_list_by_distribution#[0]
+
+    #print(inet_evaluation_results)
+    
+    for distribution, distances_dict_list_unstructured_by_distribution, inet_evaluation_results_by_distribution, dt_inet_list_by_distribution, dt_distilled_list_list_by_distribution in zip(distribution_list, distances_dict_list_unstructured, inet_evaluation_results, dt_inet_list, dt_distilled_list_list):      
+        
+        #print(inet_evaluation_results_by_distribution)
+        
+        inet_evaluation_result_dict_by_distribution= None
+        for some_dict in inet_evaluation_results_by_distribution:
+            if inet_evaluation_result_dict_by_distribution == None:
+                inet_evaluation_result_dict_by_distribution = some_dict
+            else:
+                inet_evaluation_result_dict_by_distribution = mergeDict(inet_evaluation_result_dict_by_distribution, some_dict)
+
+        #inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/config['i_net']['test_size'] for _ in range(config['i_net']['test_size'])]
+
+
+        inet_evaluation_result_dict_mean_by_distribution[distribution] = {}
+
+        for key_l1, values_l1 in inet_evaluation_result_dict_by_distribution.items():
+            if key_l1 != 'function_values':
+                if isinstance(values_l1, dict):
+                    inet_evaluation_result_dict_mean_by_distribution[distribution][key_l1] = {}
+                    for key_l2, values_l2 in values_l1.items():
+                        inet_evaluation_result_dict_mean_by_distribution[distribution][key_l1][key_l2] = np.mean(values_l2)
+                        inet_evaluation_result_dict_mean_by_distribution[distribution][key_l1][key_l2 + '_median'] = np.median(values_l2)   
+
+        inet_evaluation_result_dict_complete_by_distribution[distribution] = inet_evaluation_result_dict_by_distribution        
+        
+
+    #distances_dict_list_unstructured = distances_dict_list_unstructured.reshape(-1,2)
+    #inet_evaluation_results = inet_evaluation_results.reshape(-1,2)
+    
+    #dt_inet_list = dt_inet_list.reshape(-1,2)
+    #dt_distilled_list_list = dt_distilled_list_list.reshape(-1,2)
+        
+    inet_evaluation_result_dict = None    
+    for some_dict in inet_evaluation_results.ravel():#.reshape(-1,2):
+        #print(inet_evaluation_result_dict)
+        if inet_evaluation_result_dict == None:
+            inet_evaluation_result_dict = some_dict
+        else:
+            inet_evaluation_result_dict = mergeDict(inet_evaluation_result_dict, some_dict)
+
+    #inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/config['i_net']['test_size'] for _ in range(config['i_net']['test_size'])]
+
+
+    inet_evaluation_result_dict_mean = {}
+
+    for key_l1, values_l1 in inet_evaluation_result_dict.items():
+        if key_l1 != 'function_values':
+            if isinstance(values_l1, dict):
+                inet_evaluation_result_dict_mean[key_l1] = {}
+                for key_l2, values_l2 in values_l1.items():
+                    inet_evaluation_result_dict_mean[key_l1][key_l2] = np.mean(values_l2)
+                    inet_evaluation_result_dict_mean[key_l1][key_l2 + '_median'] = np.median(values_l2)                                                     
+
+    distances_dict_list = None                                              
+    for distances_dict_single in distances_dict_list_unstructured.ravel():#.reshape(-1,2):
+        if distances_dict_list == None:
+            distances_dict_list = distances_dict_single
+        else:
+            distances_dict_list = mergeDict(distances_dict_list, distances_dict_single)     
+
+    distances_dict[identifier] = {}
+
+    for key, value in distances_dict_list.items():
+        distances_dict[identifier][key] = np.mean(value)   
+            
+    return (distances_dict, 
+            inet_evaluation_result_dict, 
+            inet_evaluation_result_dict_complete_by_distribution, 
+            inet_evaluation_result_dict_mean, 
+            inet_evaluation_result_dict_mean_by_distribution, 
+            inet_evaluation_results, 
+            dt_inet_list, 
+            dt_distilled_list_list, 
+            data_dict_list, 
+            normalizer_list_list,
+            test_network_list,
+            model_history_list)
+         
+    
     
 def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 1, seed = None, flip_percentage=0):
     
@@ -1706,7 +1867,6 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                         std_train_parameters,    
                                                         data_seed=42,
                                                         distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
-                                                        distribution_training = 'uniform',
                                                         distributions_per_class = 1,
                                                         flip_percentage=0,
                                                         verbose=0
@@ -1714,7 +1874,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     
     from utilities.LambdaNet import generate_lambda_net_from_config
     model = load_inet(loss_function, metrics, config)
-    
+
     X_data, y_data, distribution_parameter_list, normalizer_list = generate_dataset_from_distributions(distribution_list, 
                                                                                       config['data']['number_of_variables'], 
                                                                                       config['data']['lambda_dataset_size'],
@@ -1727,49 +1887,63 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
 
     test_network, model_history = train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=verbose)  
 
-    evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list = evaluate_network_real_world_data(model,
-                                                                                                test_network, 
-                                                                                                X_train, 
-                                                                                                X_test, 
-                                                                                                dataset_size_list=[10000, 'TRAIN_DATA'],
-                                                                                                config=config,
-                                                                                                distribution=distribution_training)
-   
+    distances_dict_list = []
+    evaluation_result_dict_list = [] 
+    results_list_list = []
+    dt_inet_list = []
+    dt_distilled_list_list = []
     
-    results_list_extended = results_list[0]
+    for distribution_training in distribution_list:
     
-    results_list_extended['dt_scores']['soft_binary_crossentropy_train_data'] = results_list[1]['dt_scores']['soft_binary_crossentropy']
-    results_list_extended['dt_scores']['binary_crossentropy_train_data'] = results_list[1]['dt_scores']['binary_crossentropy']
-    results_list_extended['dt_scores']['accuracy_train_data'] = results_list[1]['dt_scores']['accuracy']
-    results_list_extended['dt_scores']['f1_score_train_data'] = results_list[1]['dt_scores']['f1_score']
-    
-    results_list = [results_list_extended]
-    evaluation_result_dict = [results_list]
-    
-    test_network_parameters = test_network_parameters[:1]
-    dt_inet = dt_inet[:1]
-    dt_distilled_list = dt_distilled_list[:1]
+        evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list = evaluate_network_real_world_data(model,
+                                                                                                    test_network, 
+                                                                                                    X_train, 
+                                                                                                    X_test, 
+                                                                                                    dataset_size_list=[10000, 'TRAIN_DATA'],
+                                                                                                    config=config,
+                                                                                                    distribution=distribution_training)
 
-    distances_dict = calculate_network_distance(mean=mean_train_parameters, 
-                                                           std=std_train_parameters, 
-                                                           network_parameters=test_network_parameters, 
-                                                           lambda_net_parameters_train=lambda_net_parameters_train, 
-                                                           config=config)
 
-    data_dict = {
-        'X_train': X_train,
-        'y_train': y_train,
-        'X_valid': X_valid,
-        'y_valid': y_valid,
-        'X_test': X_test,
-        'y_test': y_test,
-    }
+        results_list_extended = results_list[0]
+
+        results_list_extended['dt_scores']['soft_binary_crossentropy_train_data'] = results_list[1]['dt_scores']['soft_binary_crossentropy']
+        results_list_extended['dt_scores']['binary_crossentropy_train_data'] = results_list[1]['dt_scores']['binary_crossentropy']
+        results_list_extended['dt_scores']['accuracy_train_data'] = results_list[1]['dt_scores']['accuracy']
+        results_list_extended['dt_scores']['f1_score_train_data'] = results_list[1]['dt_scores']['f1_score']
+
+        results_list = results_list_extended
+        evaluation_result_dict = results_list
+
+        test_network_parameters = test_network_parameters#[:1]
+        dt_inet = dt_inet#[:1]
+        dt_distilled_list = dt_distilled_list#[:1]
+
+        distances_dict = calculate_network_distance(mean=mean_train_parameters, 
+                                                               std=std_train_parameters, 
+                                                               network_parameters=test_network_parameters, 
+                                                               lambda_net_parameters_train=lambda_net_parameters_train, 
+                                                               config=config)
+
+        data_dict = {
+            'X_train': X_train,
+            'y_train': y_train,
+            'X_valid': X_valid,
+            'y_valid': y_valid,
+            'X_test': X_test,
+            'y_test': y_test,
+        }
         
-    return (distances_dict, 
-            evaluation_result_dict, 
-            results_list, 
-            dt_inet, 
-            dt_distilled_list, 
+        distances_dict_list.append(distances_dict)
+        evaluation_result_dict_list.append(evaluation_result_dict)
+        results_list_list.append(results_list)
+        dt_inet_list.append(dt_inet)
+        dt_distilled_list_list.append(dt_distilled_list)    
+        
+    return (distances_dict_list, 
+            evaluation_result_dict_list, 
+            results_list_list, 
+            dt_inet_list, 
+            dt_distilled_list_list, 
             data_dict, 
             normalizer_list, 
             test_network.get_weights(), 
