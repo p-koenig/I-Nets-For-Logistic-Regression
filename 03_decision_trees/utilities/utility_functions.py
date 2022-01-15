@@ -278,7 +278,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                          data_specification_string)            
 
         paths_dict['path_identifier_function_data'] = path_identifier_function_data
-    
+        
     if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
             
         
@@ -320,8 +320,15 @@ def generate_paths(config, path_type='interpretation_net'):
             interpretation_network_layers_string += 'conv' + '-'.join([str(neurons) for neurons in config['i_net']['convolution_layers']])
         if config['i_net']['lstm_layers'] != None:
             interpretation_network_layers_string += 'lstm' + '-'.join([str(neurons) for neurons in config['i_net']['lstm_layers']])
+            
+        if config['i_net']['additional_hidden']:
+            interpretation_network_layers_string += '_addHidden'
+            
+        function_representation_type_string = '_funcRep' + str(config['i_net']['function_representation_type'])
+        
+        data_reshape_version_strin = '_reshape'+ str(config['i_net']['data_reshape_version'])
 
-        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer']
+        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer'] + function_representation_type_string + data_reshape_version_strin
         
         path_identifier_interpretation_net = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
                                                    '_numLNets' + str(config['lambda_net']['number_of_trained_lambda_nets']) +
@@ -852,26 +859,84 @@ def generate_random_data_points_custom(low, high, size, variables, categorical_i
     return list_of_data_points
 
 def generate_random_data_points(config, seed):
+            
+    low = config['data']['x_min'] 
+    high = config['data']['x_max']
+    size = config['data']['lambda_dataset_size'] 
+    variables = onfig['data']['number_of_variables'] 
+    categorical_indice = config['data']['categorical_indices']
+    distrib=config['data']['x_distrib']
     
-    random.seed(seed)
-    np.random.seed(seed)
+    random_parameters=False
     
-    if config['data']['x_distrib']=='normal':
-        list_of_data_points = []
-        x_range = config['data']['x_max']-config['data']['x_min']
-        for _ in range(config['data']['lambda_dataset_size']):
-            random_data_point = np.random.normal(loc=x_range/2, scale=x_range/4, size=config['data']['number_of_variables'])
-            while max(random_data_point) > config['data']['x_max'] or min(random_data_point) < config['data']['x_min']:
-                random_data_point = np.random.normal(loc=x_range/2, scale=x_range, size=config['data']['number_of_variables'])
-            list_of_data_points.append(random_data_point)
-        list_of_data_points = np.array(list_of_data_points)
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+    
+    parameter_by_distribution = {
+        'normal': {
+            'loc': 0.5,
+            'scale': 1,
+        },
+        'uniform': {
+            'low': 0,
+            'high': 1,
+        },
+        'gamma': {
+            'shape': 2.5,
+            'scale': 1,
+        },        
+        'exponential': {
+            'scale': 2.5,
+        },        
+        'beta': {
+            'a': 2.5,
+            'b': 2.5,
+        },
+        'binomial': {
+            'n': size,
+            'p': 0.5,
+        },
+        'poisson': {
+            'lam': 2.5,
+        },        
         
-    elif config['data']['x_distrib']=='uniform':
-        list_of_data_points = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['data']['lambda_dataset_size'], config['data']['number_of_variables']))
-        
-    if config['data']['categorical_indices'] is not None:
-        for categorical_index in config['data']['categorical_indices']:
-            list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])        
+    }    
+    
+    list_of_data_points = None
+    
+    if random_parameters == True:
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed)        
+    elif distrib == 'uniform':
+        list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
+    elif distrib == 'normal':
+        list_of_data_points = np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=(size, variables)) 
+    elif distrib == 'gamma':
+        list_of_data_points = np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=(size, variables))
+    elif distrib == 'exponential':
+        list_of_data_points = np.random.exponential(parameter_by_distribution['exponential']['scale'], size=(size, variables))
+    elif distrib == 'beta':
+        list_of_data_points = np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=(size, variables))
+    elif distrib == 'binomial':
+        list_of_data_points = np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=(size, variables))       
+    elif distrib == 'poisson':
+        list_of_data_points = np.random.poisson(parameter_by_distribution['poisson']['lam'], size=(size, variables))
+    
+    list_of_data_points_scaled = []
+    for i, column in enumerate(list_of_data_points.T):
+        scaler = MinMaxScaler(feature_range=(low, high))
+        scaler.fit(column.reshape(-1, 1))
+        #list_of_data_points[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+        list_of_data_points_scaled.append(scaler.transform(column.reshape(-1, 1)).ravel())
+    list_of_data_points = np.array(list_of_data_points_scaled).T
+
+            
+    if categorical_indices is not None:
+        for categorical_index in categorical_indices:
+            list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])                   
+            
+            
+            
         
     return list_of_data_points 
 
@@ -987,6 +1052,11 @@ def generate_data_random_decision_tree_trained(config, seed=42):
     return None
 
 
+
+
+
+
+
 def generate_data_make_classification_decision_tree_trained(config, seed=42):
            
     informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
@@ -1055,7 +1125,7 @@ def generate_data_make_classification(config, seed=42):
     n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
     #print('n_clusters_per_class', n_clusters_per_class)
 
-    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+    X_data, y_data = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -1087,6 +1157,76 @@ def generate_data_make_classification(config, seed=42):
     placeholder = [0 for i in range(function_representation_length)]
         
     return placeholder, X_data, np.round(y_data), y_data 
+
+
+
+
+
+def generate_data_distribtion_trained(config, seed=42):
+           
+    random.seed(seed)
+    distributions_per_class = random.randint(1, 10)
+    
+    X_data, y_data_tree, _, _ = generate_dataset_from_distributions(distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                                                               number_of_variables = config['data']['number_of_variables'], 
+                                                               number_of_samples = config['data']['lambda_dataset_size'], 
+                                                               distributions_per_class = distributions_per_class, 
+                                                               seed = seed, 
+                                                               flip_percentage = 0)        
+        
+
+            
+    decision_tree = generate_random_decision_tree(config, seed)
+        
+    if config['function_family']['dt_type'] == 'SDT':   
+        decision_tree.fit(X_data, y_data_tree, epochs=50)    
+
+        y_data = decision_tree.predict_proba(X_data)
+
+        return decision_tree.to_array(), X_data, np.round(y_data), y_data     
+    
+    
+    elif config['function_family']['dt_type'] == 'vanilla': 
+        decision_tree.fit(X_data, y_data_tree)    
+
+        y_data = decision_tree.predict(X_data)    
+
+        #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
+
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data 
+    
+    return None
+
+
+def generate_data_distribtion(config, seed=42):
+        
+    random.seed(seed)
+    distributions_per_class = random.randint(1, 10)
+            
+    X_data, y_data, _, _ = generate_dataset_from_distributions(distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                                                               number_of_variables = config['data']['number_of_variables'], 
+                                                               number_of_samples = config['data']['lambda_dataset_size'], 
+                                                               distributions_per_class = distributions_per_class, 
+                                                               seed = seed, 
+                                                               flip_percentage = 0)
+            
+    function_representation_length = ( 
+       ((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables']) + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']
+  if config['function_family']['dt_type'] == 'SDT'
+  else ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth']) if config['function_family']['dt_type'] == 'vanilla'
+  else None
+                                                            ) 
+    
+    placeholder = [0 for i in range(function_representation_length)]
+        
+    return placeholder, X_data, np.round(y_data), y_data 
+
+
+
+
+
+
+
 
 def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer_list=None, path='./data/plotting/temp.png'):
     
@@ -1646,7 +1786,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                mean_train_parameters,
                                                                std_train_parameters,
                                                                distances_dict={},
-                                                               distributions_per_class=1,
+                                                               max_distributions_per_class=1,
                                                                flip_percentage=0.0,
                                                                verbose=0, 
                                                                backend='loky'):
@@ -1672,12 +1812,12 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                                                                metrics,
                                                                                                                #model,
                                                                                                                config,
-                                                                                                               lambda_net_parameters_train=lambda_net_dataset_train.network_parameters_array,
+                                                                                                               lambda_net_parameters_train=lambda_net_parameters_train,
                                                                                                                mean_train_parameters=mean_train_parameters,
                                                                                                                std_train_parameters=std_train_parameters,    
                                                                                                                data_seed=i,
                                                                                                                distribution_list = distribution_list,
-                                                                                                               distributions_per_class = distributions_per_class,
+                                                                                                               max_distributions_per_class = max_distributions_per_class,
                                                                                                                flip_percentage=flip_percentage,
                                                                                                                verbose=verbose) for i in range(config['i_net']['test_size'])) 
 
@@ -1798,11 +1938,11 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
          
     
     
-def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 1, seed = None, flip_percentage=0):
+def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 1, seed = None, flip_percentage=0):  
     
     random.seed(seed)
     np.random.seed(seed)
-            
+ 
     X_data_list = []
     distribution_parameter_list = []
     
@@ -1867,13 +2007,17 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                         std_train_parameters,    
                                                         data_seed=42,
                                                         distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
-                                                        distributions_per_class = 1,
+                                                        max_distributions_per_class = 1,
                                                         flip_percentage=0,
                                                         verbose=0
                                                         ):
+    from utilities.InterpretationNet import load_inet
     
-    from utilities.LambdaNet import generate_lambda_net_from_config
     model = load_inet(loss_function, metrics, config)
+    
+    random.seed(data_seed)
+    distributions_per_class = random.randint(1, max_distributions_per_class)    
+    
 
     X_data, y_data, distribution_parameter_list, normalizer_list = generate_dataset_from_distributions(distribution_list, 
                                                                                       config['data']['number_of_variables'], 
@@ -2179,6 +2323,9 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         y_test_lambda_pred_diff = tf.math.subtract(1.0, y_test_lambda_pred)
         y_test_lambda_pred_softmax = tf.stack([y_test_lambda_pred, y_test_lambda_pred_diff], axis=1)         
 
+        #print(dt_inet.shape)
+        #print(dt_inet)
+        
         if config['function_family']['dt_type'] == 'SDT':
             y_test_inet_dt, _  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet)
             y_test_inet_dt = y_test_inet_dt.numpy()
@@ -2232,7 +2379,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         dt_distilled = generate_random_decision_tree(config, config['computation']['RANDOM_SEED'])
         if config['function_family']['dt_type'] == 'SDT':
-            dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64), epochs=50)  
+            dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64), epochs=50)
 
             end_dt_distilled = time.time()     
             dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)        
@@ -2335,7 +2482,8 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
                                                config, 
                                                identifier, 
                                                mean_train_parameters, 
-                                               std_train_parameters, 
+                                               std_train_parameters,
+                                               network_parameters_train_array,
                                                distances_dict={},
                                                verbosity=0):
             
@@ -2368,7 +2516,7 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         print(tab)       
     
     with tf.device('/CPU:0'):
-        number = min(X_test_lambda_array.shape[0], 100)
+        number = min(X_test_lambda_array.shape[0], 100) if config['function_family']['dt_type'] == 'vanilla' else min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1))
 
         start_inet = time.time() 
 
@@ -2429,7 +2577,7 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         distances_dict_single = calculate_network_distance(mean=mean_train_parameters, 
                                                                    std=std_train_parameters, 
                                                                    network_parameters=network, 
-                                                                   lambda_net_parameters_train=network_parameters_array, 
+                                                                   lambda_net_parameters_train=network_parameters_train_array, 
                                                                    config=config)    
 
         if distances_dict_list == None:

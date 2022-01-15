@@ -188,7 +188,7 @@ class DeepDenseLayerBlock(ak.Block):
         num_units_list = []
         dropout_list = []
         for i in range(5):
-            num_units = hp.Int("num_units_" + str(i), min_value=64, max_value=4096, step=64, default=512)
+            num_units = hp.Int("num_units_" + str(i), min_value=64, max_value=2048, step=64, default=512)
             dropout = hp.Choice("dropout_" + str(i), [0.0, 0.1, 0.3, 0.5], default=0.0)
             num_units_list.append(num_units)
             dropout_list.append(dropout)
@@ -296,9 +296,12 @@ def load_inet(loss_function, metrics, config):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
     if config['i_net']['nas']:
-        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string 
+        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string         
+        #path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string         
     else:
-        path = './data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
+        path = './data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
+        
+        #path = './data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
 
 
     model = []
@@ -617,7 +620,11 @@ def train_inet(lambda_net_train_dataset,
                     output_node = CombinedOutputInet()(outputs_list)
                         
                 timestr = time.strftime("%Y%m%d-%H%M%S")
-                directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
+                directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + '/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
+                #directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
+                    
+                    
+                
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -625,7 +632,7 @@ def train_inet(lambda_net_train_dataset,
                                     metrics=metric_names,
                                     objective='val_loss',
                                     overwrite=True,
-                                    tuner='hyperband',#'hyperband',#"bayesian",'greedy'
+                                    tuner='greedy',#'hyperband',#"bayesian",'greedy', 'random'
                                     max_trials=config['i_net']['nas_trials'],
                                     directory=directory,
                                     seed=config['computation']['RANDOM_SEED'])
@@ -646,8 +653,8 @@ def train_inet(lambda_net_train_dataset,
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
                 model = auto_model.export_model()
                 
-                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string , save_format='tf')
-
+                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string , save_format='tf')         
+                
         else: 
             inputs = Input(shape=X_train.shape[1], 
                            name='input')
@@ -905,10 +912,9 @@ def train_inet(lambda_net_train_dataset,
             
             
             
-            
-
-            
-            model.save('./data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
+            model.save('./data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')            
+            #model.save('./data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
+                
     else:
         history = None
         
