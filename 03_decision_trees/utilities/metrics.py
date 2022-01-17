@@ -273,16 +273,24 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
         
-        threshold = 5
-        penalty_value = 0.5
+        threshold = 4
+        penalty_value = 5.0
         
-        if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
-            penalty = 1 + penalty_value
-        elif tf.greater(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.less(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold/2):
-            penalty = 1 + penalty_value
+        if False:
+            if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+                penalty = 1 + penalty_value
+            elif tf.greater(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.less(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+                penalty = 1 + penalty_value
+            else:
+                penalty = 1.0            
         else:
-            penalty = 1.0            
-            
+            fraction = tf.reduce_max([function_values_true_ones_rounded/function_values_pred_ones_rounded, function_values_pred_ones_rounded/function_values_true_ones_rounded])  
+            if tf.greater(fraction, tf.cast(threshold, tf.float32)):
+                penalty = tf.reduce_min([20, 1.0 + fraction])#**(1.5)
+                #tf.print(penalty)
+            else: 
+                penalty = 1.0
+                
         return function_values_true, function_values_pred, penalty
     
     return calculate_function_values_loss_decision
@@ -311,15 +319,23 @@ def calculate_function_values_loss_target_wrapper(config, config_target):
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
         
-        threshold = 10
-        penalty_value = 0.25
+        threshold = 4
+        penalty_value = 5.0
         
-        if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
-            penalty = 1 + penalty_value
-        elif tf.greater(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.less(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold/2):
-            penalty = 1 + penalty_value
+        if False:
+            if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+                penalty = 1 + penalty_value
+            elif tf.greater(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.less(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']-config['evaluation']['random_evaluation_dataset_size']/threshold/2):
+                penalty = 1 + penalty_value
+            else:
+                penalty = 1.0
         else:
-            penalty = 1.0
+            fraction = tf.reduce_max([function_values_true_ones_rounded/function_values_pred_ones_rounded, function_values_pred_ones_rounded/function_values_true_ones_rounded])  
+            if tf.greater(fraction, tf.cast(threshold, tf.float32)):
+                penalty = tf.reduce_min([20, 1.0 + fraction])#**(1.5)
+                #tf.print(penalty)
+            else: 
+                penalty = 1.0
             
         return function_values_true, function_values_pred, penalty
     
