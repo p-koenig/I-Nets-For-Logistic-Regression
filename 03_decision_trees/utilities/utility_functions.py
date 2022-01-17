@@ -1827,8 +1827,8 @@ def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variable
 ######################################################################################################################################################################################################################
 ###########################################################################################  REAL WORLD & SYNTHETIC EVALUATION ################################################################################################ 
 ######################################################################################################################################################################################################################
-def get_distribution_data_from_string(distribution_name, size, seed=None, parameters=None):
-    
+def get_distribution_data_from_string(distribution_name, size, seed=None, parameters=None, random_parameters=False):
+        
     random.seed(seed)
     np.random.seed(seed)
     
@@ -1836,35 +1836,68 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
     value_2 = np.random.uniform(0, 1)   
     
     if parameters == None:
-        parameter_by_distribution = {
-            'normal': {
-                'loc': np.random.uniform(0, 1),
-                'scale': np.random.uniform(0, 1),
-            },
-            'uniform': {
-                'low': np.minimum(value_1, value_2),
-                'high': np.maximum(value_1, value_2),
-            },
-            'gamma': {
-                'shape': np.random.uniform(0, 5),
-                'scale': np.random.uniform(0, 5),
-            },        
-            'exponential': {
-                'scale': np.random.uniform(0, 5),
-            },        
-            'beta': {
-                'a': np.random.uniform(0, 5),
-                'b': np.random.uniform(0, 5),
-            },
-            'binomial': {
-                'n': np.random.uniform(1, 100),
-                'p': np.random.uniform(0, 1),
-            },
-            'poisson': {
-                'lam': np.random.uniform(0, 5),
-            },        
+        if random_parameters:
+            parameter_by_distribution = {
+                'normal': {
+                    'loc': np.random.uniform(0, 1),
+                    'scale': np.random.uniform(0, 1),
+                },
+                'uniform': {
+                    'low': np.minimum(value_1, value_2),
+                    'high': np.maximum(value_1, value_2),
+                },
+                'gamma': {
+                    'shape': np.random.uniform(0, 5),
+                    'scale': np.random.uniform(0, 5),
+                },        
+                'exponential': {
+                    'scale': np.random.uniform(0, 5),
+                },        
+                'beta': {
+                    'a': np.random.uniform(0, 5),
+                    'b': np.random.uniform(0, 5),
+                },
+                'binomial': {
+                    'n': np.random.uniform(1, 100),
+                    'p': np.random.uniform(0, 1),
+                },
+                'poisson': {
+                    'lam': np.random.uniform(0, 5),
+                },        
 
-        }
+            }
+        else:        
+            parameter_by_distribution = {
+                'normal': {
+                    'loc': 0.5,
+                    'scale': 1,
+                },
+                'uniform': {
+                    'low': 0,
+                    'high': 1,
+                },
+                'gamma': {
+                    'shape': 2.5,
+                    'scale': 1,
+                },        
+                'exponential': {
+                    'scale': 2.5,
+                },        
+                'beta': {
+                    'a': 2.5,
+                    'b': 2.5,
+                },
+                'binomial': {
+                    'n': size,
+                    'p': 0.5,
+                },
+                'poisson': {
+                    'lam': 2.5,
+                },        
+
+            }           
+        
+        
     else:
         parameter_by_distribution = {
             distribution_name: parameters
@@ -1941,6 +1974,8 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
 
     del parallel_inet_evaluation
 
+    distribution_parameter_list_list = [result[-1] for result in evaluation_results_by_dataset]
+    
     test_network_list = []
     model_history_list = []
     normalizer_list_list = []
@@ -1958,7 +1993,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
     for i, evaluation_result_by_dataset in enumerate(evaluation_results_by_dataset):
         #print(len(evaluation_result_by_dataset))
         #for (distances_dict_list, evaluation_result_dict_list, results_list_list, dt_inet_list, dt_distilled_list_list, data_dict, normalizer_list, test_network, model_history) in evaluation_result_by_dataset:
-        (distances_dict_by_dataset, _, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset, data_dict_by_dataset, normalizer_list_by_dataset, test_network_by_dataset, model_history_by_dataset) = evaluation_result_by_dataset
+        (distances_dict_by_dataset, _, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset, data_dict_by_dataset, normalizer_list_by_dataset, test_network_by_dataset, model_history_by_dataset, _) = evaluation_result_by_dataset
         test_network_list.append(test_network_by_dataset)
         model_history_list.append(model_history_by_dataset)
         normalizer_list_list.append(normalizer_list_by_dataset)
@@ -2049,7 +2084,8 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
             data_dict_list, 
             normalizer_list_list,
             test_network_list,
-            model_history_list)
+            model_history_list,
+            distribution_parameter_list_list)
          
     
     
@@ -2060,12 +2096,10 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
  
     X_data_list = []
     distribution_parameter_list = []
-    
     if distributions_per_class == 0:
     
         samples_class_0 = int(np.floor(number_of_samples/2))
         samples_class_1 = int(np.ceil(number_of_samples/2))
-
         for i in range(number_of_variables):
             distribution_name = np.random.choice(distribution_list)
             #data_list = [None]
@@ -2073,6 +2107,8 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
             
             feature_data, distribution_parameter = get_distribution_data_from_string(distribution_name, samples_class_0+samples_class_1, seed=(seed+1)*(i+1))
             feature_data = np.sort(feature_data)
+            
+            distribution_parameter = {distribution_name: distribution_parameter}
 
             distribution_parameter_list.append(distribution_parameter)
             X_data_list.append(feature_data)    
@@ -2092,6 +2128,7 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
         for i in range(number_of_variables):
                 
             distribution_name = np.random.choice(distribution_list)
+            
             class_0_data_list = [None] * (distributions_per_class)
             distribution_parameter_0_list = [None] * (distributions_per_class)
             class_1_data_list = [None] * (distributions_per_class)
@@ -2103,20 +2140,13 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                     class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1))
                 else:
                     class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1))
-                             
                     distribution_parameter_new = {}                        
-                    if False:
-                        for key_1, value_1 in distribution_parameter_0_list[j].items():
-                            distribution_parameter_new[key_1] = value_1
-                            for key_2, value_2 in value_1.items():
-                                distribution_parameter_new[key_1][key_2] =  value_2 + value_2*0.2  
-                    else:
-                        for key, value in distribution_parameter_0_list[j].items():
-                            multiplier = np.random.uniform(-0.5, 0.5)
-                            if key == 'p':
-                                distribution_parameter_new[key] =  np.clip(value + value*multiplier, 0, 1)
-                            else:
-                                distribution_parameter_new[key] =  value + value*multiplier   
+                    for key, value in distribution_parameter_0_list[j].items():
+                        multiplier = np.random.uniform(-0.5, 0.5)
+                        if key == 'p':
+                            distribution_parameter_new[key] =  np.clip(value + value*multiplier, 0, 1)
+                        else:
+                            distribution_parameter_new[key] =  value + value*multiplier   
                             
                     class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new)                    
 
@@ -2135,8 +2165,7 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                 if distribution_parameter_1 is None:
                     distribution_parameter_1 = distribution_parameter
                 else:
-                    distribution_parameter_1 = mergeDict(distribution_parameter_0, distribution_parameter)
-
+                    distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
             distribution_parameter = {
                 distribution_name: {
                     'class_0': distribution_parameter_0,
@@ -2155,7 +2184,6 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
         idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
         y_data[idx] = (y_data[idx] + 1) % 2  
         
-    
     return X_data, y_data, distribution_parameter_list, normalizer_list
 
 
@@ -2178,7 +2206,6 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     model = load_inet(loss_function, metrics, config)
     #encoder_model = load_encoder_model(loss_function, metrics, config)
 
-    
     if True:
         random.seed(data_seed)
         distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
@@ -2221,7 +2248,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     X_train, y_train, X_valid, y_valid, X_test, y_test = split_train_test_valid(X_data, y_data, valid_frac=0.2, test_frac=0.2, seed=config['computation']['RANDOM_SEED'])
 
     test_network, model_history = train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=verbose)  
-
+    
     distances_dict_list = []
     evaluation_result_dict_list = [] 
     results_list_list = []
@@ -2282,81 +2309,10 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
             data_dict, 
             normalizer_list, 
             test_network.get_weights(), 
-            model_history.history)
+            model_history.history,
+            distribution_parameter_list)
 
 
-def evaluate_network_real_world_data(model, test_network, X_train, X_test, dataset_size_list, config, verbosity=0, distribution=None):
-        
-    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
-
-    results_list = []
-    dt_distilled_list = []
-    for dataset_size in dataset_size_list:
-
-        if dataset_size == 'TRAIN_DATA': 
-            if isinstance(X_train, pd.DataFrame):
-                X_train = X_train.values
-            if isinstance(X_test, pd.DataFrame):
-                X_test = X_test.values            
-            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
-                                                                               dt_inet,
-                                                                               X_test, 
-                                                                               #y_test_lambda,
-                                                                               config,
-                                                                               distribution=distribution,
-                                                                               train_data=X_train)
-
-        else:
-            config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
-
-            if isinstance(X_test, pd.DataFrame):
-                X_test = X_test.values            
-            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
-                                                                               dt_inet,
-                                                                               X_test, 
-                                                                               #y_test_lambda,
-                                                                               config_test,
-                                                                               distribution=distribution)
-
-
-        results['inet_scores']['runtime'] = inet_runtime
-        results_list.append(results)
-        dt_distilled_list.append(dt_distilled)
-
-        if verbosity > 0:
-            print('Dataset Size:\t\t', dataset_size)
-            tab = PrettyTable()
-            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
-            
-            max_width = {}   
-            for field in tab.field_names:
-                if field == 'Metric':
-                    max_width[field] = 25
-                else:
-                    max_width[field] = 10
-            tab._max_width = max_width
-    
-            tab.add_rows(
-                [
-                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
-                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
-                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
-                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
-                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
-                ]    
-            )
-            print(tab)
-            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
-
-    evaluation_result_dict = None
-    for some_dict in results_list:
-        if evaluation_result_dict == None:
-            evaluation_result_dict = some_dict
-        else:
-            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
-
-    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
 
 
 
@@ -2532,6 +2488,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         accuracy_inet_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
         f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))        
         
+        
         if config['evaluation']['per_network_optimization_dataset_size'] > 50_000 and config['function_family']['dt_type'] == 'SDT': 
         
             results =  {
@@ -2602,7 +2559,11 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         epsilon = 1e-6
         
-
+        #print(dt_inet)
+        #print('y_test_lambda_pred[:10]', y_test_lambda_pred[:10])
+        #print('y_test_inet_dt[:10]', y_test_inet_dt[:10])
+        #print('y_test_distilled_dt[:10]', y_test_distilled_dt[:10])        
+        
 
         y_test_distilled_dt_diff = tf.math.subtract(1.0, y_test_distilled_dt)
         y_test_distilled_dt_softmax = tf.stack([y_test_distilled_dt, y_test_distilled_dt_diff], axis=1)
@@ -2713,7 +2674,6 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         number = min(X_test_lambda_array.shape[0], 100) if config['function_family']['dt_type'] == 'vanilla' else min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1))
 
         start_inet = time.time() 
-        print('False')
         network_parameters = np.array(network_parameters_array[:number])
         if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
             network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
@@ -3338,78 +3298,6 @@ def make_inet_prediction(model, test_network, config):
     test_network_parameters = shaped_network_parameters_to_array(test_network.get_weights(), config)
     return dt_inet, test_network_parameters, inet_runtime
 
-def evaluate_network_real_world_data(model, test_network, X_train, X_test, dataset_size_list, config, distribution=None, verbosity=0):
-        
-    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
-
-    results_list = []
-    dt_distilled_list = []
-    for dataset_size in dataset_size_list:
-
-        if dataset_size == 'TRAIN_DATA': 
-            if isinstance(X_train, pd.DataFrame):
-                X_train = X_train.values
-            if isinstance(X_test, pd.DataFrame):
-                X_test = X_test.values            
-            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
-                                                                               dt_inet,
-                                                                               X_test, 
-                                                                               #y_test_lambda,
-                                                                               config,
-                                                                               distribution=distribution,
-                                                                               train_data=X_train)
-
-        else:
-            config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
-
-            if isinstance(X_test, pd.DataFrame):
-                X_test = X_test.values            
-            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
-                                                                               dt_inet,
-                                                                               X_test, 
-                                                                               #y_test_lambda
-                                                                               config_test,
-                                                                               distribution=distribution)
-
-
-        results['inet_scores']['runtime'] = inet_runtime
-        results_list.append(results)
-        dt_distilled_list.append(dt_distilled)
-
-        if verbosity > 0:
-            print('Dataset Size:\t\t', dataset_size)
-            tab = PrettyTable()
-            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
-            
-            max_width = {}   
-            for field in tab.field_names:
-                if field == 'Metric':
-                    max_width[field] = 25
-                else:
-                    max_width[field] = 10
-            tab._max_width = max_width
-    
-            tab.add_rows(
-                [
-                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
-                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
-                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
-                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
-                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
-                ]    
-            )
-            print(tab)
-            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
-
-    evaluation_result_dict = None
-    for some_dict in results_list:
-        if evaluation_result_dict == None:
-            evaluation_result_dict = some_dict
-        else:
-            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
-
-    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
                 
     
 def print_results_different_data_sizes(results, dataset_size_list_print):
@@ -3470,6 +3358,79 @@ def plot_decision_tree_from_model(dt_model, config):
     
 
 
+def evaluate_network_real_world_data(model, test_network, X_train, X_test, dataset_size_list, config, verbosity=0, distribution=None):
+        
+    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
+
+    results_list = []
+    dt_distilled_list = []
+    for dataset_size in dataset_size_list:
+
+        if dataset_size == 'TRAIN_DATA': 
+            if isinstance(X_train, pd.DataFrame):
+                X_train = X_train.values
+            if isinstance(X_test, pd.DataFrame):
+                X_test = X_test.values            
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test, 
+                                                                               #y_test_lambda,
+                                                                               config,
+                                                                               distribution=distribution,
+                                                                               train_data=X_train)
+
+        else:
+            config_test = deepcopy(config)
+            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
+
+            if isinstance(X_test, pd.DataFrame):
+                X_test = X_test.values            
+                
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test, 
+                                                                               #y_test_lambda,
+                                                                               config_test,
+                                                                               distribution=distribution)
+
+
+        results['inet_scores']['runtime'] = inet_runtime
+        results_list.append(results)
+        dt_distilled_list.append(dt_distilled)
+
+        if verbosity > 0:
+            print('Dataset Size:\t\t', dataset_size)
+            tab = PrettyTable()
+            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
+            
+            max_width = {}   
+            for field in tab.field_names:
+                if field == 'Metric':
+                    max_width[field] = 25
+                else:
+                    max_width[field] = 10
+            tab._max_width = max_width
+    
+            tab.add_rows(
+                [
+                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
+                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
+                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
+                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
+                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
+                ]    
+            )
+            print(tab)
+            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
+
+    evaluation_result_dict = None
+    for some_dict in results_list:
+        if evaluation_result_dict == None:
+            evaluation_result_dict = some_dict
+        else:
+            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
+            
+    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
 
 
 
