@@ -174,8 +174,8 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
             
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):      
 
-        basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights'] -1
-        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:]
+        basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights'] - 1
+        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:- 1]
         function_true = function_true_with_network_parameters[:,:basic_function_representation_length]
         indices = function_true_with_network_parameters[:,-1]
         
@@ -196,7 +196,7 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
         
         #tf.print('function_values_array_function_true', function_values_array_function_true)
         
-        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config), (network_parameters, function_pred, distribution_dict_list), fn_output_signature=(tf.float32, tf.float32, tf.float32))        
+        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, XXX), fn_output_signature=(tf.float32, tf.float32, tf.float32))        
                 
         def loss_function_wrapper(loss_function_name):
             
@@ -255,6 +255,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
     if distribution_dict_list is not None:
         random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
     else:
+        tf.print(distribution_dict_list)
         random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=None, 
                                     number_of_variables=config['data']['number_of_variables'], 
                                     number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 
@@ -650,7 +651,7 @@ def inet_decision_function_fv_metric_wrapper(model_lambda_placeholder, network_p
         random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
             
         basic_function_representation_length =  function_true_with_network_parameters.shape[1] - config['lambda_net']['number_of_lambda_weights'] - 1
-        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:]
+        network_parameters = function_true_with_network_parameters[:,basic_function_representation_length:- 1]
         function_true = function_true_with_network_parameters[:,:basic_function_representation_length]
         indices = function_true_with_network_parameters[:,-1]
         
@@ -665,7 +666,7 @@ def inet_decision_function_fv_metric_wrapper(model_lambda_placeholder, network_p
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
-        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config), (network_parameters, function_pred, distribution_dict_list), fn_output_signature=(tf.float32, tf.float32, tf.float32))  
+        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, XXX), fn_output_signature=(tf.float32, tf.float32, tf.float32))  
             
         def loss_function_wrapper(metric_name):
             def loss_function(input_list):                    
