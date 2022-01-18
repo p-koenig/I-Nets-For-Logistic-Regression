@@ -88,7 +88,7 @@ class LambdaNetDataset():
         #self.y_test_lambda_array = np.array([lambda_net.y_test_lambda for lambda_net in lambda_net_list])
         
         self.distribution_dict_list_list = [lambda_net.distribution_dict_list for lambda_net in lambda_net_list]
-        self.distribution_dict_row_array = [lambda_net.distribution_dict_row for lambda_net in lambda_net_list]         
+        self.distribution_dict_row_array = np.array([lambda_net.distribution_dict_row for lambda_net in lambda_net_list])
     
         self.shape = (self.network_parameters_array.shape[0], 1 + 1 + self.network_parameters_array.shape[1] + self.target_function_parameters_array.shape[1])
     

@@ -176,7 +176,7 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
 
         network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']: config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']]
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
-        distribution_line_array = function_true_with_network_parameters[:,['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']:]
+        distribution_line_array = function_true_with_network_parameters[:, config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']:]
         
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]
@@ -257,21 +257,20 @@ def line_to_distribution_dict_list_tf(line, config):
 
     distribution_list = line_distribution_parameters.reshape(-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2)
     distribution_dict_list = []
-    
     for distribution in distribution_list:
-        distribution_name = distribution[0][1:]
+        distribution_name = distribution[0]
         distribution_parameters= distribution[1:]
-
+        tf.print('distribution_name', distribution_name)
 
         distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
         distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
         distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
         distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
 
-        distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
-        distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)
-        distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
-        distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
+        distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(tf.float32)
+        distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(tf.float32)
+        distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(tf.float32)
+        distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(tf.float32)
 
         if len(distribution_parameters_0_param_1) == 1:
             distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
@@ -282,7 +281,7 @@ def line_to_distribution_dict_list_tf(line, config):
         if len(distribution_parameters_1_param_2) == 1:
             distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
 
-        if distribution_name == 'normal':
+        if distribution_name == 0:#'normal':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'loc': distribution_parameters_0_param_1,
@@ -293,7 +292,7 @@ def line_to_distribution_dict_list_tf(line, config):
                     'scale': distribution_parameters_1_param_2,            
                 }
             }}
-        elif distribution_name == 'uniform':
+        elif distribution_name == 1:#'uniform':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'low': distribution_parameters_0_param_1,
@@ -305,7 +304,7 @@ def line_to_distribution_dict_list_tf(line, config):
                 }
             }}
 
-        elif distribution_name == 'gamma':
+        elif distribution_name == 2:#'gamma':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'shape': distribution_parameters_0_param_1,
@@ -316,7 +315,7 @@ def line_to_distribution_dict_list_tf(line, config):
                     'scale': distribution_parameters_1_param_2,            
                 }
             }}
-        elif distribution_name == 'exponential':
+        elif distribution_name == 3:#'exponential':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'scale': distribution_parameters_0_param_1,
@@ -325,7 +324,7 @@ def line_to_distribution_dict_list_tf(line, config):
                     'scale': distribution_parameters_1_param_1,
                 }
             }}        
-        elif distribution_name == 'beta':
+        elif distribution_name == 4:#'beta':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'a': distribution_parameters_0_param_1,
@@ -336,7 +335,7 @@ def line_to_distribution_dict_list_tf(line, config):
                     'b': distribution_parameters_1_param_2,            
                 }
             }}    
-        elif distribution_name == 'binomial':
+        elif distribution_name == 5:#'binomial':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'n': distribution_parameters_0_param_1,
@@ -347,7 +346,7 @@ def line_to_distribution_dict_list_tf(line, config):
                     'p': distribution_parameters_1_param_2,            
                 }
             }}    
-        elif distribution_name == 'poisson':
+        elif distribution_name == 6:#'poisson':
             distribution_dict = {distribution_name: {
                 'class_0': {
                     'lam': distribution_parameters_0_param_1,
@@ -375,8 +374,8 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             #tf.print('WRONG', distribution_dict_list)
             random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
         else:
-            distribution_dict_list = line_to_distribution_dict_list_tf(distribution_line, config)
-
+            distribution_dict_list = None#line_to_distribution_dict_list_tf(distribution_line, config)
+            tf.print('CORRECT')
             #tf.print('CORRECT', distribution_dict_list[index])
             tf.print('index', index)
             tf.print('distribution_dict_list', distribution_dict_list)
@@ -774,7 +773,7 @@ def inet_decision_function_fv_metric_wrapper(model_lambda_placeholder, network_p
         
         network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']: config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']]
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
-        distribution_line_array = function_true_with_network_parameters[:,['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']:]
+        distribution_line_array = function_true_with_network_parameters[:, config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']:]
         
         if config['i_net']['nas']:
             function_pred = function_pred[:,:config['function_family']['function_representation_length']]

@@ -383,26 +383,28 @@ def train_inet(lambda_net_train_dataset,
     
     distribution_dict_list = lambda_net_train_dataset.distribution_dict_list_list
     distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)    
+        
+    use_distribution_list = False if config['data']['max_distributions_per_class'] is None else True
     
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
             pass
             #metrics.append(tf.keras.losses.get('mae'))
         if config['i_net']['optimize_decision_function']:
-            loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
+            loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list)
             #metrics.append(inet_target_function_fv_loss_wrapper(config))
             for metric in config['i_net']['metrics']:
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, use_distribution_list=use_distribution_list))  
                 #metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
         else:
             loss_function = inet_target_function_fv_loss_wrapper(config)
-            metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config))
+            metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list))
             for metric in config['i_net']['metrics']:
                 metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, use_distribution_list=use_distribution_list))  
     else:
         metrics.append(inet_target_function_fv_loss_wrapper(config))
-        metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config))
+        metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list))
         if config['i_net']['optimize_decision_function']:
             raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
         else:
@@ -418,16 +420,47 @@ def train_inet(lambda_net_train_dataset,
     print(distribution_dict_index_train.shape)
     print(X_train.shape)
     print(y_train.shape)
+    print(lambda_net_train_dataset.distribution_dict_row_array.shape)
+    print('UPDATE 1')
     #print('np.hstack((y_train, X_train_flat, distribution_dict_index_train))', np.hstack((y_train, X_train, distribution_dict_index_train)))
     #print('np.hstack((y_train, X_train_flat))', np.hstack((y_train, X_train)))
-    
-    if config['i_net']['data_reshape_version'] is not None:
-        y_train_model = np.hstack((y_train, X_train_flat, lambda_net_train_dataset.distribution_dict_row_array))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, lambda_net_valid_dataset.distribution_dict_row_array)))   
+    if use_distribution_list:
+        distribution_dict_row_array_train = lambda_net_train_dataset.distribution_dict_row_array
+        distribution_dict_row_array_valid = lambda_net_valid_dataset.distribution_dict_row_array
+        
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' NaN'] = np.nan
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' normal'] = 0
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' uniform'] = 1
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' gamma'] = 2
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' exponential'] = 3
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' beta'] = 4
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' binomial'] = 5
+        distribution_dict_row_array_train[distribution_dict_row_array_train == ' poisson'] = 6
+        distribution_dict_row_array_train = distribution_dict_row_array_train.astype(np.float63)
+        
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' NaN'] = np.nan
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' normal'] = 0
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' uniform'] = 1
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' gamma'] = 2
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' exponential'] = 3
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' beta'] = 4
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' binomial'] = 5
+        distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' poisson'] = 6
+        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float63)
+        
+        if config['i_net']['data_reshape_version'] is not None:
+            y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_row_array_train))   
+            valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_row_array_valid)))   
+        else:
+            y_train_model = np.hstack((y_train, X_train, distribution_dict_row_array_train))   
+            valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_row_array_valid)))      
     else:
-        y_train_model = np.hstack((y_train, X_train, lambda_net_train_dataset.distribution_dict_row_array))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid, lambda_net_valid_dataset.distribution_dict_row_array)))                 
-             
+        if config['i_net']['data_reshape_version'] is not None:
+            y_train_model = np.hstack((y_train, X_train_flat))   
+            valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
+        else:
+            y_train_model = np.hstack((y_train, X_train))   
+            valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
     print('valid_data[1]', valid_data[1].shape)
     #loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
     #metrics = [inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_crossentropy'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'mae'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_accuracy')]
