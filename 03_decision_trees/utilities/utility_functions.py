@@ -1914,20 +1914,41 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
     
     
     if distribution_name == 'normal':
-        return np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=size), parameter_by_distribution['normal']
+        if tf.is_tensor(parameter_by_distribution['normal']['loc']):
+            return tf.cast(tf.random.normal(mean=parameter_by_distribution['normal']['loc'], stddev=parameter_by_distribution['normal']['scale'], shape=(size,)), tf.float32), parameter_by_distribution['normal']
+        else:
+            return np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=size), parameter_by_distribution['normal']
     elif distribution_name == 'uniform':
-        return np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=size), parameter_by_distribution['uniform']
+        if tf.is_tensor(parameter_by_distribution['uniform']['low']):
+            print(parameter_by_distribution['uniform']['low'])
+            return tf.cast(tf.random.uniform(minval=parameter_by_distribution['uniform']['low'], maxval=parameter_by_distribution['uniform']['high'], shape=(size,)), tf.float32), parameter_by_distribution['uniform']
+        else:        
+            return np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=size), parameter_by_distribution['uniform']
     elif distribution_name == 'gamma':
-        return np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=size), parameter_by_distribution['gamma']
+        if tf.is_tensor(parameter_by_distribution['gamma']['shape']):
+            return tf.cast(tf.random.gamma(alpha=parameter_by_distribution['gamma']['shape'], beta=parameter_by_distribution['gamma']['scale'], shape=(size,)), tf.float32), parameter_by_distribution['gamma']
+        else:        
+            return np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=size), parameter_by_distribution['gamma']
     elif distribution_name == 'exponential':
-        return np.random.exponential(parameter_by_distribution['exponential']['scale'], size=size), parameter_by_distribution['exponential']        
+        if tf.is_tensor(parameter_by_distribution['exponential']['scale']):
+            return tf.cast(tfp.distributions.Exponential(rate=parameter_by_distribution['exponential']['scale']).sample(size), tf.float32), parameter_by_distribution['exponential']        
+        else:        
+            return np.random.exponential(parameter_by_distribution['exponential']['scale'], size=size), parameter_by_distribution['exponential']   
     elif distribution_name == 'beta':
-        return np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=size), parameter_by_distribution['beta']
+        if tf.is_tensor(parameter_by_distribution['beta']['a']):
+            return tf.cast(tfp.distributions.Beta(concentration1=parameter_by_distribution['beta']['a'], concentration0=parameter_by_distribution['beta']['b']).sample(size), tf.float32), parameter_by_distribution['beta']
+        else:
+            return np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=size), parameter_by_distribution['beta']
     elif distribution_name == 'binomial':
-        return np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=size), parameter_by_distribution['binomial']        
+        if tf.is_tensor(parameter_by_distribution['binomial']['n']):
+            return tf.cast(tf.random.stateless_binomial(counts=parameter_by_distribution['binomial']['n'], probs=parameter_by_distribution['binomial']['p'], shape=(size,)), tf.float32), parameter_by_distribution['binomial']  
+        else:        
+            return np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=size), parameter_by_distribution['binomial']  
     elif distribution_name == 'poisson':
-        return np.random.poisson(parameter_by_distribution['poisson']['lam'], size=size), parameter_by_distribution['poisson'] 
-    
+        if tf.is_tensor(parameter_by_distribution['poisson']['lam']):
+            return tf.cast(tf.random.poisson(lam=parameter_by_distribution['poisson']['lam'], shape=(size,)), tf.float32), parameter_by_distribution['poisson'] 
+        else:
+            return np.random.poisson(parameter_by_distribution['poisson']['lam'], size=size), parameter_by_distribution['poisson'] 
     return None, None
     
 
@@ -2099,7 +2120,6 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
             model_history_list,
             distribution_parameter_list_list)
          
-    
     
 def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 0, seed = None, flip_percentage=0, random_parameters=None, distribution_dict_list=None):  
     
