@@ -2135,8 +2135,6 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
         
         if distribution_dict_list is not None:
             for i in range(number_of_variables):
-                print(i)
-
                 distribution_name = list(distribution_dict_list[i].keys())[0]
                 try:
                     distributions_per_class = len(list(distribution_dict_list[i][distribution_name]['class_0'].values())[0])

@@ -251,7 +251,18 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
 
 def calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config):
     
-    random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
+    if config['data']['max_distributions_per_class'] is not None:
+        random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
+    else:
+        random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=None, 
+                                    number_of_variables=config['data']['number_of_variables'], 
+                                    number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 
+                                    distributions_per_class = config['data']['max_distributions_per_class'], 
+                                    seed = 42, 
+                                    flip_percentage=0, 
+                                    random_parameters=None, 
+                                    distribution_dict_list=lambda_net_dataset_train.distribution_dict_list_list[12])[0]
+    
     
     #random_evaluation_dataset = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)     
