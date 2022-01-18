@@ -255,6 +255,8 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
 
 def line_to_distribution_dict_list_tf(line_distribution_parameters, config):
 
+    distribution_name_list = []
+    
     distribution_list = tf.reshape(line_distribution_parameters, (-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2) )
     distribution_dict_list = []
     for distribution in distribution_list:
@@ -367,43 +369,43 @@ def line_to_distribution_dict_list_tf(line_distribution_parameters, config):
             distribution_dict['normal']['class_0']['scale'] = distribution_parameters_0_param_2
             distribution_dict['normal']['class_1']['loc'] = distribution_parameters_1_param_1
             distribution_dict['normal']['class_1']['scale'] = distribution_parameters_1_param_2
-            
+            distribution_name_list.append('normal')
         elif distribution_name == 1:#'uniform':            
             distribution_dict['uniform']['class_0']['low'] = distribution_parameters_0_param_1
             distribution_dict['uniform']['class_0']['high'] = distribution_parameters_0_param_2
             distribution_dict['uniform']['class_1']['low'] = distribution_parameters_1_param_1
             distribution_dict['uniform']['class_1']['high'] = distribution_parameters_1_param_2            
-
-
+            distribution_name_list.append('uniform')
         elif distribution_name == 2:#'gamma':
             distribution_dict['gamma']['class_0']['shape'] = distribution_parameters_0_param_1
             distribution_dict['gamma']['class_0']['scale'] = distribution_parameters_0_param_2
             distribution_dict['gamma']['class_1']['shape'] = distribution_parameters_1_param_1
             distribution_dict['gamma']['class_1']['scale'] = distribution_parameters_1_param_2                 
-            
+            distribution_name_list.append('gamma')
         elif distribution_name == 3:#'exponential':
             distribution_dict['exponential']['class_0']['scale'] = distribution_parameters_0_param_1
             distribution_dict['exponential']['class_1']['scale'] = distribution_parameters_1_param_1
-                  
+            distribution_name_list.append('exponential')
         elif distribution_name == 4:#'beta':
             distribution_dict['beta']['class_0']['a'] = distribution_parameters_0_param_1
             distribution_dict['beta']['class_0']['b'] = distribution_parameters_0_param_2
             distribution_dict['beta']['class_1']['a'] = distribution_parameters_1_param_1
             distribution_dict['beta']['class_1']['b'] = distribution_parameters_1_param_2     
-  
+            distribution_name_list.append('beta')
         elif distribution_name == 5:#'binomial':
             distribution_dict['binomial']['class_0']['n'] = distribution_parameters_0_param_1
             distribution_dict['binomial']['class_0']['p'] = distribution_parameters_0_param_2
             distribution_dict['binomial']['class_1']['n'] = distribution_parameters_1_param_1
             distribution_dict['binomial']['class_1']['p'] = distribution_parameters_1_param_2     
-             
+            distribution_name_list.append('binomial')
         elif distribution_name == 6:#'poisson':
             distribution_dict['poisson']['class_0']['lam'] = distribution_parameters_0_param_1
             distribution_dict['poisson']['class_1']['lam'] = distribution_parameters_1_param_1
-            
+            distribution_name_list.append('poisson')
+
         distribution_dict_list.append(distribution_dict)
     
-    return distribution_dict_list
+    return distribution_name_list, distribution_dict_list
 
 def calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, use_distribution_list):
     
@@ -421,12 +423,12 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
         else:
             tf.print(distribution_line)
-            distribution_dict_list = line_to_distribution_dict_list_tf(distribution_line, config)
+            distribution_name_list, distribution_dict_list = line_to_distribution_dict_list_tf(distribution_line, config)
             tf.print('CORRECT')
             #tf.print('CORRECT', distribution_dict_list[index])
             #tf.print('index', index)
             #tf.print('distribution_dict_list', distribution_dict_list)
-            random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=None, 
+            random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=distribution_name_list, 
                                         number_of_variables=config['data']['number_of_variables'], 
                                         number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 
                                         distributions_per_class = config['data']['max_distributions_per_class'], 

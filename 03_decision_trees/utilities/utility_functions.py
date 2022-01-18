@@ -1905,9 +1905,13 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
         
         
     else:
-        parameter_by_distribution = {
-            distribution_name: parameters
-        }        
+        if tf.is_tensor(parameters):
+            parameter_by_distribution = parameters[distribution_name]
+        else:
+            parameter_by_distribution = {
+                distribution_name: parameters
+            }        
+    
     
     if distribution_name == 'normal':
         return np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=size), parameter_by_distribution['normal']
@@ -2135,7 +2139,10 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
         
         if distribution_dict_list is not None:
             for i in range(number_of_variables):
-                distribution_name = list(distribution_dict_list[i].keys())[0]
+                if tf.is_tensor(distribution_dict_list):
+                    distribution_name = distribution_list[i]
+                else:
+                    distribution_name = list(distribution_dict_list[i].keys())[0]
                 try:
                     distributions_per_class = len(list(distribution_dict_list[i][distribution_name]['class_0'].values())[0])
                 except:
