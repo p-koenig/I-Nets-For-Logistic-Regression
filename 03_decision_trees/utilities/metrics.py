@@ -253,24 +253,36 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
 
 
 
-def line_to_distribution_dict_list_tf(line, config):
+def line_to_distribution_dict_list_tf(line_distribution_parameters, config):
 
-    distribution_list = line_distribution_parameters.reshape(-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2)
+    distribution_list = tf.reshape(line_distribution_parameters, (-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2) )
     distribution_dict_list = []
     for distribution in distribution_list:
         distribution_name = distribution[0]
         distribution_parameters= distribution[1:]
         tf.print('distribution_name', distribution_name)
 
-        distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
-        distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
-        distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
-        distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+        distribution_parameters_0_param_1 = tf.reshape(distribution_parameters, (4, -1))[0]
+        distribution_parameters_0_param_2 = tf.reshape(distribution_parameters, (4, -1))[1]
+        distribution_parameters_1_param_1 = tf.reshape(distribution_parameters, (4, -1))[2]
+        distribution_parameters_1_param_2 = tf.reshape(distribution_parameters, (4, -1))[3]
 
-        distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(tf.float32)
-        distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(tf.float32)
-        distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(tf.float32)
-        distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(tf.float32)
+        mask = tf.math.logical_not(tf.math.is_nan(distribution_parameters_0_param_1))
+        distribution_parameters_0_param_1 = tf.boolean_mask(distribution_parameters_0_param_1, mask)
+        
+        mask = tf.math.logical_not(tf.math.is_nan(distribution_parameters_0_param_2))
+        distribution_parameters_0_param_2 = tf.boolean_mask(distribution_parameters_0_param_2, mask)
+        
+        mask = tf.math.logical_not(tf.math.is_nan(distribution_parameters_1_param_1))
+        distribution_parameters_1_param_1 = tf.boolean_mask(distribution_parameters_1_param_1, mask)
+        
+        mask = tf.math.logical_not(tf.math.is_nan(distribution_parameters_1_param_2))
+        distribution_parameters_1_param_2 = tf.boolean_mask(distribution_parameters_1_param_2, mask)
+        
+        #distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(tf.float32)
+        #distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(tf.float32)
+        #distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(tf.float32)
+        #distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(tf.float32)
 
         if len(distribution_parameters_0_param_1) == 1:
             distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
@@ -281,80 +293,114 @@ def line_to_distribution_dict_list_tf(line, config):
         if len(distribution_parameters_1_param_2) == 1:
             distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
 
+        distribution_dict = {
+            'normal': {
+                'class_0': {
+                    'loc': 0.0,#None,
+                    'scale': 0.0,#None,
+                },
+                'class_1': {
+                    'loc': 0.0,#None,
+                    'scale': 0.0,#None,      
+                }
+            },         
+            'uniform': {
+                'class_0': {
+                    'low': 0.0,#None,
+                    'high': 0.0,#None,
+                },
+                'class_1': {
+                    'low': 0.0,#None,
+                    'high': 0.0,#None,                
+                }   
+            },
+            'gamma': {
+                'class_0': {
+                    'shape': 0.0,#None,
+                    'scale': 0.0,#None,
+                },
+                'class_1': {
+                    'shape': 0.0,#None,
+                    'scale': 0.0,#None,                
+                }   
+            },
+            'exponential': {
+                'class_0': {
+                    'scale': 0.0,#None,
+                },
+                'class_1': {
+                    'scale': 0.0,#None,
+                }   
+            }, 
+            'beta': {
+                'class_0': {
+                    'a': 0.0,#None,
+                    'b': 0.0,#None,
+                },
+                'class_1': {
+                    'a': 0.0,#None,
+                    'b': 0.0,#None,                
+                }   
+            },                     
+            'binomial': {
+                'class_0': {
+                    'n': 0.0,#None,
+                    'p': 0.0,#None,
+                },
+                'class_1': {
+                    'n': 0.0,#None,
+                    'p': 0.0,#None,                
+                }   
+            },                
+            'poisson': {
+                'class_0': {
+                    'lam': 0.0,#None,
+                },
+                'class_1': {
+                    'lam': 0.0,#None,
+                }   
+            }            
+        }
+            
         if distribution_name == 0:#'normal':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'loc': distribution_parameters_0_param_1,
-                    'scale': distribution_parameters_0_param_2,
-                },
-                'class_1': {
-                    'loc': distribution_parameters_1_param_1,
-                    'scale': distribution_parameters_1_param_2,            
-                }
-            }}
-        elif distribution_name == 1:#'uniform':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'low': distribution_parameters_0_param_1,
-                    'high': distribution_parameters_0_param_2,
-                },
-                'class_1': {
-                    'low': distribution_parameters_1_param_1,
-                    'high': distribution_parameters_1_param_2,            
-                }
-            }}
+            distribution_dict['normal']['class_0']['loc'] = distribution_parameters_0_param_1
+            distribution_dict['normal']['class_0']['scale'] = distribution_parameters_0_param_2
+            distribution_dict['normal']['class_1']['loc'] = distribution_parameters_1_param_1
+            distribution_dict['normal']['class_1']['scale'] = distribution_parameters_1_param_2
+            
+        elif distribution_name == 1:#'uniform':            
+            distribution_dict['uniform']['class_0']['low'] = distribution_parameters_0_param_1
+            distribution_dict['uniform']['class_0']['high'] = distribution_parameters_0_param_2
+            distribution_dict['uniform']['class_1']['low'] = distribution_parameters_1_param_1
+            distribution_dict['uniform']['class_1']['high'] = distribution_parameters_1_param_2            
+
 
         elif distribution_name == 2:#'gamma':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'shape': distribution_parameters_0_param_1,
-                    'scale': distribution_parameters_0_param_2,
-                },
-                'class_1': {
-                    'shape': distribution_parameters_1_param_1,
-                    'scale': distribution_parameters_1_param_2,            
-                }
-            }}
+            distribution_dict['gamma']['class_0']['shape'] = distribution_parameters_0_param_1
+            distribution_dict['gamma']['class_0']['scale'] = distribution_parameters_0_param_2
+            distribution_dict['gamma']['class_1']['shape'] = distribution_parameters_1_param_1
+            distribution_dict['gamma']['class_1']['scale'] = distribution_parameters_1_param_2                 
+            
         elif distribution_name == 3:#'exponential':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'scale': distribution_parameters_0_param_1,
-                },
-                'class_1': {
-                    'scale': distribution_parameters_1_param_1,
-                }
-            }}        
+            distribution_dict['exponential']['class_0']['scale'] = distribution_parameters_0_param_1
+            distribution_dict['exponential']['class_1']['scale'] = distribution_parameters_1_param_1
+                  
         elif distribution_name == 4:#'beta':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'a': distribution_parameters_0_param_1,
-                    'b': distribution_parameters_0_param_2,
-                },
-                'class_1': {
-                    'a': distribution_parameters_1_param_1,
-                    'b': distribution_parameters_1_param_2,            
-                }
-            }}    
+            distribution_dict['beta']['class_0']['a'] = distribution_parameters_0_param_1
+            distribution_dict['beta']['class_0']['b'] = distribution_parameters_0_param_2
+            distribution_dict['beta']['class_1']['a'] = distribution_parameters_1_param_1
+            distribution_dict['beta']['class_1']['b'] = distribution_parameters_1_param_2     
+  
         elif distribution_name == 5:#'binomial':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'n': distribution_parameters_0_param_1,
-                    'p': distribution_parameters_0_param_2,
-                },
-                'class_1': {
-                    'n': distribution_parameters_1_param_1,
-                    'p': distribution_parameters_1_param_2,            
-                }
-            }}    
+            distribution_dict['binomial']['class_0']['n'] = distribution_parameters_0_param_1
+            distribution_dict['binomial']['class_0']['p'] = distribution_parameters_0_param_2
+            distribution_dict['binomial']['class_1']['n'] = distribution_parameters_1_param_1
+            distribution_dict['binomial']['class_1']['p'] = distribution_parameters_1_param_2     
+             
         elif distribution_name == 6:#'poisson':
-            distribution_dict = {distribution_name: {
-                'class_0': {
-                    'lam': distribution_parameters_0_param_1,
-                },
-                'class_1': {
-                    'lam': distribution_parameters_1_param_1,
-                }
-            }}  
+            distribution_dict['poisson']['class_0']['lam'] = distribution_parameters_0_param_1
+            distribution_dict['poisson']['class_1']['lam'] = distribution_parameters_1_param_1
+            
         distribution_dict_list.append(distribution_dict)
     
     return distribution_dict_list
@@ -374,11 +420,12 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             #tf.print('WRONG', distribution_dict_list)
             random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
         else:
-            distribution_dict_list = None#line_to_distribution_dict_list_tf(distribution_line, config)
+            tf.print(distribution_line)
+            distribution_dict_list = line_to_distribution_dict_list_tf(distribution_line, config)
             tf.print('CORRECT')
             #tf.print('CORRECT', distribution_dict_list[index])
-            tf.print('index', index)
-            tf.print('distribution_dict_list', distribution_dict_list)
+            #tf.print('index', index)
+            #tf.print('distribution_dict_list', distribution_dict_list)
             random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=None, 
                                         number_of_variables=config['data']['number_of_variables'], 
                                         number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 

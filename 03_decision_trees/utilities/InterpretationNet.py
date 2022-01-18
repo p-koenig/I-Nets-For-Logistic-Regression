@@ -436,7 +436,7 @@ def train_inet(lambda_net_train_dataset,
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' beta'] = 4
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' binomial'] = 5
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' poisson'] = 6
-        distribution_dict_row_array_train = distribution_dict_row_array_train.astype(np.float63)
+        distribution_dict_row_array_train = distribution_dict_row_array_train.astype(np.float64)
         
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' NaN'] = np.nan
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' normal'] = 0
@@ -446,7 +446,7 @@ def train_inet(lambda_net_train_dataset,
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' beta'] = 4
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' binomial'] = 5
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' poisson'] = 6
-        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float63)
+        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float64)
         
         if config['i_net']['data_reshape_version'] is not None:
             y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_row_array_train))   
