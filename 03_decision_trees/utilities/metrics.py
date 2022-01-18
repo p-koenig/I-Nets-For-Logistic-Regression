@@ -195,9 +195,9 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
         
         #tf.print('function_values_array_function_true', function_values_array_function_true)
         if use_distribution_list:
-            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, distribution_line_array), fn_output_signature=(tf.float32, tf.float32, tf.float32))       
+            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, use_distribution_list), (network_parameters, function_pred, distribution_line_array), fn_output_signature=(tf.float32, tf.float32, tf.float32))       
         else:
-            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred), fn_output_signature=(tf.float32, tf.float32, tf.float32))        
+            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, use_distribution_list), (network_parameters, function_pred), fn_output_signature=(tf.float32, tf.float32, tf.float32))        
                 
         def loss_function_wrapper(loss_function_name):
             
@@ -251,6 +251,115 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
 
     return inet_decision_function_fv_loss
 
+
+
+def line_to_distribution_dict_list_tf(line, config):
+
+    distribution_list = line_distribution_parameters.reshape(-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2)
+    distribution_dict_list = []
+    
+    for distribution in distribution_list:
+        distribution_name = distribution[0][1:]
+        distribution_parameters= distribution[1:]
+
+
+        distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
+        distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
+        distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
+        distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+
+        distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
+        distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)
+        distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
+        distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
+
+        if len(distribution_parameters_0_param_1) == 1:
+            distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
+        if len(distribution_parameters_0_param_2) == 1:
+            distribution_parameters_0_param_2 = distribution_parameters_0_param_2[0]
+        if len(distribution_parameters_1_param_1) == 1:
+            distribution_parameters_1_param_1 = distribution_parameters_1_param_1[0]
+        if len(distribution_parameters_1_param_2) == 1:
+            distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
+
+        if distribution_name == 'normal':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'loc': distribution_parameters_0_param_1,
+                    'scale': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'loc': distribution_parameters_1_param_1,
+                    'scale': distribution_parameters_1_param_2,            
+                }
+            }}
+        elif distribution_name == 'uniform':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'low': distribution_parameters_0_param_1,
+                    'high': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'low': distribution_parameters_1_param_1,
+                    'high': distribution_parameters_1_param_2,            
+                }
+            }}
+
+        elif distribution_name == 'gamma':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'shape': distribution_parameters_0_param_1,
+                    'scale': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'shape': distribution_parameters_1_param_1,
+                    'scale': distribution_parameters_1_param_2,            
+                }
+            }}
+        elif distribution_name == 'exponential':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'scale': distribution_parameters_0_param_1,
+                },
+                'class_1': {
+                    'scale': distribution_parameters_1_param_1,
+                }
+            }}        
+        elif distribution_name == 'beta':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'a': distribution_parameters_0_param_1,
+                    'b': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'a': distribution_parameters_1_param_1,
+                    'b': distribution_parameters_1_param_2,            
+                }
+            }}    
+        elif distribution_name == 'binomial':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'n': distribution_parameters_0_param_1,
+                    'p': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'n': distribution_parameters_1_param_1,
+                    'p': distribution_parameters_1_param_2,            
+                }
+            }}    
+        elif distribution_name == 'poisson':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'lam': distribution_parameters_0_param_1,
+                },
+                'class_1': {
+                    'lam': distribution_parameters_1_param_1,
+                }
+            }}  
+        distribution_dict_list.append(distribution_dict)
+    
+    return distribution_dict_list
+
 def calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, use_distribution_list):
     
     
@@ -266,7 +375,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             #tf.print('WRONG', distribution_dict_list)
             random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
         else:
-            distribution_dict_list = TBD
+            distribution_dict_list = line_to_distribution_dict_list_tf(distribution_line, config)
 
             #tf.print('CORRECT', distribution_dict_list[index])
             tf.print('index', index)
@@ -679,9 +788,9 @@ def inet_decision_function_fv_metric_wrapper(model_lambda_placeholder, network_p
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
         if use_distribution_list:
-            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, distribution_line_array), fn_output_signature=(tf.float32, tf.float32, tf.float32))              
+            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, use_distribution_list), (network_parameters, function_pred, distribution_line_array), fn_output_signature=(tf.float32, tf.float32, tf.float32))              
         else:        
-            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred), fn_output_signature=(tf.float32, tf.float32, tf.float32))  
+            function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, use_distribution_list), (network_parameters, function_pred), fn_output_signature=(tf.float32, tf.float32, tf.float32))  
             
         def loss_function_wrapper(metric_name):
             def loss_function(input_list):                    
