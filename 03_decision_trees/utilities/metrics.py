@@ -196,7 +196,7 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
         
         #tf.print('function_values_array_function_true', function_values_array_function_true)
         
-        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, XXX), fn_output_signature=(tf.float32, tf.float32, tf.float32))        
+        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, indices), fn_output_signature=(tf.float32, tf.float32, tf.float32))        
                 
         def loss_function_wrapper(loss_function_name):
             
@@ -252,28 +252,37 @@ def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_par
 
 def calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list=None):
     
-    if distribution_dict_list is not None:
-        random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
-    else:
-        tf.print(distribution_dict_list)
-        random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=None, 
-                                    number_of_variables=config['data']['number_of_variables'], 
-                                    number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 
-                                    distributions_per_class = config['data']['max_distributions_per_class'], 
-                                    seed = np.random.randint(1_000_000), 
-                                    flip_percentage=0, 
-                                    random_parameters=None, 
-                                    distribution_dict_list=distribution_dict_list)[0]# lambda_net_dataset_train.distribution_dict_list_list[12]
-                                                             
-    
-    #random_evaluation_dataset = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
-    random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)     
     
     def calculate_function_values_loss_decision(input_list):
         
         
         network_parameters = input_list[0]
         function_array = input_list[1]
+        index = input_list[2]
+
+        
+        if distribution_dict_list is None:
+            #tf.print('WRONG', distribution_dict_list)
+            random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
+        else:
+            #tf.print('CORRECT', distribution_dict_list[index])
+            tf.print('index', index)
+            tf.print('distribution_dict_list', distribution_dict_list)
+            random_evaluation_dataset = generate_dataset_from_distributions(distribution_list=None, 
+                                        number_of_variables=config['data']['number_of_variables'], 
+                                        number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 
+                                        distributions_per_class = config['data']['max_distributions_per_class'], 
+                                        seed = np.random.randint(1_000_000), 
+                                        flip_percentage=0, 
+                                        random_parameters=None, 
+                                        distribution_dict_list=tf.gather(distribution_dict_list, index) # distribution_dict_list[index]#tf.gather(distribution_dict_list, index)#
+                                        )[0]# lambda_net_dataset_train.distribution_dict_list_list[12]
+
+
+        #random_evaluation_dataset = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
+        random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)             
+
+        
         
         function_values_true = calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder)(network_parameters)
         
@@ -666,7 +675,7 @@ def inet_decision_function_fv_metric_wrapper(model_lambda_placeholder, network_p
         assert function_true.shape[1] == config['function_family']['basic_function_representation_length'], 'Shape of True Function: ' + str(function_true.shape)      
         assert function_pred.shape[1] == config['function_family']['function_representation_length'], 'Shape of Pred Function: ' + str(function_pred.shape)   
         
-        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, XXX), fn_output_signature=(tf.float32, tf.float32, tf.float32))  
+        function_values_array_function_true, function_values_array_function_pred, penalties = tf.map_fn(calculate_function_values_loss_decision_wrapper(network_parameters_structure, model_lambda_placeholder, config, distribution_dict_list), (network_parameters, function_pred, indices), fn_output_signature=(tf.float32, tf.float32, tf.float32))  
             
         def loss_function_wrapper(metric_name):
             def loss_function(input_list):                    
