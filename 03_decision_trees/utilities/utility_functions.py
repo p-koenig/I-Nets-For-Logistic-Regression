@@ -249,6 +249,9 @@ def generate_paths(config, path_type='interpretation_net'):
     if len(config['data']['categorical_indices']) > 0:
         categorical_sting = '_cat' + '-'.join(str(e) for e in config['data']['categorical_indices'])
         
+    random_parameters_distribution_string = '_randParamDist' if config['data']['random_parameters_distribution'] else ''
+    max_distributions_per_class_string = '_maxDistClass' + str(config['data']['max_distributions_per_class'])
+        
     dt_str = (
               '_depth' + str(maximum_depth) +
               '_beta' + str(config['function_family']['beta']) +
@@ -266,11 +269,10 @@ def generate_paths(config, path_type='interpretation_net'):
                                   '_xMin' + str(config['data']['x_min']) +
                                   '_xDist' + str(config['data']['x_distrib']) +
                                   categorical_sting +
+                                  random_parameters_distribution_string + 
+                                  max_distributions_per_class_string +                                   
                                   dt_str
                                  )
-
-        
-        
 
     if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
   
@@ -832,8 +834,8 @@ def generate_random_data_points_custom(low, high, size, variables, categorical_i
     
     list_of_data_points = None
     
-    if random_parameters == True:
-        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed)        
+    if random_parameters == True and parameters is None:
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters)        
     elif distrib == 'uniform':
         list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
     elif distrib == 'normal':
@@ -872,6 +874,7 @@ def generate_random_data_points(config, seed, parameters=None):
     variables = onfig['data']['number_of_variables'] 
     categorical_indice = config['data']['categorical_indices']
     distrib=config['data']['x_distrib']
+    random_parameters = config['data']['random_parameters_trained']
     
     random_parameters=False
     
@@ -916,8 +919,8 @@ def generate_random_data_points(config, seed, parameters=None):
         
     list_of_data_points = None
     
-    if random_parameters == True:
-        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed)        
+    if random_parameters == True and parameters is None:
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters)        
     elif distrib == 'uniform':
         list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
     elif distrib == 'normal':
@@ -1268,17 +1271,18 @@ def generate_data_make_classification_distribution(config, seed=42):
 
 
 
-def generate_data_distribtion_trained(config, seed=42, max_distributions_per_class=0, distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson']):
+def generate_data_distribtion_trained(config, seed=42, max_distributions_per_class=0, distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], random_parameters=None):
            
     random.seed(seed)
     distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
     
-    X_data, y_data_tree, _, _ = generate_dataset_from_distributions(distribution_list = distribution_list, 
+    X_data, y_data_tree, distribution_parameter_list, _ = generate_dataset_from_distributions(distribution_list = distribution_list, 
                                                                number_of_variables = config['data']['number_of_variables'], 
                                                                number_of_samples = config['data']['lambda_dataset_size'], 
                                                                distributions_per_class = distributions_per_class, 
                                                                seed = seed, 
-                                                               flip_percentage = 0)        
+                                                               flip_percentage = 0,
+                                                               random_parameters=random_parameters)        
         
 
             
@@ -1299,7 +1303,7 @@ def generate_data_distribtion_trained(config, seed=42, max_distributions_per_cla
 
         #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
 
-        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data 
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data, distribution_parameter_list
     
     return None
 
@@ -1308,14 +1312,16 @@ def generate_data_distribtion(config, seed=42, max_distributions_per_class=0, di
         
     random.seed(seed)
     distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
-            
-    X_data, y_data, _, _ = generate_dataset_from_distributions(distribution_list = distribution_list, 
+     
+    X_data, y_data, distribution_parameter_list, _ = generate_dataset_from_distributions(distribution_list = distribution_list, 
                                                                number_of_variables = config['data']['number_of_variables'], 
                                                                number_of_samples = config['data']['lambda_dataset_size'], 
                                                                distributions_per_class = distributions_per_class, 
                                                                seed = seed, 
-                                                               flip_percentage = 0)
-            
+                                                               flip_percentage = 0,
+                                                               random_parameters=random_parameters)
+    
+    
     function_representation_length = ( 
        ((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables']) + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']
   if config['function_family']['dt_type'] == 'SDT'
@@ -1325,7 +1331,7 @@ def generate_data_distribtion(config, seed=42, max_distributions_per_class=0, di
     
     placeholder = [0 for i in range(function_representation_length)]
         
-    return placeholder, X_data, np.round(y_data), y_data 
+    return placeholder, X_data, np.round(y_data), y_data , distribution_parameter_list
 
 
 
@@ -1934,6 +1940,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                flip_percentage=0.0,
                                                                verbose=0,
                                                                distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                               random_parameters=None,
 
                                                                #encoder_model=encoder_model,
                                                                backend='loky'):
@@ -1967,7 +1974,8 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                                                                max_distributions_per_class = max_distributions_per_class,
                                                                                                                flip_percentage=flip_percentage,
                                                                                                                #encoder_model=encoder_model,
-                                                                                                               verbose=verbose) for i in range(config['i_net']['test_size'])) 
+                                                                                                               verbose=verbose,
+                                                                                                               random_parameters=random_parameters) for i in range(config['i_net']['test_size'])) 
 
 
 
@@ -2089,7 +2097,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
          
     
     
-def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 0, seed = None, flip_percentage=0):  
+def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 0, seed = None, flip_percentage=0, random_parameters=None):  
     
     random.seed(seed)
     np.random.seed(seed)
@@ -2105,7 +2113,7 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
             #data_list = [None]
             #distribution_parameter_list = [None]
             
-            feature_data, distribution_parameter = get_distribution_data_from_string(distribution_name, samples_class_0+samples_class_1, seed=(seed+1)*(i+1))
+            feature_data, distribution_parameter = get_distribution_data_from_string(distribution_name, samples_class_0+samples_class_1, seed=(seed+1)*(i+1), random_parameters=random_parameters)
             feature_data = np.sort(feature_data)
             
             distribution_parameter = {distribution_name: distribution_parameter}
@@ -2136,10 +2144,10 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                                 
             for j in range(distributions_per_class):
                 if False:
-                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1))
-                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1))
+                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
+                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
                 else:
-                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1))
+                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
                     distribution_parameter_new = {}                        
                     for key, value in distribution_parameter_0_list[j].items():
                         multiplier = np.random.uniform(-0.5, 0.5)
@@ -2148,7 +2156,7 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                         else:
                             distribution_parameter_new[key] =  value + value*multiplier   
                             
-                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new)                    
+                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new, random_parameters=random_parameters)                    
 
             class_0_data = np.hstack(class_0_data_list)
             class_1_data = np.hstack(class_1_data_list)
@@ -2184,6 +2192,8 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
         idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
         y_data[idx] = (y_data[idx] + 1) % 2  
         
+        #print(distributions_per_class, distribution_parameter_list)
+        
     return X_data, y_data, distribution_parameter_list, normalizer_list
 
 
@@ -2197,6 +2207,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                         data_seed=42,
                                                         distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                                         max_distributions_per_class = 0,
+                                                        random_parameters=None,
                                                         flip_percentage=0,
                                                         #encoder_model=encoder_model,
                                                         verbose=0
@@ -2214,7 +2225,8 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                                                           config['data']['lambda_dataset_size'],
                                                                                           distributions_per_class = distributions_per_class, 
                                                                                           seed=data_seed,
-                                                                                          flip_percentage=flip_percentage)
+                                                                                          flip_percentage=flip_percentage,
+                                                                                          random_parameters=random_parameters)
     else:
         informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
         redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
@@ -2454,7 +2466,8 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                                                                config['evaluation']['per_network_optimization_dataset_size'], 
                                                                config['data']['number_of_variables'], 
                                                                config['data']['categorical_indices'],
-                                                               distrib=distribution)
+                                                               distrib=distribution,
+                                                               random_parameters=config['data']['random_parameters_distribution'])
         else:
             X_data_random = train_data
         

@@ -235,8 +235,10 @@ class LambdaNet():
     
     config = None
     
+    distribution_parameters_list = None
+    
     #def __init__(self, line_weights, line_X_data, line_y_data, config):
-    def __init__(self, line_weights, config):
+    def __init__(self, line_weights, line_distribution_parameters, config):
         from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array
         
         assert isinstance(line_weights, np.ndarray), 'line is no array: ' + str(line_weights) 
@@ -276,16 +278,37 @@ class LambdaNet():
         #line_y_data = line_y_data[1:]
         #self.X_test_lambda = np.transpose(np.array([line_X_data[i::self.number_of_variables] for i in range(self.number_of_variables)]))
         #self.y_test_lambda = line_y_data.reshape(-1,1)
+        
+        assert self.index == line_distribution_parameters[0], 'indices do not match: ' + str(self.index) + ', ' + str(line_distribution_parameters[0])
+        line_distribution_parameters = line_distribution_parameters[1:]
+        
+        distribution_parameters = np.reshape()
+        
+        
+        
+        
                 
         data_generation_seed = self.seed + self.index
-        self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
-                                                            high=config['data']['x_max'], 
-                                                            size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
-                                                            variables=config['data']['number_of_variables'], 
-                                                            distrib=config['evaluation']['random_evaluation_dataset_distribution'],
-                                                            categorical_indices=config['data']['categorical_indices'],
-                                                            seed=data_generation_seed)          
         
+        
+        if line_distribution_parameters is None:
+            self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
+                                                                high=config['data']['x_max'], 
+                                                                size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                                variables=config['data']['number_of_variables'], 
+                                                                distrib=config['evaluation']['random_evaluation_dataset_distribution'],
+                                                                categorical_indices=config['data']['categorical_indices'],
+                                                                seed=data_generation_seed)         
+        
+        else:
+            
+            self.X_test_lambda = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                                                                     number_of_variables=config['data']['number_of_variables'], 
+                                                                     number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                                     distributions_per_class = config['data']['max_distributions_per_class'], 
+                                                                     seed = data_generation_seed, 
+                                                                     flip_percentage=0, 
+                                                                     random_parameters=config['data']['random_parameters_distribution'])   
         
         #self.network = network_parameters_to_network(self.network_parameters, config)           
         #self.target_function = generate_decision_tree_from_array(self.target_function_parameters, config)
@@ -419,7 +442,8 @@ def generate_lambda_net_from_config(config, seed=None):
 def train_lambda_net(config,
                      lambda_index,
                      X_data_with_function, 
-                     y_data_with_function, 
+                     y_data_with_function,
+                     distribution_parameter_list=None,
                      callbacks=None, 
                      return_history=False, 
                      printing=False, 
@@ -508,6 +532,7 @@ def train_lambda_net(config,
         path_weights = directory  + '/' + 'weights' + '.txt' 
         #path_X_data = directory + '/' + 'X_test_lambda' + '.txt'
         #path_y_data = directory + '/' + 'y_test_lambda' + '.txt'
+        path_distribution_parameters = directory + '/' + 'distribution_parameters' + '.txt'
         
         with open(path_weights, 'a') as text_file: 
             text_file.write(str(lambda_index))
@@ -526,6 +551,47 @@ def train_lambda_net(config,
 
             text_file.close()          
 
+            
+        if distribution_parameter_list is not None: 
+            with open(path_distribution_parameters, 'a') as text_file: 
+                text_file.write(str(lambda_index))
+                for distrib_dict in distribution_parameter_list:
+                    text_file.write(', ' + str(list(distrib_dict.keys())[0]))
+                    for value_1 in distrib_dict.values():
+                        for value_2 in value_1.values():
+                            if len(value_2.values()) == 1:
+
+                                if isinstance(list(value_2.values())[0], list):
+                                    for i in range(config['data']['max_distributions_per_class']):
+                                        try:
+                                            text_file.write(', ' + str(list(value_2.values())[0][i]))
+                                        except:
+                                            text_file.write(', ' + 'NaN')
+                                else:
+                                    text_file.write(', ' + str(list(value_2.values())[0]))
+                                    for _ in range(config['data']['max_distributions_per_class']-1):
+                                        text_file.write(', ' + 'NaN')     
+                                for i in range(config['data']['max_distributions_per_class']):
+                                    text_file.write(', ' + 'NaN') 
+
+                            elif len(value_2.values()) == 2:
+                                for value_3 in value_2.values():
+                                    if isinstance(value_3, list):
+                                        for i in range(config['data']['max_distributions_per_class']):
+                                            try:
+                                                text_file.write(', ' + str(value_3[i]))
+                                            except:
+                                                text_file.write(', ' + 'NaN')
+                                    else:
+                                        text_file.write(', ' + str(value_3))
+                                        for _ in range(config['data']['max_distributions_per_class']-1):
+                                            text_file.write(', ' + 'NaN')
+                            else:
+                                raise SystemExit('Unknown Parameters')     
+                text_file.write('\n')
+                text_file.close()                                     
+
+            
         #with open(path_X_data, 'a') as text_file: 
         #    text_file.write(str(lambda_index))
         #    for row in X_test:
