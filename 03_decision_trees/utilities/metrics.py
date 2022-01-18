@@ -258,7 +258,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
                                     number_of_variables=config['data']['number_of_variables'], 
                                     number_of_samples=config['evaluation']['random_evaluation_dataset_size'], 
                                     distributions_per_class = config['data']['max_distributions_per_class'], 
-                                    seed = 42, 
+                                    seed = np.random.randint(1_000_000), 
                                     flip_percentage=0, 
                                     random_parameters=None, 
                                     distribution_dict_list=lambda_net_dataset_train.distribution_dict_list_list[12])[0]
