@@ -334,25 +334,28 @@ def train_inet(lambda_net_train_dataset,
     metrics = []
     loss_function = None
     
+    distribution_dict_list = lambda_net_train_dataset.distribution_dict_list_list
+    distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)
+    
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
             pass
             #metrics.append(tf.keras.losses.get('mae'))
         if config['i_net']['optimize_decision_function']:
-            loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
+            loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list)
             #metrics.append(inet_target_function_fv_loss_wrapper(config))
             for metric in config['i_net']['metrics']:
                 metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
                 #metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
         else:
             loss_function = inet_target_function_fv_loss_wrapper(config)
-            metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config))
+            metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list))
             for metric in config['i_net']['metrics']:
                 metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
                 metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
     else:
         metrics.append(inet_target_function_fv_loss_wrapper(config))
-        metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config))
+        metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list))
         if config['i_net']['optimize_decision_function']:
             raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
         else:
@@ -360,12 +363,17 @@ def train_inet(lambda_net_train_dataset,
                 loss_function = tf.keras.losses.get('mae') #inet_coefficient_loss_wrapper(inet_loss)
             else:
                 raise SystemExit('Coefficient Loss not implemented for selected function representation')
+                
+                
+    distribution_dict_index_train = [i for i in range(y_train.shape[0])]
+    distribution_dict_index_valid = [len(distribution_dict_index_train) + i for i in range(y_valid.shape[0])]
+    
     if config['i_net']['data_reshape_version'] is not None:
-        y_train_model = np.hstack((y_train, X_train_flat))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid_flat)))   
+        y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_index_train))   
+        valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_index_valid)))   
     else:
-        y_train_model = np.hstack((y_train, X_train))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
+        y_train_model = np.hstack((y_train, X_train, distribution_dict_index_train))   
+        valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_index_valid)))                   
                           
     #loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
     #metrics = [inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_crossentropy'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'mae'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_accuracy')]
