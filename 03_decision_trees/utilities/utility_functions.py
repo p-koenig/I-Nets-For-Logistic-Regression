@@ -1840,9 +1840,7 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
     
     value_1 = np.random.uniform(0, 1)
     value_2 = np.random.uniform(0, 1)   
-    
-    print(parameters)
-    
+        
     if parameters == None:
         if random_parameters:
             parameter_by_distribution = {
@@ -2137,12 +2135,12 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
         
         if distribution_dict_list is not None:
             for i in range(number_of_variables):
+                print(i)
 
                 distribution_name = list(distribution_dict_list[i].keys())[0]
                 try:
-                    distributions_per_class = len(list(distribution_dict_list[i][distribution_name]['class_0'].values()))
+                    distributions_per_class = len(list(distribution_dict_list[i][distribution_name]['class_0'].values())[0])
                 except:
-                    print(distribution_dict_list[i][distribution_name]['class_0'].values())
                     distributions_per_class = 1
 
                 class_0_data_list = [None] * (distributions_per_class)
@@ -2166,15 +2164,37 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                         else:
                             distribution_parameter_1[key] = value
                             
-                    print(distribution_dict_list[i][distribution_name]['class_0'].values())
-                    print(len(list(distribution_dict_list[i][distribution_name]['class_0'].values())))
-                    print('distributions_per_class', distributions_per_class)
-                    print('distribution_dict_list[i][distribution_name][class_1]', distribution_dict_list[i][distribution_name]['class_1'])
-                    print('distribution_parameter_0', distribution_parameter_0)
+                    #print('distribution_parameter_0', distribution_parameter_0)
                     class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_0, random_parameters=False)                    
-                    print(distribution_parameter_0_list[j])
+                    #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
                     class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_1, random_parameters=False)                    
 
+                class_0_data = np.hstack(class_0_data_list)
+                class_1_data = np.hstack(class_1_data_list)
+
+                distribution_parameter_0 = None
+                for distribution_parameter in distribution_parameter_0_list:
+                    if distribution_parameter_0 is None:
+                        distribution_parameter_0 = distribution_parameter
+                    else:
+                        distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
+
+                distribution_parameter_1 = None 
+                for distribution_parameter in distribution_parameter_1_list:
+                    if distribution_parameter_1 is None:
+                        distribution_parameter_1 = distribution_parameter
+                    else:
+                        distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
+                distribution_parameter = {
+                    distribution_name: {
+                        'class_0': distribution_parameter_0,
+                        'class_1': distribution_parameter_1,
+                    }
+                }
+                distribution_parameter_list.append(distribution_parameter)
+
+                feature_data = np.hstack([class_0_data, class_1_data])
+                X_data_list.append(feature_data)                    
             
         else:
 
@@ -2203,32 +2223,32 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
 
                         class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new, random_parameters=random_parameters)                    
 
-            class_0_data = np.hstack(class_0_data_list)
-            class_1_data = np.hstack(class_1_data_list)
+                class_0_data = np.hstack(class_0_data_list)
+                class_1_data = np.hstack(class_1_data_list)
 
-            distribution_parameter_0 = None
-            for distribution_parameter in distribution_parameter_0_list:
-                if distribution_parameter_0 is None:
-                    distribution_parameter_0 = distribution_parameter
-                else:
-                    distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
+                distribution_parameter_0 = None
+                for distribution_parameter in distribution_parameter_0_list:
+                    if distribution_parameter_0 is None:
+                        distribution_parameter_0 = distribution_parameter
+                    else:
+                        distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
 
-            distribution_parameter_1 = None 
-            for distribution_parameter in distribution_parameter_1_list:
-                if distribution_parameter_1 is None:
-                    distribution_parameter_1 = distribution_parameter
-                else:
-                    distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
-            distribution_parameter = {
-                distribution_name: {
-                    'class_0': distribution_parameter_0,
-                    'class_1': distribution_parameter_1,
+                distribution_parameter_1 = None 
+                for distribution_parameter in distribution_parameter_1_list:
+                    if distribution_parameter_1 is None:
+                        distribution_parameter_1 = distribution_parameter
+                    else:
+                        distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
+                distribution_parameter = {
+                    distribution_name: {
+                        'class_0': distribution_parameter_0,
+                        'class_1': distribution_parameter_1,
+                    }
                 }
-            }
-            distribution_parameter_list.append(distribution_parameter)
+                distribution_parameter_list.append(distribution_parameter)
 
-            feature_data = np.hstack([class_0_data, class_1_data])
-            X_data_list.append(feature_data)
+                feature_data = np.hstack([class_0_data, class_1_data])
+                X_data_list.append(feature_data)
 
         X_data = np.vstack(X_data_list).T
         X_data, normalizer_list = normalize_real_world_data(X_data)
