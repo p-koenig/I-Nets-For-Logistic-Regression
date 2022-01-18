@@ -167,9 +167,50 @@ class CustomDenseInet(ak.Block):
         output_node = layer(input_node)
         return output_node    
 
-
-
-
+class SingleDenseLayerBlock(ak.Block):
+    def build(self, hp, inputs=None):
+        # Get the input_node from inputs.
+        input_node = tf.nest.flatten(inputs)[0]
+        layer = tf.keras.layers.Dense(
+            hp.Int("num_units", min_value=16, max_value=512, step=16, default=32)
+        )
+        output_node = layer(input_node)
+        return output_node
+    
+class DeepDenseLayerBlock(ak.Block):
+    def build(self, hp, inputs=None):
+        # Get the input_node from inputs.
+        input_node = tf.nest.flatten(inputs)[0]
+        
+        num_layers = hp.Int("num_layers", min_value=1, max_value=5, step=1, default=2)
+        activation = hp.Choice("activation", values=['relu', 'sigmoid', 'tanh'], default='relu')
+        
+        num_units_list = []
+        dropout_list = []
+        for i in range(5):
+            num_units = hp.Int("num_units_" + str(i), min_value=64, max_value=2048, step=64, default=512)
+            dropout = hp.Choice("dropout_" + str(i), [0.0, 0.1, 0.3, 0.5], default=0.0)
+            num_units_list.append(num_units)
+            dropout_list.append(dropout)
+        
+        for i in range(num_layers):
+            if i == 0:
+                hidden_node = tf.keras.layers.Dense(
+                    units = num_units_list[i],
+                    activation = activation
+                )(input_node)
+                hidden_node = tf.keras.layers.Dropout(
+                    rate = dropout_list[i]
+                )(hidden_node)   
+            else:
+                hidden_node = tf.keras.layers.Dense(
+                    units = num_units_list[i],
+                    activation = activation
+                )(hidden_node)
+                hidden_node = tf.keras.layers.Dropout(
+                    rate = dropout_list[i]
+                )(hidden_node)               
+        return hidden_node  
 
 #######################################################################################################################################################
 #################################################################I-NET RESULT CALCULATION##############################################################
@@ -246,6 +287,8 @@ def interpretation_net_training(lambda_net_train_dataset,
 
 def load_inet(loss_function, metrics, config):
     
+    from utilities.utility_functions import generate_paths
+    
     dt_string =  ('_depth' + str(config['function_family']['maximum_depth']) +
               '_beta' + str(config['function_family']['beta']) +
               '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
@@ -253,9 +296,12 @@ def load_inet(loss_function, metrics, config):
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
     if config['i_net']['nas']:
-        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string 
+        path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string         
+        #path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string         
     else:
-        path = './data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
+        path = './data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
+        
+        #path = './data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
 
 
     model = []
@@ -327,7 +373,8 @@ def train_inet(lambda_net_train_dataset,
 
     (X_train, X_train_flat, y_train, encoder_model) = generate_inet_train_data(lambda_net_train_dataset, config)
     (X_valid, X_valid_flat, y_valid, _) = generate_inet_train_data(lambda_net_valid_dataset, config, encoder_model)
-    (X_test, X_test_flat, y_test, _) = generate_inet_train_data(lambda_net_test_dataset, config, encoder_model)
+    if lambda_net_test_dataset is not None:
+        (X_test, X_test_flat, y_test, _) = generate_inet_train_data(lambda_net_test_dataset, config, encoder_model)
     
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
@@ -335,8 +382,8 @@ def train_inet(lambda_net_train_dataset,
     loss_function = None
     
     distribution_dict_list = lambda_net_train_dataset.distribution_dict_list_list
-    distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)
-
+    distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)    
+    
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
             pass
@@ -345,14 +392,14 @@ def train_inet(lambda_net_train_dataset,
             loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list)
             #metrics.append(inet_target_function_fv_loss_wrapper(config))
             for metric in config['i_net']['metrics']:
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, distribution_dict_list=distribution_dict_list))  
                 #metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
         else:
             loss_function = inet_target_function_fv_loss_wrapper(config)
             metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list))
             for metric in config['i_net']['metrics']:
                 metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, distribution_dict_list=distribution_dict_list))  
     else:
         metrics.append(inet_target_function_fv_loss_wrapper(config))
         metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list))
@@ -363,18 +410,25 @@ def train_inet(lambda_net_train_dataset,
                 loss_function = tf.keras.losses.get('mae') #inet_coefficient_loss_wrapper(inet_loss)
             else:
                 raise SystemExit('Coefficient Loss not implemented for selected function representation')
+    
                 
-                
-    distribution_dict_index_train = [i for i in range(y_train.shape[0])]
-    distribution_dict_index_valid = [len(distribution_dict_index_train) + i for i in range(y_valid.shape[0])]
+    distribution_dict_index_train = np.array([[i] for i in range(y_train.shape[0])])
+    distribution_dict_index_valid = np.array([[len(distribution_dict_index_train) + i] for i in range(y_valid.shape[0])])
+    
+    print(distribution_dict_index_train.shape)
+    print(X_train.shape)
+    print(y_train.shape)
+    #print('np.hstack((y_train, X_train_flat, distribution_dict_index_train))', np.hstack((y_train, X_train, distribution_dict_index_train)))
+    #print('np.hstack((y_train, X_train_flat))', np.hstack((y_train, X_train)))
     
     if config['i_net']['data_reshape_version'] is not None:
         y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_index_train))   
         valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_index_valid)))   
     else:
         y_train_model = np.hstack((y_train, X_train, distribution_dict_index_train))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_index_valid)))                   
-                          
+        valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_index_valid)))                 
+             
+    print('valid_data[1]', valid_data[1].shape)
     #loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
     #metrics = [inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_crossentropy'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'mae'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_accuracy')]
         
@@ -402,17 +456,13 @@ def train_inet(lambda_net_train_dataset,
             #CustomDenseInet(neurons, activation)
             #config['i_net']['function_representation_type']
             #config['function_family']['dt_type']          
+                                                           
             
             with CustomObjectScope(custom_object_dict):
                 if config['i_net']['nas_type'] == 'SEQUENTIAL':
                     input_node = ak.Input()
+                    hidden_node = DeepDenseLayerBlock()(input_node)   
                     
-                    hidden_node = ak.DenseBlock(
-                                                num_layers=hyperparameters.Choice("num_layers", [1, 2, 3, 4, 5], default=2),
-                                                num_units=hyperparameters.Choice("num_units", [64, 128, 256, 512, 1024, 2048], default=128),
-                                                use_batchnorm=False,
-                                                dropout=hyperparameters.Choice("dropout", [0.0, 0.1, 0.3, 0.5], default=0.0),
-                                               )(input_node)                    
                 elif config['i_net']['nas_type'] == 'CNN': 
                     input_node = ak.Input()
                     hidden_node = ak.ConvBlock()(input_node)
@@ -436,126 +486,160 @@ def train_inet(lambda_net_train_dataset,
                     hidden_node = ak.Merge()([hidden_node1, hidden_node2])
                     hidden_node = ak.DenseBlock()(hidden_node)
 
+                internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+                leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                        
+                    
                 if config['i_net']['function_representation_type'] == 1:
                     if config['function_family']['dt_type'] == 'SDT':     
-                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
-
-                        outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'], 
-                                                              activation='linear')(hidden_node)        
-                        outputs_bias = CustomDenseInet(internal_node_num_, 
-                                                       activation='linear', 
-                                                              name='outputs_index_')(hidden_node)      
-                        outputs_leaf = CustomDenseInet(leaf_node_num_*config['data']['num_classes'], 
-                                                             activation='linear')(hidden_node)                         
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'])(hidden_node_outputs_coeff)
+                        else:
+                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'])(hidden_node)        
+                        outputs_list = [outputs_coeff]
                         
                         
-                        output_node = CombinedOutputInet()([outputs_coeff, outputs_bias, outputs_leaf])#ak.RegressionHead(output_dim=config['function_family']['function_representation_length'])(hidden_node)
+                    elif config['function_family']['dt_type'] == 'vanilla':                                  
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
+                                                              activation='sigmoid')(hidden_node_outputs_coeff)
+                        else:                        
+                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
+                                                              activation='sigmoid')(hidden_node)   
+                        outputs_list = [outputs_coeff]
                         
-                    elif config['function_family']['dt_type'] == 'vanilla':                    
-                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
-
-                        outputs_coeff = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                              activation='sigmoid')(hidden_node)        
-                        outputs_index = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                              activation='linear', 
-                                                              name='outputs_index_')(hidden_node)      
-                        outputs_leaf = CustomDenseInet(leaf_node_num_, 
-                                                             activation='sigmoid')(hidden_node) 
-
-                        
-                        output_node = CombinedOutputInet()([outputs_coeff, outputs_index, outputs_leaf])
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_index = SingleDenseLayerBlock()(hidden_node)
+                            outputs_index = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
+                                                                  activation='linear', 
+                                                                  name='outputs_index_')(hidden_node_outputs_index)
+                        else:                              
+                            outputs_index = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
+                                                                  activation='linear', 
+                                                                  name='outputs_index_')(hidden_node)      
+                        outputs_list.append(outputs_index)
                         
                 elif config['i_net']['function_representation_type'] == 2:
-                    if config['function_family']['dt_type'] == 'SDT':                    
-
-                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
-
+                    if config['function_family']['dt_type'] == 'SDT':       
                         number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
-
-                        outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='tanh')(hidden_node)
+                        
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients)(hidden_node_outputs_coeff)
+                        else:
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients)(hidden_node)
 
                         outputs_list = [outputs_coeff]
 
                         for outputs_index in range(internal_node_num_):
                             for var_index in range(config['function_family']['decision_sparsity']):
-                                outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                if config['i_net']['additional_hidden']:
+                                    hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node_outputs_identifer)
+                                else:
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
                                 outputs_list.append(outputs_identifer)    
 
-                        outputs_bias = CustomDenseInet(neurons=internal_node_num_, activation='tanh')(hidden_node)
-                        outputs_list.append(outputs_bias)     
-
-                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_ * config['data']['num_classes'], activation='tanh')(hidden_node) 
-                        outputs_list.append(outputs_leaf_nodes)     
-
-                        output_node = CombinedOutputInet()(outputs_list)
                     
                     elif config['function_family']['dt_type'] == 'vanilla':  
-                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
 
                         number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']
-                        outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='linear')(hidden_node)
+                        
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='sigmoid')(hidden_node_outputs_coeff)
+                        else:                                 
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='sigmoid')(hidden_node)
+                            
                         outputs_list = [outputs_coeff]
                         for outputs_index in range(internal_node_num_):
                             for var_index in range(config['function_family']['decision_sparsity']):
                                 output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
-                                outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                if config['i_net']['additional_hidden']:
+                                    hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node_outputs_identifer)
+                                else:                                  
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
                                 outputs_list.append(outputs_identifer)    
 
 
-                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, activation='sigmoid')(hidden_node)
-                        outputs_list.append(outputs_leaf_nodes)    
 
-                            
-                    
-                        output_node = CombinedOutputInet()(outputs_list)
                         
                 elif config['i_net']['function_representation_type'] == 3:
-                    if config['function_family']['dt_type'] == 'SDT':      
-                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+                    if config['function_family']['dt_type'] == 'SDT':                              
                         
-                        outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'])(hidden_node)
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'])(hidden_node_outputs_coeff)
+                        else: 
+                            outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'])(hidden_node)
+                        
                         outputs_list = [outputs_coeff]
 
 
                         for outputs_index in range(internal_node_num_):
-                            outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
+                            if config['i_net']['additional_hidden']:
+                                hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
+                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
+                                                                      activation='softmax')(hidden_node_outputs_identifer)
+                            else:                             
+                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
                                                                       activation='softmax')(hidden_node)
                             outputs_list.append(outputs_identifer)    
 
-                        outputs_bias = CustomDenseInet(internal_node_num_)(hidden_node)
-                        outputs_list.append(outputs_bias)    
-
-                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'])(hidden_node)
-                        outputs_list.append(outputs_leaf_nodes)     
-
-                        output_node = CombinedOutputInet()(outputs_list)                        
+               
                     
                     
-                    elif config['function_family']['dt_type'] == 'vanilla':  
-                        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
-                        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
-
-                        outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], activation='sigmoid')(hidden_node)
+                    elif config['function_family']['dt_type'] == 'vanilla': 
+                        if config['i_net']['additional_hidden']:
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], activation='sigmoid')(hidden_node_outputs_coeff)
+                        else:                              
+                            outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], activation='sigmoid')(hidden_node)
                         outputs_list = [outputs_coeff]
 
 
                         for outputs_index in range(internal_node_num_):
-                            outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                            if config['i_net']['additional_hidden']:
+                                hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
+                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], activation='softmax')(hidden_node_outputs_identifer)
+                            else:                               
+                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], activation='softmax')(hidden_node)
                             outputs_list.append(outputs_identifer)    
-
-
-                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_, activation='sigmoid')(hidden_node)
-                        outputs_list.append(outputs_leaf_nodes)    
-
-                        output_node = CombinedOutputInet()(outputs_list)                        
                 
+                if config['function_family']['dt_type'] == 'SDT':
+                    if config['i_net']['additional_hidden']:
+                        hidden_node_outputs_bias = SingleDenseLayerBlock()(hidden_node)
+                        outputs_bias = CustomDenseInet(internal_node_num_)(hidden_node_outputs_bias)
+                    else:    
+                        outputs_bias = CustomDenseInet(internal_node_num_)(hidden_node)
+                    outputs_list.append(outputs_bias)    
+
+                    if config['i_net']['additional_hidden']:
+                        hidden_node_outputs_leaf_nodes = SingleDenseLayerBlock()(hidden_node)
+                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'])(hidden_node_outputs_leaf_nodes)
+                    else:                            
+                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'])(hidden_node)
+                    outputs_list.append(outputs_leaf_nodes)     
+
+                    output_node = CombinedOutputInet()(outputs_list)                         
+                elif config['function_family']['dt_type'] == 'vanilla':  
+                    if config['i_net']['additional_hidden']:
+                        hidden_node_outputs_leaf_nodes = SingleDenseLayerBlock()(hidden_node)
+                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, activation='sigmoid')(hidden_node_outputs_leaf_nodes)
+                    else:                         
+                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, activation='sigmoid')(hidden_node)
+                    outputs_list.append(outputs_leaf_nodes)    
+                    
+                    output_node = CombinedOutputInet()(outputs_list)
+                        
                 timestr = time.strftime("%Y%m%d-%H%M%S")
-                directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
+                directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + '/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
+                #directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
+                    
+                    
+                
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -563,7 +647,7 @@ def train_inet(lambda_net_train_dataset,
                                     metrics=metric_names,
                                     objective='val_loss',
                                     overwrite=True,
-                                    tuner='greedy',#'hyperband',#"bayesian",
+                                    tuner='greedy',#'hyperband',#"bayesian",'greedy', 'random'
                                     max_trials=config['i_net']['nas_trials'],
                                     directory=directory,
                                     seed=config['computation']['RANDOM_SEED'])
@@ -584,8 +668,8 @@ def train_inet(lambda_net_train_dataset,
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
                 model = auto_model.export_model()
                 
-                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string , save_format='tf')
-
+                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string , save_format='tf')         
+                
         else: 
             inputs = Input(shape=X_train.shape[1], 
                            name='input')
@@ -614,134 +698,203 @@ def train_inet(lambda_net_train_dataset,
                     
             if config['i_net']['function_representation_type'] == 1:
                 if config['function_family']['dt_type'] == 'SDT':
-                    outputs = tf.keras.layers.Dense(config['function_family']['function_representation_length'], 
-                                                    #activation='tanh', 
-                                                    name='output_' + str(config['function_family']['function_representation_length']))(hidden)
-                elif config['function_family']['dt_type'] == 'vanilla':                               
-                    outputs_coeff = tf.keras.layers.Dense(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                          activation='sigmoid', 
-                                                          name='outputs_coeff_' + str(internal_node_num_ * config['function_family']['decision_sparsity']))(hidden)        
-                    outputs_index = tf.keras.layers.Dense(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                          activation='linear', 
-                                                          name='outputs_index_' + str(internal_node_num_ * config['function_family']['decision_sparsity']))(hidden)      
-                    outputs_leaf = tf.keras.layers.Dense(leaf_node_num_, 
-                                                         activation='sigmoid',
-                                                         name='outputs_leaf_' + str(leaf_node_num_))(hidden) 
+                    outputs_coeff_neurons = internal_node_num_ * config['data']['number_of_variables']
+                    if config['i_net']['additional_hidden']:
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2)(hidden)
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons)(hidden_outputs_coeff)
+                    else:
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons)(hidden)        
+                    outputs_list = [outputs_coeff]
+                        
                     
-                    outputs = concatenate([outputs_coeff, outputs_index, outputs_leaf], name='output_combined')
+                elif config['function_family']['dt_type'] == 'vanilla':   
+                    outputs_coeff_neurons = internal_node_num_ * config['function_family']['decision_sparsity']
+                    if config['i_net']['additional_hidden']:
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_outputs_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              activation='sigmoid', 
+                                                              name='outputs_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                           
+                    else:                    
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              activation='sigmoid', 
+                                                              name='outputs_coeff_' + str(outputs_coeff_neurons))(hidden)   
+                    
+                    outputs_list = [outputs_coeff]
+                    
+                    outputs_index_neurons = internal_node_num_ * config['function_family']['decision_sparsity']
+                    if config['i_net']['additional_hidden']:
+                        hidden_outputs_index = tf.keras.layers.Dense(outputs_index_neurons*2, name='hidden_outputs_index_' + str(outputs_index_neurons))(hidden)
+                        outputs_index = tf.keras.layers.Dense(outputs_index_neurons, 
+                                                              activation='linear', 
+                                                              name='outputs_index_' + str(outputs_index_neurons))(hidden_outputs_index)                                
+                    else:                          
+                        outputs_index = tf.keras.layers.Dense(outputs_index_neurons, 
+                                                              activation='linear', 
+                                                              name='outputs_index_' + str(outputs_index_neurons))(hidden)      
+
+                    outputs_list.append(outputs_index)
                     
             elif config['i_net']['function_representation_type'] == 2:
-                if config['function_family']['dt_type'] == 'SDT':
-                    number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']                    
+                if config['function_family']['dt_type'] == 'SDT':                        
+                    outputs_coeff_neurons = internal_node_num_ * config['function_family']['decision_sparsity'] 
+                    if config['i_net']['additional_hidden']:
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              #activation='tanh', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                                
+                    else:                               
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              #activation='tanh', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
+
+                    outputs_list = [outputs_coeff]
+
+                    for outputs_index in range(internal_node_num_):
+                        for var_index in range(config['function_family']['decision_sparsity']):
+                            output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
+                            outputs_identifer_neurons = config['data']['number_of_variables']
+                            if config['i_net']['additional_hidden']:
+                                hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden_' + output_name)(hidden)
+                                outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
+                                                                          activation='softmax', 
+                                                                          name=output_name)(hidden_outputs_identifer)                               
+                            else:                                  
+                                outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
+                                                                          activation='softmax', 
+                                                                          name=output_name)(hidden)
+                            outputs_list.append(outputs_identifer)        
+                    
+                elif config['function_family']['dt_type'] == 'vanilla':                    
+                    outputs_coeff_neurons = internal_node_num_ * config['function_family']['decision_sparsity'] 
+                    if config['i_net']['additional_hidden']:
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              activation='sigmoid', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
+                    else:                        
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              activation='sigmoid', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                         
-                    outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, 
-                                                          #activation='tanh', 
-                                                          name='output_coeff_' + str(number_output_coefficients))(hidden)
-
-                    outputs_list = [outputs_coeff]
-
-                    for outputs_index in range(internal_node_num_):
-                        for var_index in range(config['function_family']['decision_sparsity']):
-                            output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
-                            outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], 
-                                                                      activation='softmax', 
-                                                                      name=output_name)(hidden)
-                            outputs_list.append(outputs_identifer)    
-
-                    outputs_bias = tf.keras.layers.Dense(internal_node_num_, 
-                                                         #activation='tanh', 
-                                                         name='output_bias_' + str(internal_node_num_))(hidden)
-                    outputs_list.append(outputs_bias)     
-
-                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], 
-                                                               #activation='tanh', 
-                                                               name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
-                    outputs_list.append(outputs_leaf_nodes)     
-
-                    outputs = concatenate(outputs_list, name='output_combined')
-                    
-                    
-                elif config['function_family']['dt_type'] == 'vanilla':
-                    number_output_coefficients = internal_node_num_ * config['function_family']['decision_sparsity']                    
-                    
-                    outputs_coeff = tf.keras.layers.Dense(number_output_coefficients, 
-                                                          activation='sigmoid', 
-                                                          name='output_coeff_' + str(number_output_coefficients))(hidden)
                     outputs_list = [outputs_coeff]
                     for outputs_index in range(internal_node_num_):
                         for var_index in range(config['function_family']['decision_sparsity']):
                             output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
-                            outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], 
+                            outputs_identifer_neurons = config['data']['number_of_variables']
+                            if config['i_net']['additional_hidden']:
+                                hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden_' + output_name)(hidden)
+                                outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                       activation='softmax', 
-                                                                      name=output_name)(hidden)
+                                                                      name=output_name)(hidden_outputs_identifer)                       
+                            else:                                 
+                                outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
+                                                                          activation='softmax', 
+                                                                          name=output_name)(hidden)
                             outputs_list.append(outputs_identifer)    
 
-
-                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_, 
-                                                               activation='sigmoid', 
-                                                               name='output_leaf_node_' + str(leaf_node_num_))(hidden)
-                    outputs_list.append(outputs_leaf_nodes)    
-
-                    outputs = concatenate(outputs_list, name='output_combined')
                 
             elif config['i_net']['function_representation_type'] == 3:                
                 if config['function_family']['dt_type'] == 'SDT':
                     
-                    outputs_coeff = tf.keras.layers.Dense(internal_node_num_*config['data']['number_of_variables'], 
-                                                          #activation='tanh', 
-                                                          name='output_coeff_' + str(internal_node_num_*config['data']['number_of_variables']))(hidden)
+                    outputs_coeff_neurons = internal_node_num_*config['data']['number_of_variables']
+                    if config['i_net']['additional_hidden']:
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              #activation='tanh', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                      
+                    else:                          
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              #activation='tanh', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                     outputs_list = [outputs_coeff]
                     
                     
                     for outputs_index in range(internal_node_num_):
                         output_name = 'output_identifier_' + str(outputs_index+1)
-                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], 
-                                                                  activation='softmax', 
-                                                                  name=output_name)(hidden)
+                        outputs_identifer_neurons = config['data']['number_of_variables']
+                        if config['i_net']['additional_hidden']:
+                            hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden_' + output_name)(hidden)
+                            outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
+                                                                      activation='softmax', 
+                                                                      name=output_name)(hidden_outputs_identifer)                     
+                        else:                          
+                            outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
+                                                                      activation='softmax', 
+                                                                      name=output_name)(hidden)
                         outputs_list.append(outputs_identifer)    
-
-                    outputs_bias = tf.keras.layers.Dense(internal_node_num_, 
-                                                         #activation='tanh', 
-                                                         name='output_bias_' + str(internal_node_num_))(hidden)
-                    outputs_list.append(outputs_bias)    
-                    
-                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_ * config['data']['num_classes'], 
-                                                               #activation='tanh', 
-                                                               name='output_leaf_nodes_' + str(leaf_node_num_ * config['data']['num_classes']))(hidden)
-                    outputs_list.append(outputs_leaf_nodes)     
-
-                    outputs = concatenate(outputs_list, name='output_combined')                    
+              
                     
                 elif config['function_family']['dt_type'] == 'vanilla':   
+                    outputs_coeff_neurons = internal_node_num_*config['data']['number_of_variables']
                     if config['i_net']['additional_hidden']:
-                        hidden = tf.keras.layers.Dense(internal_node_num_*config['data']['number_of_variables']*2, name='hidden' + 'output_coeff_' + str(internal_node_num_*config['data']['number_of_variables']))(hidden)                      
-                    
-                    outputs_coeff = tf.keras.layers.Dense(internal_node_num_*config['data']['number_of_variables'], 
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden' + 'output_coeff_' + str(outputs_coeff_neurons))(hidden)    
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                           activation='sigmoid', 
-                                                          name='output_coeff_' + str(internal_node_num_*config['data']['number_of_variables']))(hidden)
+                                                          name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
+                    else:
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              activation='sigmoid', 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                     outputs_list = [outputs_coeff]
                     
                     
                     for outputs_index in range(internal_node_num_):
                         output_name = 'output_identifier_' + str(outputs_index+1)
-                        
+                        outputs_identifer_neurons = config['data']['number_of_variables']
                         if config['i_net']['additional_hidden']:
-                            hidden = tf.keras.layers.Dense(config['data']['number_of_variables']*2, name='hidden' + output_name)(hidden)                        
-                        outputs_identifer = tf.keras.layers.Dense(config['data']['number_of_variables'], 
+                            hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden' + output_name)(hidden)                        
+                            outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                   activation='softmax', 
-                                                                  name=output_name)(hidden)
+                                                                  name=output_name)(hidden_outputs_identifer)
+                        else:
+                            outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
+                                                                  activation='softmax', 
+                                                                  name=output_name)(hidden)                            
                         outputs_list.append(outputs_identifer)    
 
-                    if config['i_net']['additional_hidden']:
-                        hidden = tf.keras.layers.Dense(leaf_node_num_*2, name='hidden' + 'output_leaf_node_' + str(leaf_node_num_))(hidden)    
-                        
-                    outputs_leaf_nodes = tf.keras.layers.Dense(leaf_node_num_, 
-                                                               activation='sigmoid', 
-                                                               name='output_leaf_node_' + str(leaf_node_num_))(hidden)
-                    outputs_list.append(outputs_leaf_nodes)    
+       
+                          
+            if config['function_family']['dt_type'] == 'SDT':
+                outputs_bias_neurons = internal_node_num_
+                if config['i_net']['additional_hidden']:
+                    hidden_outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons*2, name='hidden_' + 'output_bias_' + str(outputs_bias_neurons))(hidden)    
+                    outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons, 
+                                                         #activation='tanh', 
+                                                         name='output_bias_' + str(outputs_bias_neurons))(hidden_outputs_bias)
+                else:
+                    outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons, 
+                                                         #activation='tanh', 
+                                                         name='output_bias_' + str(outputs_bias_neurons))(hidden)
+                outputs_list.append(outputs_bias)     
 
-                    outputs = concatenate(outputs_list, name='output_combined')              
-                           
+                outputs_leaf_nodes_neurons = leaf_node_num_ * config['data']['num_classes']
+                if config['i_net']['additional_hidden']:
+                    hidden_outputs_bias = tf.keras.layers.Dense(outputs_leaf_nodes_neurons*2, name='hidden_' + 'output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)    
+                    outputs_bias = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
+                                                               #activation='tanh', 
+                                                               name='output_leaf_nodes_' + str(outputs_leaf_nodes_neurons))(hidden_outputs_bias)
+                else:                
+                    outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
+                                                               #activation='tanh', 
+                                                               name='output_leaf_nodes_' + str(outputs_leaf_nodes_neurons))(hidden)
+                outputs_list.append(outputs_leaf_nodes)     
+
+                outputs = concatenate(outputs_list, name='output_combined')            
+            elif config['function_family']['dt_type'] == 'vanilla':
+                outputs_leaf_nodes_neurons = leaf_node_num_
+                if config['i_net']['additional_hidden']:
+                    hidden_outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons*2, name='hidden_' + 'output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)    
+                    outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
+                                                           activation='sigmoid', 
+                                                           name='output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden_outputs_leaf_nodes)                    
+                else:
+                    outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
+                                                           activation='sigmoid', 
+                                                           name='output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)
+                outputs_list.append(outputs_leaf_nodes)    
+
+                outputs = concatenate(outputs_list, name='output_combined')        
+                    
 
             model = Model(inputs=inputs, outputs=outputs)
             
@@ -774,10 +927,9 @@ def train_inet(lambda_net_train_dataset,
             
             
             
-            
-
-            
-            model.save('./data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
+            model.save('./data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')            
+            #model.save('./data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
+                
     else:
         history = None
         

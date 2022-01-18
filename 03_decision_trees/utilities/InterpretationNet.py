@@ -389,20 +389,20 @@ def train_inet(lambda_net_train_dataset,
             pass
             #metrics.append(tf.keras.losses.get('mae'))
         if config['i_net']['optimize_decision_function']:
-            loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list)
+            loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
             #metrics.append(inet_target_function_fv_loss_wrapper(config))
             for metric in config['i_net']['metrics']:
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, distribution_dict_list=distribution_dict_list))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
                 #metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
         else:
             loss_function = inet_target_function_fv_loss_wrapper(config)
-            metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list))
+            metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config))
             for metric in config['i_net']['metrics']:
                 metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
-                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, distribution_dict_list=distribution_dict_list))  
+                metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric))  
     else:
         metrics.append(inet_target_function_fv_loss_wrapper(config))
-        metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, distribution_dict_list=distribution_dict_list))
+        metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config))
         if config['i_net']['optimize_decision_function']:
             raise SystemExit('Coefficient Loss not implemented for decision function optimization')            
         else:
@@ -422,11 +422,11 @@ def train_inet(lambda_net_train_dataset,
     #print('np.hstack((y_train, X_train_flat))', np.hstack((y_train, X_train)))
     
     if config['i_net']['data_reshape_version'] is not None:
-        y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_index_train))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_index_valid)))   
+        y_train_model = np.hstack((y_train, X_train_flat, lambda_net_train_dataset.distribution_dict_row_array))   
+        valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, lambda_net_valid_dataset.distribution_dict_row_array)))   
     else:
-        y_train_model = np.hstack((y_train, X_train, distribution_dict_index_train))   
-        valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_index_valid)))                 
+        y_train_model = np.hstack((y_train, X_train, lambda_net_train_dataset.distribution_dict_row_array))   
+        valid_data = (X_valid, np.hstack((y_valid, X_valid, lambda_net_valid_dataset.distribution_dict_row_array)))                 
              
     print('valid_data[1]', valid_data[1].shape)
     #loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
