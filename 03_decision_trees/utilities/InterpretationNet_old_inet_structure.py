@@ -336,7 +336,7 @@ def train_inet(lambda_net_train_dataset,
     
     distribution_dict_list = lambda_net_train_dataset.distribution_dict_list_list
     distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)
-    
+
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
             pass

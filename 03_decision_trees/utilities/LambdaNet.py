@@ -290,7 +290,7 @@ class LambdaNet():
 
             assert self.index == line_distribution_parameters[0], 'indices do not match: ' + str(self.index) + ', ' + str(line_distribution_parameters[0])
             line_distribution_parameters = line_distribution_parameters[1:]
-             self.distribution_dict_row = line_distribution_parameters
+            self.distribution_dict_row = line_distribution_parameters
             
             distribution_list = line_distribution_parameters.reshape(-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2)
             self.distribution_dict_list = []
