@@ -420,8 +420,7 @@ def train_inet(lambda_net_train_dataset,
     print(distribution_dict_index_train.shape)
     print(X_train.shape)
     print(y_train.shape)
-    print(lambda_net_train_dataset.distribution_dict_row_array.shape)
-    print('UPDATE 1')
+    
     #print('np.hstack((y_train, X_train_flat, distribution_dict_index_train))', np.hstack((y_train, X_train, distribution_dict_index_train)))
     #print('np.hstack((y_train, X_train_flat))', np.hstack((y_train, X_train)))
     if use_distribution_list:
@@ -461,7 +460,6 @@ def train_inet(lambda_net_train_dataset,
         else:
             y_train_model = np.hstack((y_train, X_train))   
             valid_data = (X_valid, np.hstack((y_valid, X_valid)))                   
-    print('valid_data[1]', valid_data[1].shape)
     #loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config)
     #metrics = [inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_crossentropy'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'mae'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_accuracy')]
         
