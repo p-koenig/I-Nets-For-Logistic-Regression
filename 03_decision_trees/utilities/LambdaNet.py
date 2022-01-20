@@ -286,7 +286,19 @@ class LambdaNet():
         #self.X_test_lambda = np.transpose(np.array([line_X_data[i::self.number_of_variables] for i in range(self.number_of_variables)]))
         #self.y_test_lambda = line_y_data.reshape(-1,1)
         
-        if (line_distribution_parameters != None).any():
+        data_generation_seed = self.seed + self.index
+        
+        if line_distribution_parameters is None:
+            self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
+                                                                high=config['data']['x_max'], 
+                                                                size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                                variables=config['data']['number_of_variables'], 
+                                                                distrib=config['evaluation']['random_evaluation_dataset_distribution'],
+                                                                categorical_indices=config['data']['categorical_indices'],
+                                                                seed=data_generation_seed)         
+        
+        else:
+            
 
             assert self.index == line_distribution_parameters[0], 'indices do not match: ' + str(self.index) + ', ' + str(line_distribution_parameters[0])
             line_distribution_parameters = line_distribution_parameters[1:]
@@ -394,22 +406,9 @@ class LambdaNet():
                     }}  
                 self.distribution_dict_list.append(distribution_dict)
 
-                
-        data_generation_seed = self.seed + self.index
-        
-        
-        if line_distribution_parameters is None:
-            self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
-                                                                high=config['data']['x_max'], 
-                                                                size=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
-                                                                variables=config['data']['number_of_variables'], 
-                                                                distrib=config['evaluation']['random_evaluation_dataset_distribution'],
-                                                                categorical_indices=config['data']['categorical_indices'],
-                                                                seed=data_generation_seed)         
-        
-        else:
+                            
             
-            self.X_test_lambda = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+            self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
                                                                      number_of_variables=config['data']['number_of_variables'], 
                                                                      number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
                                                                      distributions_per_class = config['data']['max_distributions_per_class'], 

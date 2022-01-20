@@ -2122,16 +2122,22 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
          
     
 def generate_dataset_from_distributions(distribution_list, number_of_variables, number_of_samples, distributions_per_class = 0, seed = None, flip_percentage=0, random_parameters=None, distribution_dict_list=None):  
+
+    def split_into(n, p):
+        return np.floor([n/p + 1] * (n%p) + [n/p] * (p - n%p)).astype(np.int64)
+                
     
     random.seed(seed)
     np.random.seed(seed)
  
     X_data_list = []
     distribution_parameter_list = []
-    if distributions_per_class == 0:
     
-        samples_class_0 = int(np.floor(number_of_samples/2))
-        samples_class_1 = int(np.ceil(number_of_samples/2))
+    samples_class_0 = int(np.floor(number_of_samples/2))
+    samples_class_1 = number_of_samples - samples_class_0    
+    
+    if distributions_per_class == 0:
+                
         for i in range(number_of_variables):
             distribution_name = np.random.choice(distribution_list)
             #data_list = [None]
@@ -2154,8 +2160,6 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                 
     
     else:
-        samples_class_0 = int(np.floor(number_of_samples/distributions_per_class/2))
-        samples_class_1 = int(np.ceil(number_of_samples/distributions_per_class/2))  
         
         if distribution_dict_list is not None:
             for i in range(number_of_variables):
@@ -2172,9 +2176,14 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                 distribution_parameter_0_list = [None] * (distributions_per_class)
                 class_1_data_list = [None] * (distributions_per_class)
                 distribution_parameter_1_list = [None] * (distributions_per_class)
-
+                
+                samples_class_0_list = split_into(samples_class_0, distributions_per_class)
+                samples_class_1_list = split_into(samples_class_1, distributions_per_class)
+                    
                 for j in range(distributions_per_class):
 
+
+                
                     distribution_parameter_0 = {}
                     for key, value in distribution_dict_list[i][distribution_name]['class_0'].items():
                         if distributions_per_class > 1:
@@ -2190,9 +2199,9 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                             distribution_parameter_1[key] = value
                             
                     #print('distribution_parameter_0', distribution_parameter_0)
-                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_0, random_parameters=False)                    
+                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_0, random_parameters=False)                    
                     #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
-                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_1, random_parameters=False)                    
+                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_1, random_parameters=False)                    
 
                 class_0_data = np.hstack(class_0_data_list)
                 class_1_data = np.hstack(class_1_data_list)
@@ -2231,13 +2240,16 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                 distribution_parameter_0_list = [None] * (distributions_per_class)
                 class_1_data_list = [None] * (distributions_per_class)
                 distribution_parameter_1_list = [None] * (distributions_per_class)
-
+                
+                samples_class_0_list = split_into(samples_class_0, distributions_per_class)
+                samples_class_1_list = split_into(samples_class_1, distributions_per_class)
+                
                 for j in range(distributions_per_class):
                     if False:
-                        class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
-                        class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
+                        class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
+                        class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
                     else:
-                        class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0, seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
+                        class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
                         distribution_parameter_new = {}                        
                         for key, value in distribution_parameter_0_list[j].items():
                             multiplier = np.random.uniform(-0.5, 0.5)
@@ -2246,7 +2258,7 @@ def generate_dataset_from_distributions(distribution_list, number_of_variables, 
                             else:
                                 distribution_parameter_new[key] =  value + value*multiplier   
 
-                        class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1, seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new, random_parameters=random_parameters)                    
+                        class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new, random_parameters=random_parameters)                    
 
                 class_0_data = np.hstack(class_0_data_list)
                 class_1_data = np.hstack(class_1_data_list)
