@@ -258,7 +258,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
     
     def calculate_function_values_loss_decision(input_list):
         
-
+        @tf.function
         def line_to_distribution_structured_tf(line_distribution_parameters, config):
 
             distribution_name_list_from_line = []
@@ -332,7 +332,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
                                                    max_distributions_per_class_function, 
                                                    seed_function, 
                                                    flip_percentage=0):  
-
+            @tf.function
             def get_distribution_data_from_identifier(distribution_name_function, 
                                                     distribution_parameter_1_function, 
                                                     distribution_parameter_2_function, 
@@ -505,23 +505,25 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])
             
         else:
-            distribution_name_list, (distribution_parameters_0_param_1_list, 
-                                      distribution_parameters_0_param_2_list, 
-                                      distribution_parameters_1_param_1_list, 
-                                      distribution_parameters_1_param_2_list) = line_to_distribution_structured_tf(distribution_line, config)
+            if False:
+                distribution_name_list, (distribution_parameters_0_param_1_list, 
+                                          distribution_parameters_0_param_2_list, 
+                                          distribution_parameters_1_param_1_list, 
+                                          distribution_parameters_1_param_2_list) = line_to_distribution_structured_tf(distribution_line, config)
 
-            random_evaluation_dataset = generate_dataset_from_distributions_tf(distribution_name_list_function=distribution_name_list, 
-                                                                               distribution_parameters_0_param_1_list_function = distribution_parameters_0_param_1_list,
-                                                                               distribution_parameters_0_param_2_list_function = distribution_parameters_0_param_2_list,
-                                                                               distribution_parameters_1_param_1_list_function = distribution_parameters_1_param_1_list,
-                                                                               distribution_parameters_1_param_2_list_function = distribution_parameters_1_param_2_list,
-                                                                                number_of_variables_function=config['data']['number_of_variables'], 
-                                                                                number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
-                                                                                max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
-                                                                                seed_function = np.random.randint(1_000_000), 
-                                                                                flip_percentage=0, 
-                                                                                )
-
+                random_evaluation_dataset = generate_dataset_from_distributions_tf(distribution_name_list_function=distribution_name_list, 
+                                                                                   distribution_parameters_0_param_1_list_function = distribution_parameters_0_param_1_list,
+                                                                                   distribution_parameters_0_param_2_list_function = distribution_parameters_0_param_2_list,
+                                                                                   distribution_parameters_1_param_1_list_function = distribution_parameters_1_param_1_list,
+                                                                                   distribution_parameters_1_param_2_list_function = distribution_parameters_1_param_2_list,
+                                                                                    number_of_variables_function=config['data']['number_of_variables'], 
+                                                                                    number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                                                    max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                                                    seed_function = np.random.randint(1_000_000), 
+                                                                                    flip_percentage=0, 
+                                                                                    )
+            else:
+                random_evaluation_dataset = tf.reshape(tensor=distribution_line, shape=(-1,config['data']['number_of_variables']))
             #tf.print('random_evaluation_dataset', random_evaluation_dataset.shape, len(random_evaluation_dataset), random_evaluation_dataset)
             
             #random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])            
@@ -542,8 +544,8 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
         
-        threshold = 4
-        penalty_value = 5.0
+        threshold = 5
+        penalty_value = 2.0
         
         if False:
             if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):
@@ -588,8 +590,8 @@ def calculate_function_values_loss_target_wrapper(config, config_target):
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
         
-        threshold = 4
-        penalty_value = 5.0
+        threshold = 5
+        penalty_value = 2.0
         
         if False:
             if tf.less(function_values_pred_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold) and tf.greater(function_values_true_ones_rounded, config['evaluation']['random_evaluation_dataset_size']/threshold/2):

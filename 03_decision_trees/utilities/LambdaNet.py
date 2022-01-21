@@ -304,6 +304,8 @@ class LambdaNet():
             line_distribution_parameters = line_distribution_parameters[1:]
             self.distribution_dict_row = line_distribution_parameters
             
+            if config['data']['max_distributions_per_class'] == 0:
+                config['data']['max_distributions_per_class'] = 1
             distribution_list = line_distribution_parameters.reshape(-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2)
             self.distribution_dict_list = []
             for distribution in distribution_list:
@@ -661,39 +663,56 @@ def train_lambda_net(config,
         if distribution_parameter_list is not None: 
             with open(path_distribution_parameters, 'a') as text_file: 
                 text_file.write(str(lambda_index))
-                for distrib_dict in distribution_parameter_list:
-                    text_file.write(', ' + str(list(distrib_dict.keys())[0]))
-                    for value_1 in distrib_dict.values():
-                        for value_2 in value_1.values():
-                            if len(value_2.values()) == 1:
+                
+                if config['data']['max_distributions_per_class'] == 0:
+                    for distrib_dict in distribution_parameter_list:
+                        text_file.write(', ' + str(list(distrib_dict.keys())[0]))
+                        for value_1 in distrib_dict.values():
+                            for _ in range(2):
+                                if len(value_1.values()) == 1:
+                                    text_file.write(', ' + str(list(value_1.values())[0]))
+                                    text_file.write(', ' + 'NaN')                         
 
-                                if isinstance(list(value_2.values())[0], list):
-                                    for i in range(config['data']['max_distributions_per_class']):
-                                        try:
-                                            text_file.write(', ' + str(list(value_2.values())[0][i]))
-                                        except:
-                                            text_file.write(', ' + 'NaN')
+                                elif len(value_1.values()) == 2: 
+                                    for value_2 in value_1.values():
+                                        text_file.write(', ' + str(value_2))
                                 else:
-                                    text_file.write(', ' + str(list(value_2.values())[0]))
-                                    for _ in range(config['data']['max_distributions_per_class']-1):
-                                        text_file.write(', ' + 'NaN')     
-                                for i in range(config['data']['max_distributions_per_class']):
-                                    text_file.write(', ' + 'NaN') 
+                                    raise SystemExit('Unknown Parameters')                             
+                                         
+                else:
+                    for distrib_dict in distribution_parameter_list:
+                        text_file.write(', ' + str(list(distrib_dict.keys())[0]))
+                        for value_1 in distrib_dict.values():
+                            for value_2 in value_1.values():
+                                if len(value_2.values()) == 1:
 
-                            elif len(value_2.values()) == 2:
-                                for value_3 in value_2.values():
-                                    if isinstance(value_3, list):
+                                    if isinstance(list(value_2.values())[0], list):
                                         for i in range(config['data']['max_distributions_per_class']):
                                             try:
-                                                text_file.write(', ' + str(value_3[i]))
+                                                text_file.write(', ' + str(list(value_2.values())[0][i]))
                                             except:
                                                 text_file.write(', ' + 'NaN')
                                     else:
-                                        text_file.write(', ' + str(value_3))
+                                        text_file.write(', ' + str(list(value_2.values())[0]))
                                         for _ in range(config['data']['max_distributions_per_class']-1):
-                                            text_file.write(', ' + 'NaN')
-                            else:
-                                raise SystemExit('Unknown Parameters')     
+                                            text_file.write(', ' + 'NaN')     
+                                    for i in range(config['data']['max_distributions_per_class']):
+                                        text_file.write(', ' + 'NaN') 
+
+                                elif len(value_2.values()) == 2:
+                                    for value_3 in value_2.values():
+                                        if isinstance(value_3, list):
+                                            for i in range(config['data']['max_distributions_per_class']):
+                                                try:
+                                                    text_file.write(', ' + str(value_3[i]))
+                                                except:
+                                                    text_file.write(', ' + 'NaN')
+                                        else:
+                                            text_file.write(', ' + str(value_3))
+                                            for _ in range(config['data']['max_distributions_per_class']-1):
+                                                text_file.write(', ' + 'NaN')
+                                else:
+                                    raise SystemExit('Unknown Parameters')     
                 text_file.write('\n')
                 text_file.close()                                     
 

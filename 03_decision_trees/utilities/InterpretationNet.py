@@ -356,6 +356,8 @@ def train_inet(lambda_net_train_dataset,
               config,
               callback_names):
     
+    from utilities.utility_functions import unstack_array_to_list
+    
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
     dt_string =  ('_depth' + str(config['function_family']['maximum_depth']) +
@@ -424,9 +426,10 @@ def train_inet(lambda_net_train_dataset,
     #print('np.hstack((y_train, X_train_flat, distribution_dict_index_train))', np.hstack((y_train, X_train, distribution_dict_index_train)))
     #print('np.hstack((y_train, X_train_flat))', np.hstack((y_train, X_train)))
     if use_distribution_list:
+        
         distribution_dict_row_array_train = lambda_net_train_dataset.distribution_dict_row_array
         distribution_dict_row_array_valid = lambda_net_valid_dataset.distribution_dict_row_array
-        
+
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' NaN'] = np.nan
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' normal'] = 0
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' uniform'] = 1
@@ -435,8 +438,8 @@ def train_inet(lambda_net_train_dataset,
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' beta'] = 4
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' binomial'] = 5
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' poisson'] = 6
-        distribution_dict_row_array_train = distribution_dict_row_array_train.astype(np.float64)
-        
+        distribution_dict_row_array_train = distribution_dict_row_array_train.astype(np.float32)
+
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' NaN'] = np.nan
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' normal'] = 0
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' uniform'] = 1
@@ -445,14 +448,138 @@ def train_inet(lambda_net_train_dataset,
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' beta'] = 4
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' binomial'] = 5
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' poisson'] = 6
-        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float64)
-        
-        if config['i_net']['data_reshape_version'] is not None:
-            y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_row_array_train))   
-            valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_row_array_valid)))   
+        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float32)        
+        if False:
+
+            if config['i_net']['data_reshape_version'] is not None:
+                y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_row_array_train))   
+                valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_row_array_valid)))   
+            else:
+                y_train_model = np.hstack((y_train, X_train, distribution_dict_row_array_train))   
+                valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_row_array_valid))) 
         else:
-            y_train_model = np.hstack((y_train, X_train, distribution_dict_row_array_train))   
-            valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_row_array_valid)))      
+            
+            if False:
+                #print(tf.executing_eagerly())
+                #tf.config.run_functions_eagerly(False)
+                #print(tf.executing_eagerly())
+                random_evaluation_dataset_list_train_tf = tf.map_fn(generate_dataset_from_distributions_line_tf_wrapper(number_of_variables_function=config['data']['number_of_variables'], 
+                                                       number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                       max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                       seed_function = np.random.randint(1_000_000), 
+                                                       flip_percentage=0,
+                                                       config=config), distribution_dict_row_array_train, parallel_iterations=1)
+                
+                random_evaluation_dataset_array_train = random_evaluation_dataset_list_train_tf.numpy()
+                print(random_evaluation_dataset_array_train.shape)
+                random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))
+                print(random_evaluation_dataset_flat_array_train.shape)
+                
+                random_evaluation_dataset_list_valid_tf = tf.map_fn(generate_dataset_from_distributions_line_tf_wrapper(number_of_variables_function=config['data']['number_of_variables'], 
+                                                       number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                       max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                       seed_function = np.random.randint(1_000_000), 
+                                                       flip_percentage=0,
+                                                       config=config), distribution_dict_row_array_valid, parallel_iterations=1)
+                
+                random_evaluation_dataset_array_valid = random_evaluation_dataset_list_valid_tf.numpy()
+                print(random_evaluation_dataset_array_valid.shape)
+                random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))
+                print(random_evaluation_dataset_flat_array_valid.shape)                
+                #tf.config.run_functions_eagerly(True)
+            elif True:
+                
+                parallel_data_generation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend='loky') #loky #sequential multiprocessing
+                random_evaluation_dataset_list_train_tf = parallel_data_generation(delayed(generate_dataset_from_distributions_line_tf)(number_of_variables_function=config['data']['number_of_variables'], 
+                                                       number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                       max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                       seed_function = np.random.randint(1_000_000), 
+                                                       flip_percentage=0,
+                                                       config=config,
+                                                       distribution_line_function=distribution_dict_row_array) for distribution_dict_row_array in distribution_dict_row_array_train)           
+                                                       #distribution_line_function=distribution_dict_row_array) for distribution_dict_row_array in distribution_dict_row_array_train_unstacked))                 
+
+                random_evaluation_dataset_array_train = np.array(random_evaluation_dataset_list_train_tf)
+                print('random_evaluation_dataset_array_train.shape', random_evaluation_dataset_array_train.shape)
+                random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))
+                print('random_evaluation_dataset_flat_array_train.shape', random_evaluation_dataset_flat_array_train.shape)
+                                                                     
+                parallel_data_generation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend='loky') #loky #sequential multiprocessing
+                random_evaluation_dataset_list_valid_tf = parallel_data_generation(delayed(generate_dataset_from_distributions_line_tf)(number_of_variables_function=config['data']['number_of_variables'], 
+                                                       number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                       max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                       seed_function = np.random.randint(1_000_000), 
+                                                       flip_percentage=0,
+                                                       config=config,
+                                                       distribution_line_function=distribution_dict_row_array) for distribution_dict_row_array in distribution_dict_row_array_valid)           
+                                                       #distribution_line_function=distribution_dict_row_array) for distribution_dict_row_array in distribution_dict_row_array_train_unstacked))                 
+
+                random_evaluation_dataset_array_valid =  np.array(random_evaluation_dataset_list_valid_tf)
+                print('random_evaluation_dataset_array_valid.shape', random_evaluation_dataset_array_valid.shape)
+                random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))
+                print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)                    
+            else:
+                print('distribution_dict_row_array_train.shape', distribution_dict_row_array_valid.shape)
+                random_evaluation_dataset_flat_list_train = []
+                for distribution_line in distribution_dict_row_array_train:
+                    distribution_name_list, (distribution_parameters_0_param_1_list, 
+                                              distribution_parameters_0_param_2_list, 
+                                              distribution_parameters_1_param_1_list, 
+                                              distribution_parameters_1_param_2_list) = line_to_distribution_structured_tf(distribution_line, config)
+
+                    random_evaluation_dataset = generate_dataset_from_distributions_tf(distribution_name_list_function=distribution_name_list, 
+                                                                                       distribution_parameters_0_param_1_list_function = distribution_parameters_0_param_1_list,
+                                                                                       distribution_parameters_0_param_2_list_function = distribution_parameters_0_param_2_list,
+                                                                                       distribution_parameters_1_param_1_list_function = distribution_parameters_1_param_1_list,
+                                                                                       distribution_parameters_1_param_2_list_function = distribution_parameters_1_param_2_list,
+                                                                                        number_of_variables_function=config['data']['number_of_variables'], 
+                                                                                        number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                                                        max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                                                        seed_function = np.random.randint(1_000_000), 
+                                                                                        flip_percentage=0, 
+                                                                                        )
+
+                    random_evaluation_dataset_flat = random_evaluation_dataset.numpy().ravel()
+                    random_evaluation_dataset_flat_list_train.append(random_evaluation_dataset_flat)
+
+                random_evaluation_dataset_flat_array_train = np.array(random_evaluation_dataset_flat_list_train)
+                print('random_evaluation_dataset_flat_array_train.shape', random_evaluation_dataset_flat_array_train.shape)
+
+            
+
+                random_evaluation_dataset_flat_list_valid = []
+                for distribution_line in distribution_dict_row_array_valid:
+
+                    distribution_name_list, (distribution_parameters_0_param_1_list, 
+                                              distribution_parameters_0_param_2_list, 
+                                              distribution_parameters_1_param_1_list, 
+                                              distribution_parameters_1_param_2_list) = line_to_distribution_structured_tf(distribution_line, config)
+
+                    random_evaluation_dataset = generate_dataset_from_distributions_tf(distribution_name_list_function=distribution_name_list, 
+                                                                                       distribution_parameters_0_param_1_list_function = distribution_parameters_0_param_1_list,
+                                                                                       distribution_parameters_0_param_2_list_function = distribution_parameters_0_param_2_list,
+                                                                                       distribution_parameters_1_param_1_list_function = distribution_parameters_1_param_1_list,
+                                                                                       distribution_parameters_1_param_2_list_function = distribution_parameters_1_param_2_list,
+                                                                                        number_of_variables_function=config['data']['number_of_variables'], 
+                                                                                        number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
+                                                                                        max_distributions_per_class_function = config['data']['max_distributions_per_class'], 
+                                                                                        seed_function = np.random.randint(1_000_000), 
+                                                                                        flip_percentage=0, 
+                                                                                        )
+
+                    random_evaluation_dataset_flat = random_evaluation_dataset.numpy().ravel()
+                    random_evaluation_dataset_flat_list_valid.append(random_evaluation_dataset_flat)
+
+                random_evaluation_dataset_flat_array_valid = np.array(random_evaluation_dataset_flat_list_valid)            
+                print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)
+            
+            if config['i_net']['data_reshape_version'] is not None:
+                y_train_model = np.hstack((y_train, X_train_flat, random_evaluation_dataset_flat_array_train))   
+                valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, random_evaluation_dataset_flat_array_valid)))   
+            else:
+                y_train_model = np.hstack((y_train, X_train, random_evaluation_dataset_flat_array_train))   
+                valid_data = (X_valid, np.hstack((y_valid, X_valid, random_evaluation_dataset_flat_array_valid)))             
+        
     else:
         if config['i_net']['data_reshape_version'] is not None:
             y_train_model = np.hstack((y_train, X_train_flat))   
