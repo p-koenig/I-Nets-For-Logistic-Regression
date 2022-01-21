@@ -168,8 +168,6 @@ def inet_target_function_fv_loss_wrapper(config):
     return inet_target_function_fv_loss
 
 
-
-
 def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_parameters_structure, config, use_distribution_list):   
             
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):      
@@ -524,6 +522,8 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
                                                                                     )
             else:
                 random_evaluation_dataset = tf.reshape(tensor=distribution_line, shape=(-1,config['data']['number_of_variables']))
+                #tf.print('random_evaluation_dataset', random_evaluation_dataset[:5], summarize=10)
+
             #tf.print('random_evaluation_dataset', random_evaluation_dataset.shape, len(random_evaluation_dataset), random_evaluation_dataset)
             
             #random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])            
@@ -534,12 +534,14 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         
         
         function_values_true = calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder)(network_parameters)
+        #tf.print('function_values_true', function_values_true[:50], summarize=50)
         
         function_values_pred = tf.zeros_like(function_values_true)
         if config['function_family']['dt_type'] == 'SDT':
             function_values_pred, penalty = calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config)(function_array)
         elif config['function_family']['dt_type'] == 'vanilla':
             function_values_pred, penalty = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config)(function_array)
+        #tf.print('function_values_pred', function_values_pred[:50], summarize=50)
             
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
@@ -612,6 +614,8 @@ def calculate_function_values_loss_target_wrapper(config, config_target):
     
     return calculate_function_values_loss_target
 
+
+
 def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder):
     
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
@@ -645,7 +649,8 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
 def calculate_function_value_from_decision_tree_parameters_wrapper(random_evaluation_dataset, config):
         
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)        
-        
+    
+    
     maximum_depth = config['function_family']['maximum_depth']
     leaf_node_num_ = 2 ** maximum_depth
     
