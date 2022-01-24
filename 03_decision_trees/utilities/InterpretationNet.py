@@ -439,7 +439,7 @@ def train_inet(lambda_net_train_dataset,
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' binomial'] = 5
         distribution_dict_row_array_train[distribution_dict_row_array_train == ' poisson'] = 6
         distribution_dict_row_array_train = distribution_dict_row_array_train.astype(np.float32)
-
+        
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' NaN'] = np.nan
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' normal'] = 0
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' uniform'] = 1
@@ -448,9 +448,9 @@ def train_inet(lambda_net_train_dataset,
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' beta'] = 4
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' binomial'] = 5
         distribution_dict_row_array_valid[distribution_dict_row_array_valid == ' poisson'] = 6
-        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float32)        
+        distribution_dict_row_array_valid = distribution_dict_row_array_valid.astype(np.float32)    
+        
         if False:
-
             if config['i_net']['data_reshape_version'] is not None:
                 y_train_model = np.hstack((y_train, X_train_flat, distribution_dict_row_array_train))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, distribution_dict_row_array_valid)))   
@@ -458,7 +458,6 @@ def train_inet(lambda_net_train_dataset,
                 y_train_model = np.hstack((y_train, X_train, distribution_dict_row_array_train))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid, distribution_dict_row_array_valid))) 
         else:
-            
             if False:
                 #print(tf.executing_eagerly())
                 #tf.config.run_functions_eagerly(False)
@@ -488,6 +487,13 @@ def train_inet(lambda_net_train_dataset,
                 print(random_evaluation_dataset_flat_array_valid.shape)                
                 #tf.config.run_functions_eagerly(True)
             elif True:
+                random_evaluation_dataset_flat_array_train =  lambda_net_train_dataset.X_test_lambda_array.reshape((-1, lambda_net_train_dataset.X_test_lambda_array.shape[1]*lambda_net_train_dataset.X_test_lambda_array.shape[2])) 
+                print('random_evaluation_dataset_flat_array_train.shape', random_evaluation_dataset_flat_array_train.shape)
+                
+                random_evaluation_dataset_flat_array_valid =  lambda_net_valid_dataset.X_test_lambda_array.reshape((-1, lambda_net_valid_dataset.X_test_lambda_array.shape[1]*lambda_net_valid_dataset.X_test_lambda_array.shape[2]))  
+                print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)
+                
+            elif False:
                 
                 parallel_data_generation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend='loky') #loky #sequential multiprocessing
                 random_evaluation_dataset_list_train_tf = parallel_data_generation(delayed(generate_dataset_from_distributions_line_tf)(number_of_variables_function=config['data']['number_of_variables'], 
@@ -503,7 +509,8 @@ def train_inet(lambda_net_train_dataset,
                 print('random_evaluation_dataset_array_train.shape', random_evaluation_dataset_array_train.shape)
                 random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))
                 print('random_evaluation_dataset_flat_array_train.shape', random_evaluation_dataset_flat_array_train.shape)
-                                                                     
+                #return random_evaluation_dataset_flat_array_train
+
                 parallel_data_generation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend='loky') #loky #sequential multiprocessing
                 random_evaluation_dataset_list_valid_tf = parallel_data_generation(delayed(generate_dataset_from_distributions_line_tf)(number_of_variables_function=config['data']['number_of_variables'], 
                                                        number_of_samples_function=config['evaluation']['random_evaluation_dataset_size'], 
@@ -515,9 +522,12 @@ def train_inet(lambda_net_train_dataset,
                                                        #distribution_line_function=distribution_dict_row_array) for distribution_dict_row_array in distribution_dict_row_array_train_unstacked))                 
 
                 random_evaluation_dataset_array_valid =  np.array(random_evaluation_dataset_list_valid_tf)
+                
                 print('random_evaluation_dataset_array_valid.shape', random_evaluation_dataset_array_valid.shape)
+                
                 random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))
-                print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)                    
+                print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)    
+                
             else:
                 print('distribution_dict_row_array_train.shape', distribution_dict_row_array_valid.shape)
                 random_evaluation_dataset_flat_list_train = []

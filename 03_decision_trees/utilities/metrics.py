@@ -344,9 +344,9 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
                 elif distribution_name_function == 1:#'uniform':
                     distribution_data = tf.cast(tf.random.uniform(minval=distribution_parameter_1_function, maxval=distribution_parameter_2_function, seed=seed_function, shape=(samples_function,)), tf.float32)
                 elif distribution_name_function == 2:#'gamma':
-                    distribution_data = tf.cast(tf.random.gamma(alpha=distribution_parameter_1_function, beta=distribution_parameter_2_function, seed=seed_function, shape=(samples_function,)), tf.float32)
+                    distribution_data = tf.cast(tf.random.gamma(alpha=distribution_parameter_1_function, beta=1/distribution_parameter_2_function, seed=seed_function, shape=(samples_function,)), tf.float32)
                 elif distribution_name_function == 3:#'exponential':
-                    distribution_data = tf.cast(tfp.distributions.Exponential(rate=distribution_parameter_1_function).sample(samples_function, seed=seed_function), tf.float32)
+                    distribution_data = tf.cast(tfp.distributions.Exponential(rate=1/distribution_parameter_1_function).sample(samples_function, seed=seed_function), tf.float32)
                 elif distribution_name_function == 4:#'beta':
                     distribution_data = tf.cast(tfp.distributions.Beta(concentration1=distribution_parameter_1_function, concentration0=distribution_parameter_2_function).sample(samples_function, seed=seed_function), tf.float32)
                 elif distribution_name_function == 5:#'binomial':

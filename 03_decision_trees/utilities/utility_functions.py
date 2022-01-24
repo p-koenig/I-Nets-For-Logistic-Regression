@@ -871,10 +871,10 @@ def generate_random_data_points(config, seed, parameters=None):
     low = config['data']['x_min'] 
     high = config['data']['x_max']
     size = config['data']['lambda_dataset_size'] 
-    variables = onfig['data']['number_of_variables'] 
-    categorical_indice = config['data']['categorical_indices']
+    variables = config['data']['number_of_variables'] 
+    #categorical_indice = config['data']['categorical_indices']
     distrib=config['data']['x_distrib']
-    random_parameters = config['data']['random_parameters_trained']
+    #random_parameters = config['data']['random_parameters_trained']
     
     random_parameters=False
     
@@ -1927,12 +1927,12 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
             return np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=size), parameter_by_distribution['uniform']
     elif distribution_name == 'gamma':
         if tf.is_tensor(parameter_by_distribution['gamma']['shape']):
-            return tf.cast(tf.random.gamma(alpha=parameter_by_distribution['gamma']['shape'], beta=parameter_by_distribution['gamma']['scale'], shape=(size,)), tf.float32), parameter_by_distribution['gamma']
+            return tf.cast(tf.random.gamma(alpha=parameter_by_distribution['gamma']['shape'], beta=1/parameter_by_distribution['gamma']['scale'], shape=(size,)), tf.float32), parameter_by_distribution['gamma']
         else:        
             return np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=size), parameter_by_distribution['gamma']
     elif distribution_name == 'exponential':
         if tf.is_tensor(parameter_by_distribution['exponential']['scale']):
-            return tf.cast(tfp.distributions.Exponential(rate=parameter_by_distribution['exponential']['scale']).sample(size), tf.float32), parameter_by_distribution['exponential']        
+            return tf.cast(tfp.distributions.Exponential(rate=1/parameter_by_distribution['exponential']['scale']).sample(size), tf.float32), parameter_by_distribution['exponential']        
         else:        
             return np.random.exponential(parameter_by_distribution['exponential']['scale'], size=size), parameter_by_distribution['exponential']   
     elif distribution_name == 'beta':
@@ -1942,7 +1942,7 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
             return np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=size), parameter_by_distribution['beta']
     elif distribution_name == 'binomial':
         if tf.is_tensor(parameter_by_distribution['binomial']['n']):
-            return tf.cast(tf.random.stateless_binomial(counts=parameter_by_distribution['binomial']['n'], probs=parameter_by_distribution['binomial']['p'], shape=(size,)), tf.float32), parameter_by_distribution['binomial']  
+            return tf.cast(tfp.distributions.Binomial(total_count=parameter_by_distribution['binomial']['n'], probs=distribution_parameter_2_function).sample(size), tf.float32), parameter_by_distribution['binomial']  
         else:        
             return np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=size), parameter_by_distribution['binomial']  
     elif distribution_name == 'poisson':
@@ -3999,7 +3999,7 @@ def line_to_distribution_structured_tf(line_distribution_parameters, config):
         #tf.print('distribution_name', distribution_name)
         distribution_parameters_from_line = distribution_from_line[1:]
         #tf.print('distribution_name', distribution_name)
-
+        
         distribution_parameters_0_param_1_from_line = tf.reshape(distribution_parameters_from_line, (4, -1))[0]
         distribution_parameters_0_param_2_from_line = tf.reshape(distribution_parameters_from_line, (4, -1))[1]
         distribution_parameters_1_param_1_from_line = tf.reshape(distribution_parameters_from_line, (4, -1))[2]
@@ -4066,9 +4066,9 @@ def generate_dataset_from_distributions_tf(distribution_name_list_function,
         elif distribution_name_function == 1:#'uniform':
             distribution_data = tf.random.uniform(minval=distribution_parameter_1_function, maxval=distribution_parameter_2_function, seed=seed_function, shape=(samples_function,))
         elif distribution_name_function == 2:#'gamma':
-            distribution_data = tf.random.gamma(alpha=distribution_parameter_1_function, beta=distribution_parameter_2_function, seed=seed_function, shape=(samples_function,))
+            distribution_data = tf.random.gamma(alpha=distribution_parameter_1_function, beta=1/distribution_parameter_2_function, seed=seed_function, shape=(samples_function,))
         elif distribution_name_function == 3:#'exponential':
-            distribution_data = tfp.distributions.Exponential(rate=distribution_parameter_1_function).sample(samples_function, seed=seed_function)
+            distribution_data = tfp.distributions.Exponential(rate=1/distribution_parameter_1_function).sample(samples_function, seed=seed_function)
         elif distribution_name_function == 4:#'beta':
             distribution_data = tfp.distributions.Beta(concentration1=distribution_parameter_1_function, concentration0=distribution_parameter_2_function).sample(samples_function, seed=seed_function)
         elif distribution_name_function == 5:#'binomial':

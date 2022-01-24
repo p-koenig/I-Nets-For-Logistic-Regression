@@ -287,7 +287,6 @@ class LambdaNet():
         #self.y_test_lambda = line_y_data.reshape(-1,1)
         
         data_generation_seed = self.seed + self.index
-        
         if line_distribution_parameters is None:
             self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
                                                                 high=config['data']['x_max'], 
@@ -299,8 +298,7 @@ class LambdaNet():
         
         else:
             
-
-            assert self.index == line_distribution_parameters[0], 'indices do not match: ' + str(self.index) + ', ' + str(line_distribution_parameters[0])
+            assert self.index == int(line_distribution_parameters[0]), 'indices do not match: ' + str(self.index) + ', ' + str(line_distribution_parameters[0])
             line_distribution_parameters = line_distribution_parameters[1:]
             self.distribution_dict_row = line_distribution_parameters
             
@@ -311,7 +309,6 @@ class LambdaNet():
             for distribution in distribution_list:
                 distribution_name = distribution[0][1:]
                 distribution_parameters= distribution[1:]
-
 
                 distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
                 distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
@@ -331,7 +328,8 @@ class LambdaNet():
                     distribution_parameters_1_param_1 = distribution_parameters_1_param_1[0]
                 if len(distribution_parameters_1_param_2) == 1:
                     distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
-
+                distribution_dict = None
+                    
                 if distribution_name == 'normal':
                     distribution_dict = {distribution_name: {
                         'class_0': {
@@ -416,7 +414,8 @@ class LambdaNet():
                                                                      distributions_per_class = config['data']['max_distributions_per_class'], 
                                                                      seed = data_generation_seed, 
                                                                      flip_percentage=0, 
-                                                                     random_parameters=config['data']['random_parameters_distribution'])   
+                                                                     random_parameters=config['data']['random_parameters_distribution'],
+                                                                     distribution_dict_list=self.distribution_dict_list)   
         
         #self.network = network_parameters_to_network(self.network_parameters, config)           
         #self.target_function = generate_decision_tree_from_array(self.target_function_parameters, config)
