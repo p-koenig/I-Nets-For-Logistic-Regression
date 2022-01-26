@@ -387,6 +387,7 @@ def train_inet(lambda_net_train_dataset,
     distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)    
         
     use_distribution_list = False if config['data']['max_distributions_per_class'] is None else True
+    print('use_distribution_list', use_distribution_list)
     
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
@@ -488,10 +489,8 @@ def train_inet(lambda_net_train_dataset,
                 #tf.config.run_functions_eagerly(True)
             elif True:
                 random_evaluation_dataset_flat_array_train =  lambda_net_train_dataset.X_test_lambda_array.reshape((-1, lambda_net_train_dataset.X_test_lambda_array.shape[1]*lambda_net_train_dataset.X_test_lambda_array.shape[2])) 
-                print('random_evaluation_dataset_flat_array_train.shape', random_evaluation_dataset_flat_array_train.shape)
                 
                 random_evaluation_dataset_flat_array_valid =  lambda_net_valid_dataset.X_test_lambda_array.reshape((-1, lambda_net_valid_dataset.X_test_lambda_array.shape[1]*lambda_net_valid_dataset.X_test_lambda_array.shape[2]))  
-                print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)
                 
             elif False:
                 
@@ -583,6 +582,10 @@ def train_inet(lambda_net_train_dataset,
                 random_evaluation_dataset_flat_array_valid = np.array(random_evaluation_dataset_flat_list_valid)            
                 print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)
             
+            print('random_evaluation_dataset_flat_array_train.shape', random_evaluation_dataset_flat_array_train.shape)
+            print('random_evaluation_dataset_flat_array_valid.shape', random_evaluation_dataset_flat_array_valid.shape)
+            print('lambda_net_train_dataset.X_test_lambda_array[0]', lambda_net_train_dataset.X_test_lambda_array[0])
+            print('random_evaluation_dataset_flat_array_valid[0]', random_evaluation_dataset_flat_array_train[0])
             if config['i_net']['data_reshape_version'] is not None:
                 y_train_model = np.hstack((y_train, X_train_flat, random_evaluation_dataset_flat_array_train))   
                 valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, random_evaluation_dataset_flat_array_valid)))   
@@ -1087,6 +1090,7 @@ def train_inet(lambda_net_train_dataset,
                       y_train_model,
                       epochs=config['i_net']['epochs'], 
                       batch_size=config['i_net']['batch_size'], 
+                      shuffle=False,
                       validation_data=valid_data,
                       callbacks=callbacks,
                       verbose=verbosity)

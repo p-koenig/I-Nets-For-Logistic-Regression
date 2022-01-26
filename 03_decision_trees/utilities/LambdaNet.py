@@ -320,6 +320,8 @@ class LambdaNet():
                 distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
                 distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
 
+                
+                
                 if len(distribution_parameters_0_param_1) == 1:
                     distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
                 if len(distribution_parameters_0_param_2) == 1:
@@ -410,7 +412,7 @@ class LambdaNet():
             
             self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
                                                                      number_of_variables=config['data']['number_of_variables'], 
-                                                                     number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                                     number_of_samples=5000,#int(np.round(config['data']['lambda_dataset_size']*0.25)), 
                                                                      distributions_per_class = config['data']['max_distributions_per_class'], 
                                                                      seed = data_generation_seed, 
                                                                      flip_percentage=0, 
