@@ -86,12 +86,9 @@ class LambdaNetDataset():
       
         self.X_test_lambda_array = np.array([lambda_net.X_test_lambda for lambda_net in lambda_net_list])
         #self.y_test_lambda_array = np.array([lambda_net.y_test_lambda for lambda_net in lambda_net_list])
-        
         self.distribution_dict_list_list = [lambda_net.distribution_dict_list for lambda_net in lambda_net_list]
         self.distribution_dict_row_array = np.array([lambda_net.distribution_dict_row for lambda_net in lambda_net_list])
-    
         self.shape = (self.network_parameters_array.shape[0], 1 + 1 + self.network_parameters_array.shape[1] + self.target_function_parameters_array.shape[1])
-    
     def __repr__(self):
         return str(self.as_pandas(config).head())
     def __str__(self):
@@ -412,10 +409,11 @@ class LambdaNet():
             
             self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
                                                                      number_of_variables=config['data']['number_of_variables'], 
-                                                                     number_of_samples=5000,#int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                                     number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
                                                                      distributions_per_class = config['data']['max_distributions_per_class'], 
                                                                      seed = data_generation_seed, 
-                                                                     flip_percentage=0, 
+                                                                     flip_percentage=config['data']['noise_injected_level'], 
+                                                                     data_noise=config['data']['data_noise'],
                                                                      random_parameters=config['data']['random_parameters_distribution'],
                                                                      distribution_dict_list=self.distribution_dict_list)   
         
