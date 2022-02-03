@@ -423,10 +423,9 @@ def train_inet(lambda_net_train_dataset,
     #print('np.hstack((y_train, X_train_flat))', np.hstack((y_train, X_train)))
     if use_distribution_list:
 
-        max_distributions_per_class = config['data']['max_distributions_per_class']
+        max_distributions_per_class = deepcopy(config['data']['max_distributions_per_class'])
         if max_distributions_per_class == 0:
             max_distributions_per_class = 1
-
         #print(lambda_net_train_dataset.distribution_dict_row_array[0])
         parallel_data_generation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend='loky') #loky #sequential multiprocessing
         random_evaluation_dataset_list_train = parallel_data_generation(delayed(generate_dataset_from_distributions_line)(line_distribution_parameters=distribution_dict_row,
@@ -436,7 +435,7 @@ def train_inet(lambda_net_train_dataset,
                                         random_parameters_distribution=config['data']['random_parameters_distribution'],
                                         flip_percentage=config['data']['noise_injected_level'],
                                         data_noise=config['data']['data_noise'],
-                                        distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                        #distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                         seed_function=seed_function) for distribution_dict_row, seed_function in zip(lambda_net_train_dataset.distribution_dict_row_array, lambda_net_train_dataset.seed_list))
 
 
@@ -455,7 +454,7 @@ def train_inet(lambda_net_train_dataset,
                                         random_parameters_distribution=config['data']['random_parameters_distribution'],
                                         flip_percentage=config['data']['noise_injected_level'],
                                         data_noise=config['data']['data_noise'],
-                                        distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                        #distribution_list=['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                         seed_function=seed_function) for distribution_dict_row, seed_function in zip(lambda_net_valid_dataset.distribution_dict_row_array, lambda_net_valid_dataset.seed_list))
 
 

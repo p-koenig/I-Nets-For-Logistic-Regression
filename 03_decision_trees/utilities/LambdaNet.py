@@ -299,9 +299,10 @@ class LambdaNet():
             line_distribution_parameters = line_distribution_parameters[1:]
             self.distribution_dict_row = line_distribution_parameters
             
-            if config['data']['max_distributions_per_class'] == 0:
-                config['data']['max_distributions_per_class'] = 1
-            distribution_list = line_distribution_parameters.reshape(-1, 1+config['data']['max_distributions_per_class']*config['data']['num_classes']*2)
+            distributions_per_class = config['data']['max_distributions_per_class']
+            if distributions_per_class == 0:
+                distributions_per_class = 1
+            distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*config['data']['num_classes']*2)
             self.distribution_dict_list = []
             for distribution in distribution_list:
                 distribution_name = distribution[0][1:]
@@ -410,12 +411,13 @@ class LambdaNet():
             self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
                                                                      number_of_variables=config['data']['number_of_variables'], 
                                                                      number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
-                                                                     distributions_per_class = config['data']['max_distributions_per_class'], 
+                                                                     distributions_per_class = distributions_per_class, 
                                                                      seed = data_generation_seed, 
                                                                      flip_percentage=config['data']['noise_injected_level'], 
                                                                      data_noise=config['data']['data_noise'],
                                                                      random_parameters=config['data']['random_parameters_distribution'],
-                                                                     distribution_dict_list=self.distribution_dict_list)   
+                                                                     distribution_dict_list=self.distribution_dict_list,
+                                                                     config=config)   
         
         #self.network = network_parameters_to_network(self.network_parameters, config)           
         #self.target_function = generate_decision_tree_from_array(self.target_function_parameters, config)
@@ -533,11 +535,11 @@ def generate_lambda_net_from_config(config, seed=None):
 
     
     optimizer = tf.keras.optimizers.get(config['lambda_net']['optimizer_lambda'])
-    
+        
     try:
-        optimizer.learning_rate = learning_rate=config['lambda_net']['learning_rate_lambda']
+        optimizer.learning_rate = config['lambda_net']['learning_rate_lambda']
     except:
-        pass
+        optimizer.learning_rate = 0.001
     
     model.compile(optimizer=optimizer,
                   loss='binary_crossentropy',#tf.keras.losses.get(config['lambda_net']['loss_lambda']),

@@ -813,25 +813,25 @@ def generate_random_data_points_custom(low, high, size, variables, categorical_i
                 'high': 1,
             },
             'gamma': {
-                'shape': 2,
-                'scale': 2,
+                'shape': 0.5,#2,
+                'scale': 0.5,#2,
             },        
             'exponential': {
                 'scale': 0.5,
             },        
             'beta': {
-                'a': 2,
-                'b': 5,
+                'a': 0.5,#2,
+                'b': 0.5,#5,
             },
             'binomial': {
                 'n': 100,
                 'p': 0.5,
             },
             'poisson': {
-                'lam': 1,
+                'lam': 0.5,#1,
             },        
 
-        }     
+        }   
     else:
         parameter_by_distribution = {
             distrib: parameters
@@ -898,25 +898,25 @@ def generate_random_data_points(config, seed, parameters=None):
                 'high': 1,
             },
             'gamma': {
-                'shape': 2,
-                'scale': 2,
+                'shape': 0.5,#2,
+                'scale': 0.5,#2,
             },        
             'exponential': {
                 'scale': 0.5,
             },        
             'beta': {
-                'a': 2,
-                'b': 5,
+                'a': 0.5,#2,
+                'b': 0.5,#5,
             },
             'binomial': {
                 'n': 100,
                 'p': 0.5,
             },
             'poisson': {
-                'lam': 1,
+                'lam': 0.5,#1,
             },        
 
-        }       
+        }        
     else:
         parameter_by_distribution = {
             distrib: parameters
@@ -1276,7 +1276,12 @@ def generate_data_make_classification_distribution(config, seed=42):
 
 
 
-def generate_data_distribtion_trained(config, seed=42, max_distributions_per_class=0, distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], random_parameters=False, data_noise = 0):
+def generate_data_distribtion_trained(config, 
+                                      seed=42, 
+                                      max_distributions_per_class=0, 
+                                      distribution_list = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                                      random_parameters=False, 
+                                      data_noise = 0):
            
     random.seed(seed)
     distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
@@ -1313,7 +1318,12 @@ def generate_data_distribtion_trained(config, seed=42, max_distributions_per_cla
     return None
 
 
-def generate_data_distribtion(config, seed=42, max_distributions_per_class=0, distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], random_parameters=False, data_noise = 0):
+def generate_data_distribtion(config, 
+                              seed=42, 
+                              max_distributions_per_class=0, 
+                              distribution_list = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                              random_parameters=False, 
+                              data_noise = 0):
         
     random.seed(seed)
     distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
@@ -1846,36 +1856,36 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
         
         
     if parameters == None:
-        value_1 = np.random.uniform(-5, 5)#np.random.uniform(-0.2, 1.2)
-        value_2 = np.random.uniform(-5, 5)#np.random.uniform(-0.2, 1.2)   
+        value_1 = np.random.uniform(0, 1)#np.random.uniform(-0.2, 1.2)
+        value_2 = np.random.uniform(0, 1)#np.random.uniform(-0.2, 1.2)   
         
         if random_parameters:
             parameter_by_distribution = {
                 'normal': {
-                    'loc': np.random.uniform(-5, 5),
-                    'scale': np.random.uniform(0, 5),
+                    'loc': np.random.uniform(0, 1),
+                    'scale': np.random.uniform(0, 1),
                 },
                 'uniform': {
                     'low': np.minimum(value_1, value_2),
                     'high': np.maximum(value_1, value_2),
                 },
                 'gamma': {
-                    'shape': np.random.uniform(0, 5),
-                    'scale': np.random.uniform(0, 5),
+                    'shape': np.random.uniform(0, 1),
+                    'scale': np.random.uniform(0, 1),
                 },        
                 'exponential': {
-                    'scale': np.random.uniform(0, 5),
+                    'scale': np.random.uniform(0, 1),
                 },        
                 'beta': {
-                    'a': np.random.uniform(0, 5),
-                    'b': np.random.uniform(0, 5),
+                    'a': np.random.uniform(0, 1),
+                    'b': np.random.uniform(0, 1),
                 },
                 'binomial': {
                     'n': np.random.uniform(10, 1_000),
                     'p': np.random.uniform(0, 1),
                 },
                 'poisson': {
-                    'lam': np.random.uniform(0, 5),
+                    'lam': np.random.uniform(0, 1),
                 },        
 
             }
@@ -1893,22 +1903,22 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
                     'high': 1,
                 },
                 'gamma': {
-                    'shape': 2,
-                    'scale': 2,
+                    'shape': 0.5,#2,
+                    'scale': 0.5,#2,
                 },        
                 'exponential': {
                     'scale': 0.5,
                 },        
                 'beta': {
-                    'a': 2,
-                    'b': 5,
+                    'a': 0.5,#2,
+                    'b': 0.5,#5,
                 },
                 'binomial': {
                     'n': 100,
                     'p': 0.5,
                 },
                 'poisson': {
-                    'lam': 1,
+                    'lam': 0.5,#1,
                 },        
 
             }           
@@ -1953,7 +1963,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                flip_percentage=0.0,
                                                                data_noise=0.0,
                                                                verbose=0,
-                                                               distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                               distribution_list = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                                                random_parameters=None,
 
                                                                #encoder_model=encoder_model,
@@ -2119,7 +2129,8 @@ def generate_dataset_from_distributions(distribution_list,
                                         flip_percentage=0.0, 
                                         data_noise=0.0, 
                                         random_parameters=None, 
-                                        distribution_dict_list=None):  
+                                        distribution_dict_list=None,
+                                        config=None):  
 
     def split_into(n, p):
         return np.floor([n/p + 1] * (n%p) + [n/p] * (p - n%p)).astype(np.int64)
@@ -2137,7 +2148,12 @@ def generate_dataset_from_distributions(distribution_list,
     if distribution_dict_list is not None:
         
         #max_distributions_per_class = max(1, config['data']['max_distributions_per_class'])
-        distributions_per_class_original = distributions_per_class
+        
+        if config is not None:
+            distributions_per_class_original = config['data']['max_distributions_per_class']#distributions_per_class
+
+        else:
+            distributions_per_class_original = distributions_per_class
         for i in range(number_of_variables):
             if tf.is_tensor(distribution_dict_list):
                 distribution_name = distribution_list[i]
@@ -2225,15 +2241,20 @@ def generate_dataset_from_distributions(distribution_list,
             
         X_data = np.vstack(X_data_list).T
         
-        X_data = np.sort(X_data, axis=0)
+        if distributions_per_class_original == 0:
+            X_data = np.sort(X_data, axis=0)
 
         X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
         X_data, normalizer_list = normalize_real_world_data(X_data)
+        
         y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
 
         idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
         y_data[idx] = (y_data[idx] + 1) % 2              
             
+   
+
+    ################################################
     else:
 
         if distributions_per_class == 0:
@@ -2281,7 +2302,7 @@ def generate_dataset_from_distributions(distribution_list,
                 samples_class_1_list = split_into(samples_class_1, distributions_per_class)
                 
                 for j in range(distributions_per_class):
-                    if False:
+                    if True:
                         class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
                         class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
                     else:
@@ -2347,7 +2368,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                         mean_train_parameters,
                                                         std_train_parameters,    
                                                         data_seed=42,
-                                                        distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                        distribution_list = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                                         max_distributions_per_class = 0,
                                                         random_parameters=None,
                                                         flip_percentage=0.0,
@@ -2498,8 +2519,8 @@ def evaluate_real_world_dataset(model,
     print('Original Data Shape: ', X_data.shape)
     
     if not config['i_net']['force_evaluate_real_world'] and X_data.shape[1] != config['data']['number_of_variables']:
-        
-        results_placeholder =  {
+
+        evaluation_result_dict_placeholder =  {
                                     #'function_values': {
                                     #    'y_test_inet_dt': y_test_inet_dt,
                                     #    'y_test_distilled_dt': None,
@@ -2522,7 +2543,32 @@ def evaluate_real_world_dataset(model,
                                     'f1_score': [np.nan] * len(dataset_size_list),           
                                     'runtime': [np.nan] * len(dataset_size_list)
                                 },                
-                               }        
+                               } 
+
+        results_placeholder =  {
+                                    #'function_values': {
+                                    #    'y_test_inet_dt': y_test_inet_dt,
+                                    #    'y_test_distilled_dt': None,
+                                    #},
+                                    'dt_scores': {
+                                        'soft_binary_crossentropy': np.nan,
+                                        'soft_binary_crossentropy_data_random': np.nan,                            
+                                        'binary_crossentropy': np.nan,
+                                        'binary_crossentropy_data_random': np.nan,
+                                        'accuracy': np.nan,
+                                        'accuracy_data_random': np.nan,
+                                        'f1_score': np.nan,   
+                                        'f1_score_data_random': np.nan,   
+                                        'runtime': np.nan
+                                    },
+                                'inet_scores': {
+                                    'soft_binary_crossentropy': np.nan,
+                                    'binary_crossentropy': np.nan,
+                                    'accuracy': np.nan,
+                                    'f1_score': np.nan,           
+                                    'runtime': np.nan
+                                },                
+                               }                    
         
         distances_dict_placeholder = {
                 'z_score_aggregate': np.nan,
@@ -2533,7 +2579,7 @@ def evaluate_real_world_dataset(model,
                 'max_distance_to_neuron_min': np.nan,        
             }     
         
-        return distances_dict_placeholder, results_placeholder, [results_placeholder for _ in range(len(dataset_size_list))], None, None, None, None
+        return distances_dict_placeholder, evaluation_result_dict_placeholder, [results_placeholder for _ in range(len(dataset_size_list))], None, None, None, None
     
     X_data = adjust_data_to_number_of_variables(X_data=X_data, 
                                                 y_data=y_data, 
@@ -3401,10 +3447,11 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, ve
 
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', 
                                                           patience=50, 
-                                                          min_delta=0.01, 
+                                                          min_delta=0.0001, 
                                                           verbose=0, 
                                                           mode='min', 
-                                                          restore_best_weights=True)
+                                                          restore_best_weights=False#True
+                                                         )
 
         model_history = test_network.fit(X_train,
                                           y_train,
@@ -3943,7 +3990,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                                                 random_parameters_distribution=True,
                                                 flip_percentage=0.0,
                                                 data_noise=0.0,
-                                                distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                #distribution_list=['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                                 seed_function=100_000):
     
     distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*config['data']['num_classes']*2)
@@ -4058,7 +4105,8 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                                                              flip_percentage=flip_percentage, 
                                                              data_noise=data_noise,
                                                              random_parameters=random_parameters_distribution,
-                                                             distribution_dict_list=distribution_dict_list)   
+                                                             distribution_dict_list=distribution_dict_list,
+                                                             config=config)   
     
     return random_evaluation_dataset
 
