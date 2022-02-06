@@ -255,6 +255,12 @@ def generate_paths(config, path_type='interpretation_net'):
         
     random_parameters_distribution_string = '_randParamDist' if config['data']['random_parameters_distribution'] else ''
     max_distributions_per_class_string = '_maxDistClass' + str(config['data']['max_distributions_per_class']) if config['data']['max_distributions_per_class'] is not None else ''
+    
+    distrib_param_max_str = ''
+    try:
+        distrib_param_max_str = 'distribParamMax' + str(config['data']['distrib_param_max'])
+    except:
+        pass
         
     dt_str = (
               '_depth' + str(maximum_depth) +
@@ -275,7 +281,8 @@ def generate_paths(config, path_type='interpretation_net'):
                                   data_noise +
                                   categorical_sting +
                                   random_parameters_distribution_string + 
-                                  max_distributions_per_class_string +                                   
+                                  max_distributions_per_class_string +       
+                                  distrib_param_max_str +
                                   dt_str
                                  )
 
@@ -796,51 +803,51 @@ def generate_decision_tree_from_array(parameter_array, config):
 
 
 
-def generate_random_data_points_custom(low, high, size, variables, categorical_indices=None, seed=None, distrib=None, random_parameters=False, parameters=None):
+def generate_random_data_points_custom(low, high, size, variables, categorical_indices=None, seed=None, distrib=None, random_parameters=False, parameters=None, distrib_param_max=1):
     
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
-    
+        
     if parameters == None:
         parameter_by_distribution = {
             'normal': {
-                'loc': 0.5,
-                'scale': 1,
+                'loc': distrib_param_max//2,
+                'scale': distrib_param_max//2,
             },
             'uniform': {
                 'low': 0,
-                'high': 1,
+                'high': distrib_param_max//2,
             },
             'gamma': {
-                'shape': 0.5,#2,
-                'scale': 0.5,#2,
+                'shape': distrib_param_max//2,#2,
+                'scale': distrib_param_max//2,#2,
             },        
             'exponential': {
-                'scale': 0.5,
+                'scale': distrib_param_max//2,
             },        
             'beta': {
-                'a': 0.5,#2,
-                'b': 0.5,#5,
+                'a': distrib_param_max//2,#2,
+                'b': distrib_param_max//2,#5,
             },
             'binomial': {
                 'n': 100,
                 'p': 0.5,
             },
             'poisson': {
-                'lam': 0.5,#1,
+                'lam': distrib_param_max//2,#1,
             },        
 
-        }   
+        }         
     else:
         parameter_by_distribution = {
             distrib: parameters
         }             
     
-    list_of_data_points = None
+    list_of_data_points = None 
     
     if random_parameters == True and parameters is None:
-        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters)        
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters, distrib_param_max=distrib_param_max)        
     elif distrib == 'uniform':
         list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
     elif distrib == 'normal':
@@ -886,37 +893,42 @@ def generate_random_data_points(config, seed, parameters=None):
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
+        
+    try:
+        distrib_param_max = config['data']['distrib_param_max']
+    except:
+        distrib_param_max = 1          
     
     if parameters == None:
         parameter_by_distribution = {
             'normal': {
-                'loc': 0.5,
-                'scale': 1,
+                'loc': distrib_param_max//2,
+                'scale': distrib_param_max//2,
             },
             'uniform': {
                 'low': 0,
-                'high': 1,
+                'high': distrib_param_max//2,
             },
             'gamma': {
-                'shape': 0.5,#2,
-                'scale': 0.5,#2,
+                'shape': distrib_param_max//2,#2,
+                'scale': distrib_param_max//2,#2,
             },        
             'exponential': {
-                'scale': 0.5,
+                'scale': distrib_param_max//2,
             },        
             'beta': {
-                'a': 0.5,#2,
-                'b': 0.5,#5,
+                'a': distrib_param_max//2,#2,
+                'b': distrib_param_max//2,#5,
             },
             'binomial': {
                 'n': 100,
                 'p': 0.5,
             },
             'poisson': {
-                'lam': 0.5,#1,
+                'lam': distrib_param_max//2,#1,
             },        
 
-        }        
+        }              
     else:
         parameter_by_distribution = {
             distrib: parameters
@@ -925,7 +937,7 @@ def generate_random_data_points(config, seed, parameters=None):
     list_of_data_points = None
     
     if random_parameters == True and parameters is None:
-        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters)        
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters, distrib_param_max=distrib_param_max)        
     elif distrib == 'uniform':
         list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
     elif distrib == 'normal':
@@ -1292,7 +1304,8 @@ def generate_data_distribtion_trained(config,
                                                                distributions_per_class = distributions_per_class, 
                                                                seed = seed, 
                                                                data_noise = data_noise,
-                                                               random_parameters=random_parameters)        
+                                                               random_parameters=random_parameters,
+                                                               config=config)        
         
 
             
@@ -1334,7 +1347,8 @@ def generate_data_distribtion(config,
                                                                distributions_per_class = distributions_per_class, 
                                                                seed = seed, 
                                                                data_noise = data_noise,
-                                                               random_parameters=random_parameters)
+                                                               random_parameters=random_parameters,
+                                                                config=config)
     
     
     function_representation_length = ( 
@@ -1848,44 +1862,44 @@ def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variable
 ######################################################################################################################################################################################################################
 ###########################################################################################  REAL WORLD & SYNTHETIC EVALUATION ################################################################################################ 
 ######################################################################################################################################################################################################################
-def get_distribution_data_from_string(distribution_name, size, seed=None, parameters=None, random_parameters=False):
+def get_distribution_data_from_string(distribution_name, size, seed=None, parameters=None, random_parameters=False, distrib_param_max=1):
         
 
     random.seed(seed)
     np.random.seed(seed)
-        
+
         
     if parameters == None:
-        value_1 = np.random.uniform(0, 1)#np.random.uniform(-0.2, 1.2)
-        value_2 = np.random.uniform(0, 1)#np.random.uniform(-0.2, 1.2)   
+        value_1 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2)
+        value_2 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2)   
         
         if random_parameters:
             parameter_by_distribution = {
                 'normal': {
-                    'loc': np.random.uniform(0, 1),
-                    'scale': np.random.uniform(0, 1),
+                    'loc': np.random.uniform(0, distrib_param_max),
+                    'scale': np.random.uniform(0, distrib_param_max),
                 },
                 'uniform': {
                     'low': np.minimum(value_1, value_2),
                     'high': np.maximum(value_1, value_2),
                 },
                 'gamma': {
-                    'shape': np.random.uniform(0, 1),
-                    'scale': np.random.uniform(0, 1),
+                    'shape': np.random.uniform(0, distrib_param_max),
+                    'scale': np.random.uniform(0, distrib_param_max),
                 },        
                 'exponential': {
-                    'scale': np.random.uniform(0, 1),
+                    'scale': np.random.uniform(0, distrib_param_max),
                 },        
                 'beta': {
-                    'a': np.random.uniform(0, 1),
-                    'b': np.random.uniform(0, 1),
+                    'a': np.random.uniform(0, distrib_param_max),
+                    'b': np.random.uniform(0, distrib_param_max),
                 },
                 'binomial': {
                     'n': np.random.uniform(10, 1_000),
                     'p': np.random.uniform(0, 1),
                 },
                 'poisson': {
-                    'lam': np.random.uniform(0, 1),
+                    'lam': np.random.uniform(0, distrib_param_max),
                 },        
 
             }
@@ -1895,30 +1909,30 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
         else:        
             parameter_by_distribution = {
                 'normal': {
-                    'loc': 0.5,
-                    'scale': 1,
+                    'loc': distrib_param_max//2,
+                    'scale': distrib_param_max//2,
                 },
                 'uniform': {
                     'low': 0,
-                    'high': 1,
+                    'high': distrib_param_max//2,
                 },
                 'gamma': {
-                    'shape': 0.5,#2,
-                    'scale': 0.5,#2,
+                    'shape': distrib_param_max//2,#2,
+                    'scale': distrib_param_max//2,#2,
                 },        
                 'exponential': {
-                    'scale': 0.5,
+                    'scale': distrib_param_max//2,
                 },        
                 'beta': {
-                    'a': 0.5,#2,
-                    'b': 0.5,#5,
+                    'a': distrib_param_max//2,#2,
+                    'b': distrib_param_max//2,#5,
                 },
                 'binomial': {
                     'n': 100,
                     'p': 0.5,
                 },
                 'poisson': {
-                    'lam': 0.5,#1,
+                    'lam': distrib_param_max//2,#1,
                 },        
 
             }           
@@ -2145,6 +2159,11 @@ def generate_dataset_from_distributions(distribution_list,
     samples_class_0 = int(np.floor(number_of_samples/2))
     samples_class_1 = number_of_samples - samples_class_0    
 
+    try:
+        distrib_param_max = config['data']['distrib_param_max']
+    except:
+        distrib_param_max = 1       
+    
     if distribution_dict_list is not None:
         
         #max_distributions_per_class = max(1, config['data']['max_distributions_per_class'])
@@ -2193,14 +2212,14 @@ def generate_dataset_from_distributions(distribution_list,
                         distribution_parameter_1[key] = value
                         
                 if distributions_per_class_original == 0:
-                    feature_data, distribution_parameters = get_distribution_data_from_string(distribution_name, number_of_samples, seed=(seed+1)*(i+1), parameters=distribution_parameter_0, random_parameters=False)  
+                    feature_data, distribution_parameters = get_distribution_data_from_string(distribution_name, number_of_samples, seed=((seed+1)*(i+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)  
 
                     
                 else:
                     #print('distribution_parameter_0', distribution_parameter_0)
-                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_0, random_parameters=False)                    
+                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)                    
                     #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
-                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_1, random_parameters=False)                    
+                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_1, random_parameters=False, distrib_param_max=distrib_param_max)                    
 
             if distributions_per_class_original != 0:
                 class_0_data = np.hstack(class_0_data_list)
@@ -2257,104 +2276,147 @@ def generate_dataset_from_distributions(distribution_list,
     ################################################
     else:
 
-        if distributions_per_class == 0:
+        accuracy_single_split = 1
+        accuracy_max_split = 0
+        while accuracy_single_split > 0.75 or (accuracy_max_split-accuracy_single_split) > 0.15:
+            single_split_model = DecisionTreeClassifier(max_depth=1)   
+            max_split_model = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])   
+            
+            
+            X_data_list = []
+            distribution_parameter_list = []   
+            
+            if distributions_per_class == 0:
 
-            for i in range(number_of_variables):
-                distribution_name = np.random.choice(distribution_list)
-                #data_list = [None]
-                #distribution_parameter_list = [None]
+                for i in range(number_of_variables):
+                    distribution_name = np.random.choice(distribution_list)
+                    #data_list = [None]
+                    #distribution_parameter_list = [None]
 
-                feature_data, distribution_parameter = get_distribution_data_from_string(distribution_name, samples_class_0+samples_class_1, seed=(seed+1)*(i+1), random_parameters=random_parameters)
-         
+                    feature_data, distribution_parameter = get_distribution_data_from_string(distribution_name, samples_class_0+samples_class_1, seed=((seed+1)*(i+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+
+
+                    #feature_data = np.sort(feature_data, axis=0)
+                    distribution_parameter = {distribution_name: distribution_parameter}
+
+                    distribution_parameter_list.append(distribution_parameter)
+                    X_data_list.append(feature_data)    
+
+                X_data = np.vstack(X_data_list).T
+                #print(X_data[:,:3])
+                X_data = np.sort(X_data, axis=0)
+                #print(X_data[:,:3])
+                X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#
+
+                #print(X_data[:,:3])
+                X_data, normalizer_list = normalize_real_world_data(X_data)
+                #print(X_data[:,:3])
+                y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+
+                idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
+                y_data[idx] = (y_data[idx] + 1) % 2  
+
+            else:
                 
-                #feature_data = np.sort(feature_data, axis=0)
-                distribution_parameter = {distribution_name: distribution_parameter}
+                for i in range(number_of_variables):
 
-                distribution_parameter_list.append(distribution_parameter)
-                X_data_list.append(feature_data)    
+                    distribution_name = np.random.choice(distribution_list)
 
-            X_data = np.vstack(X_data_list).T
-            #print(X_data[:,:3])
-            X_data = np.sort(X_data, axis=0)
-            #print(X_data[:,:3])
-            X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#
+                    class_0_data_list = [None] * (distributions_per_class)
+                    distribution_parameter_0_list = [None] * (distributions_per_class)
+                    class_1_data_list = [None] * (distributions_per_class)
+                    distribution_parameter_1_list = [None] * (distributions_per_class)
 
-            #print(X_data[:,:3])
-            X_data, normalizer_list = normalize_real_world_data(X_data)
-            #print(X_data[:,:3])
-            y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+                    samples_class_0_list = split_into(samples_class_0, distributions_per_class)
+                    samples_class_1_list = split_into(samples_class_1, distributions_per_class)
 
-            idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
-            y_data[idx] = (y_data[idx] + 1) % 2  
+                    for j in range(distributions_per_class):
+                        if False:
+                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                        else:
+                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                            distribution_parameter_new = {}                        
+                            for key, value in distribution_parameter_0_list[j].items():
+                                if distrib_param_max != 4.2:
+                                    multiplier = np.random.choice([-0.2, 0.2])#np.random.uniform(-0.2, 0.2)#
+                                else:
+                                    multiplier = np.random.choice([-0.5, 0.5])#np.random.uniform(-0.2, 0.2)#
+                                    
+                                if distrib_param_max == 2.1:
+                                    multiplier = np.random.choice([-0.5, 0.5])#
+                                
+                                if distrib_param_max == 2.2:
+                                    multiplier = np.random.uniform(-0.5, 0.5)#
 
-        else:
+                                multiplier = np.random.uniform(-0.5, 0.5)#np.random.choice([-0.2, 0.2])#
+                                    
+                                if key == 'p':
+                                    distribution_parameter_new[key] =  np.clip(value + value*multiplier, 0, 1)
+                                else:
+                                    distribution_parameter_new[key] =  value + value*multiplier   
 
-            for i in range(number_of_variables):
+                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_new, random_parameters=random_parameters, distrib_param_max=distrib_param_max)                    
 
-                distribution_name = np.random.choice(distribution_list)
+                    class_0_data = np.hstack(class_0_data_list)
+                    class_1_data = np.hstack(class_1_data_list)
 
-                class_0_data_list = [None] * (distributions_per_class)
-                distribution_parameter_0_list = [None] * (distributions_per_class)
-                class_1_data_list = [None] * (distributions_per_class)
-                distribution_parameter_1_list = [None] * (distributions_per_class)
-                
-                samples_class_0_list = split_into(samples_class_0, distributions_per_class)
-                samples_class_1_list = split_into(samples_class_1, distributions_per_class)
-                
-                for j in range(distributions_per_class):
-                    if True:
-                        class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
-                        class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
-                    else:
-                        class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=(seed+1)*(i+1)*(j+1), random_parameters=random_parameters)
-                        distribution_parameter_new = {}                        
-                        for key, value in distribution_parameter_0_list[j].items():
-                            multiplier = np.random.uniform(-0.2, 0.2)#np.random.choice([-0.2, 0.2])#
-                            if key == 'p':
-                                distribution_parameter_new[key] =  np.clip(value + value*multiplier, 0, 1)
-                            else:
-                                distribution_parameter_new[key] =  value + value*multiplier   
+                    distribution_parameter_0 = None
+                    for distribution_parameter in distribution_parameter_0_list:
+                        if distribution_parameter_0 is None:
+                            distribution_parameter_0 = distribution_parameter
+                        else:
+                            distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
 
-                        class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=1_000_000_000+(seed+1)*(i+1)*(j+1), parameters=distribution_parameter_new, random_parameters=random_parameters)                    
-
-                class_0_data = np.hstack(class_0_data_list)
-                class_1_data = np.hstack(class_1_data_list)
-
-                distribution_parameter_0 = None
-                for distribution_parameter in distribution_parameter_0_list:
-                    if distribution_parameter_0 is None:
-                        distribution_parameter_0 = distribution_parameter
-                    else:
-                        distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
-
-                distribution_parameter_1 = None 
-                for distribution_parameter in distribution_parameter_1_list:
-                    if distribution_parameter_1 is None:
-                        distribution_parameter_1 = distribution_parameter
-                    else:
-                        distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
-                distribution_parameter = {
-                    distribution_name: {
-                        'class_0': distribution_parameter_0,
-                        'class_1': distribution_parameter_1,
+                    distribution_parameter_1 = None 
+                    for distribution_parameter in distribution_parameter_1_list:
+                        if distribution_parameter_1 is None:
+                            distribution_parameter_1 = distribution_parameter
+                        else:
+                            distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
+                    distribution_parameter = {
+                        distribution_name: {
+                            'class_0': distribution_parameter_0,
+                            'class_1': distribution_parameter_1,
+                        }
                     }
-                }
-                distribution_parameter_list.append(distribution_parameter)
+                    distribution_parameter_list.append(distribution_parameter)
 
-                feature_data = np.hstack([class_0_data, class_1_data])
-                X_data_list.append(feature_data)
+                    feature_data = np.hstack([class_0_data, class_1_data])
+                    X_data_list.append(feature_data)
 
-            X_data = np.vstack(X_data_list).T
+                X_data = np.vstack(X_data_list).T
+
+                X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
+                X_data, normalizer_list = normalize_real_world_data(X_data)
+
+                y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+
+                idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
+                y_data[idx] = (y_data[idx] + 1) % 2  
             
-            X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
-            X_data, normalizer_list = normalize_real_world_data(X_data)
-
-            y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
-
-            idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
-            y_data[idx] = (y_data[idx] + 1) % 2  
-            
-        
+                if True:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
+                    single_split_model.fit(X_data, y_data)
+                    max_split_model.fit(X_data, y_data)
+                    #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
+                    single_split_model_preds = single_split_model.predict(X_data)
+                    accuracy_single_split = accuracy_score(y_data, single_split_model_preds)
+                    
+                    max_split_model_preds = max_split_model.predict(X_data)
+                    accuracy_max_split = accuracy_score(y_data, max_split_model_preds)
+                    rand_int = np.random.randint(1, 10_000_000)
+                    seed = (seed + rand_int) % (2**32 - 1)
+                    #if accuracy_single_split > (0.7-flip_percentage):
+                        #print(accuracy_single_split)
+                        
+                    #print('accuracy_max_split', accuracy_max_split)
+                    #print('accuracy_single_split', accuracy_single_split)
+                        
+                    #print('accuracy_single_split > (0.75-flip_percentage) or (accuracy_max_split-accuracy_single_split) > 0.15', accuracy_single_split > (0.75-flip_percentage) or (accuracy_max_split-accuracy_single_split) > 0.15)
+                else:
+                    accuracy_single_split = 0
+                    accuracy_max_split = 1
+                
         #print(distributions_per_class, distribution_parameter_list)
         
     return X_data, y_data, distribution_parameter_list, normalizer_list
@@ -2391,7 +2453,8 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                                                           seed=data_seed,
                                                                                           flip_percentage=flip_percentage,
                                                                                           data_noise=data_noise,
-                                                                                          random_parameters=random_parameters)
+                                                                                          random_parameters=random_parameters,
+                                                                                          config=config)
     else:
         informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
         redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
@@ -2651,13 +2714,20 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
     with tf.device('/CPU:0'):
         
         if train_data is None:
+            
+            try:
+                distrib_param_max = config['data']['distrib_param_max']
+            except:
+                distrib_param_max = 1            
+                
             X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
                                                                config['data']['x_max'],
                                                                config['evaluation']['per_network_optimization_dataset_size'], 
                                                                config['data']['number_of_variables'], 
                                                                config['data']['categorical_indices'],
                                                                distrib=distribution,
-                                                               random_parameters=config['data']['random_parameters_distribution'])
+                                                               random_parameters=config['data']['random_parameters_distribution'],
+                                                              distrib_param_max=distrib_param_max)
         else:
             X_data_random = train_data
         
@@ -3401,17 +3471,13 @@ def split_train_test_valid(X_data, y_data, valid_frac=0.2, test_frac=0.2, seed=4
     
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
-def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE'):
+def rebalance_data(X_train, y_train, balance_ratio=0.2, strategy=None, seed=42):#, strategy='SMOTE'
     true_labels = len(y_train[y_train >= 0.5 ]) 
     false_labels = len(y_train[y_train < 0.5 ]) 
 
     true_ratio = true_labels/(true_labels+false_labels)
 
-    print('True Ratio: ', str(true_ratio))
-
-
-    
-    if true_ratio <= balance_ratio or true_ratio >= (1-balance_ratio):
+    if true_ratio <= balance_ratio or (1-true_ratio) >= balance_ratio:
         from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 
         if strategy == 'SMOTE':
@@ -3419,7 +3485,7 @@ def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE'):
         elif strategy == 'ADASYN':
             oversample = ADASYN()
         else:
-            oversample = RandomOverSampler(sampling_strategy='minority', random_state=RANDOM_SEED)
+            oversample = RandomOverSampler(sampling_strategy='minority', random_state=seed)
 
         X_train, y_train = oversample.fit_resample(X_train, y_train)
 
