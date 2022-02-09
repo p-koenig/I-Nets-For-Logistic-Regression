@@ -386,7 +386,10 @@ def train_inet(lambda_net_train_dataset,
     distribution_dict_list = lambda_net_train_dataset.distribution_dict_list_list
     distribution_dict_list.extend(lambda_net_valid_dataset.distribution_dict_list_list)    
         
-    use_distribution_list = False if config['data']['max_distributions_per_class'] is None else True
+    try:
+        use_distribution_list = config['data']['use_distribution_list']
+    except:
+        use_distribution_list = False if config['data']['max_distributions_per_class'] is None else True
     
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
@@ -704,13 +707,15 @@ def train_inet(lambda_net_train_dataset,
                 ############################## PREDICTION ###############################
                 print('TRAIN DATAS SHAPE: ', X_train.shape)
 
+                earlyStopping = EarlyStopping(monitor='val_loss', patience=20, min_delta=0.01, verbose=0, mode='min', restore_best_weights=True)
+                
                 auto_model.fit(
                     x=X_train,
                     y=y_train_model,
                     validation_data=valid_data,
                     epochs=config['i_net']['epochs'],
                     batch_size=config['i_net']['batch_size'],
-                    callbacks=return_callbacks_from_string('early_stopping'),
+                    callbacks=[earlyStopping],
                     verbose=2,
                     )         
 
@@ -725,8 +730,8 @@ def train_inet(lambda_net_train_dataset,
 
             hidden = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
                                            name='hidden1_' + str(config['i_net']['dense_layers'][0]))(inputs)
-            hidden = tf.keras.layers.Activation(activation='relu', 
-                                                name='activation1_' + 'relu')(hidden)
+            hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'],  
+                                                name='activation1_' + config['i_net']['hidden_activation'])(hidden)
 
             if config['i_net']['dropout'][0] > 0:
                 hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
@@ -735,8 +740,8 @@ def train_inet(lambda_net_train_dataset,
             for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
                 hidden = tf.keras.layers.Dense(neurons, 
                                                name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
-                hidden = tf.keras.layers.Activation(activation='relu', 
-                                                    name='activation'  + str(layer_index+2) + '_relu')(hidden)
+                hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'], 
+                                                    name='activation'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'])(hidden)
                 
                 if config['i_net']['dropout'][layer_index+1] > 0:
                     hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 

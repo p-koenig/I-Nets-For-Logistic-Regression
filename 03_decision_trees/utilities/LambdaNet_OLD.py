@@ -71,8 +71,6 @@ class LambdaNetDataset():
     distribution_dict_list_list = None
     distribution_dict_row_array = None
     
-    samples_class_0_list_array = None
-    
     def __init__(self, lambda_net_list):
         
         self.lambda_net_list = lambda_net_list
@@ -90,9 +88,6 @@ class LambdaNetDataset():
         #self.y_test_lambda_array = np.array([lambda_net.y_test_lambda for lambda_net in lambda_net_list])
         self.distribution_dict_list_list = [lambda_net.distribution_dict_list for lambda_net in lambda_net_list]
         self.distribution_dict_row_array = np.array([lambda_net.distribution_dict_row for lambda_net in lambda_net_list])
-        
-        self.samples_class_0_list_array = np.array([lambda_net.samples_class_0_list for lambda_net in lambda_net_list])
-        
         self.shape = (self.network_parameters_array.shape[0], 1 + 1 + self.network_parameters_array.shape[1] + self.target_function_parameters_array.shape[1])
     def __repr__(self):
         return str(self.as_pandas(config).head())
@@ -246,8 +241,6 @@ class LambdaNet():
     distribution_dict_list = None
     distribution_dict_row = None
     
-    samples_class_0_list = None
-    
     #def __init__(self, line_weights, line_X_data, line_y_data, config):
     def __init__(self, line_weights, line_distribution_parameters, config):
         from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array
@@ -308,22 +301,11 @@ class LambdaNet():
             self.distribution_dict_row = line_distribution_parameters
             
             distributions_per_class = config['data']['max_distributions_per_class']
-            
-            try:
-                samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
-                samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
-                self.samples_class_0_list = samples_class_0_list
-                line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
-            except:
-                self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
-
             if distributions_per_class == 0:
                 distributions_per_class = 1
             distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*config['data']['num_classes']*2)
             self.distribution_dict_list = []
-
-
-            for i, distribution in enumerate(distribution_list):
+            for distribution in distribution_list:
                 distribution_name = distribution[0][1:]
                 distribution_parameters= distribution[1:]
 
@@ -337,6 +319,8 @@ class LambdaNet():
                 distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
                 distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
 
+                
+                
                 if len(distribution_parameters_0_param_1) == 1:
                     distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
                 if len(distribution_parameters_0_param_2) == 1:
@@ -346,7 +330,7 @@ class LambdaNet():
                 if len(distribution_parameters_1_param_2) == 1:
                     distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
                 distribution_dict = None
-
+                    
                 if distribution_name == 'normal':
                     distribution_dict = {distribution_name: {
                         'class_0': {
@@ -356,8 +340,7 @@ class LambdaNet():
                         'class_1': {
                             'loc': distribution_parameters_1_param_1,
                             'scale': distribution_parameters_1_param_2,            
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}
                 elif distribution_name == 'uniform':
                     distribution_dict = {distribution_name: {
@@ -368,8 +351,7 @@ class LambdaNet():
                         'class_1': {
                             'low': distribution_parameters_1_param_1,
                             'high': distribution_parameters_1_param_2,            
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}
 
                 elif distribution_name == 'gamma':
@@ -381,8 +363,7 @@ class LambdaNet():
                         'class_1': {
                             'shape': distribution_parameters_1_param_1,
                             'scale': distribution_parameters_1_param_2,            
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}
                 elif distribution_name == 'exponential':
                     distribution_dict = {distribution_name: {
@@ -391,8 +372,7 @@ class LambdaNet():
                         },
                         'class_1': {
                             'scale': distribution_parameters_1_param_1,
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}        
                 elif distribution_name == 'beta':
                     distribution_dict = {distribution_name: {
@@ -403,8 +383,7 @@ class LambdaNet():
                         'class_1': {
                             'a': distribution_parameters_1_param_1,
                             'b': distribution_parameters_1_param_2,            
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}    
                 elif distribution_name == 'binomial':
                     distribution_dict = {distribution_name: {
@@ -415,8 +394,7 @@ class LambdaNet():
                         'class_1': {
                             'n': distribution_parameters_1_param_1,
                             'p': distribution_parameters_1_param_2,            
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}    
                 elif distribution_name == 'poisson':
                     distribution_dict = {distribution_name: {
@@ -425,11 +403,9 @@ class LambdaNet():
                         },
                         'class_1': {
                             'lam': distribution_parameters_1_param_1,
-                        },
-                        'samples_class_0': samples_class_0_list[i],
+                        }
                     }}  
                 self.distribution_dict_list.append(distribution_dict)
-
 
                             
             
@@ -690,63 +666,55 @@ def train_lambda_net(config,
             with open(path_distribution_parameters, 'a') as text_file: 
                 text_file.write(str(lambda_index))
                 
-                for distrib_dict in distribution_parameter_list:
-                    for key_1, value_1 in distrib_dict.items():
-                        for key_2, value_2 in value_1.items():
-                            if key_2 == 'samples_class_0':                        
-                                text_file.write(', ' + str(value_2))
-                
                 if config['data']['max_distributions_per_class'] == 0:
                     for distrib_dict in distribution_parameter_list:
                         text_file.write(', ' + str(list(distrib_dict.keys())[0]))
-                        for key_1, value_1 in distrib_dict.items():
-                            if len(value_1.values()) == 2:
-                                text_file.write(', ' + str(list(value_1.values())[0]))
-                                text_file.write(', ' + 'NaN')                         
+                        for value_1 in distrib_dict.values():
+                            for _ in range(2):
+                                if len(value_1.values()) == 1:
+                                    text_file.write(', ' + str(list(value_1.values())[0]))
+                                    text_file.write(', ' + 'NaN')                         
 
-                            elif len(value_1.values()) == 3: 
-                                for key_2, value_2 in value_1.items():
-                                    if key_2 != 'samples_class_0':
+                                elif len(value_1.values()) == 2: 
+                                    for value_2 in value_1.values():
                                         text_file.write(', ' + str(value_2))
-                            else:
-                                raise SystemExit('Unknown Parameters')                             
+                                else:
+                                    raise SystemExit('Unknown Parameters')                             
                                          
                 else:
                     for distrib_dict in distribution_parameter_list:
-                        #print(distrib_dict)
                         text_file.write(', ' + str(list(distrib_dict.keys())[0]))
-                        for key_1, value_1 in distrib_dict.items():
-                            for key_2, value_2 in value_1.items():
-                                if key_2 != 'samples_class_0':
-                                    if len(value_2.values()) == 1:
+                        for value_1 in distrib_dict.values():
+                            for value_2 in value_1.values():
+                                if len(value_2.values()) == 1:
 
-                                        if isinstance(list(value_2.values())[0], list):
+                                    if isinstance(list(value_2.values())[0], list):
+                                        for i in range(config['data']['max_distributions_per_class']):
+                                            try:
+                                                text_file.write(', ' + str(list(value_2.values())[0][i]))
+                                            except:
+                                                text_file.write(', ' + 'NaN')
+                                    else:
+                                        text_file.write(', ' + str(list(value_2.values())[0]))
+                                        for _ in range(config['data']['max_distributions_per_class']-1):
+                                            text_file.write(', ' + 'NaN')     
+                                    for i in range(config['data']['max_distributions_per_class']):
+                                        text_file.write(', ' + 'NaN') 
+
+                                elif len(value_2.values()) == 2:
+                                    for value_3 in value_2.values():
+                                        if isinstance(value_3, list):
                                             for i in range(config['data']['max_distributions_per_class']):
                                                 try:
-                                                    text_file.write(', ' + str(list(value_2.values())[0][i]))
+                                                    text_file.write(', ' + str(value_3[i]))
                                                 except:
                                                     text_file.write(', ' + 'NaN')
                                         else:
-                                            text_file.write(', ' + str(list(value_2.values())[0]))
+                                            text_file.write(', ' + str(value_3))
                                             for _ in range(config['data']['max_distributions_per_class']-1):
-                                                text_file.write(', ' + 'NaN')     
-                                        for i in range(config['data']['max_distributions_per_class']):
-                                            text_file.write(', ' + 'NaN') 
-
-                                    elif len(value_2.values()) == 2:
-                                        for value_3 in value_2.values():
-                                            if isinstance(value_3, list):
-                                                for i in range(config['data']['max_distributions_per_class']):
-                                                    try:
-                                                        text_file.write(', ' + str(value_3[i]))
-                                                    except:
-                                                        text_file.write(', ' + 'NaN')
-                                            else:
-                                                text_file.write(', ' + str(value_3))
-                                                for _ in range(config['data']['max_distributions_per_class']-1):
-                                                    text_file.write(', ' + 'NaN')
-                                    else:
-                                        raise SystemExit('Unknown Parameters')     
+                                                text_file.write(', ' + 'NaN')
+                                else:
+                                    raise SystemExit('Unknown Parameters')     
                 text_file.write('\n')
                 text_file.close()                                     
 

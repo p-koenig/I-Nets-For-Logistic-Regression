@@ -262,12 +262,6 @@ def generate_paths(config, path_type='interpretation_net'):
     except:
         pass
         
-    fixed_class_probability_str = ''
-    try:
-        fixed_class_probability_str = 'randClassProb' if not config['data']['fixed_class_probability'] else ''
-    except:
-        pass
-        
     dt_str = (
               '_depth' + str(maximum_depth) +
               '_beta' + str(config['function_family']['beta']) +
@@ -289,7 +283,6 @@ def generate_paths(config, path_type='interpretation_net'):
                                   random_parameters_distribution_string + 
                                   max_distributions_per_class_string +       
                                   distrib_param_max_str +
-                                  fixed_class_probability_str +
                                   dt_str
                                  )
 
@@ -2227,24 +2220,23 @@ def generate_dataset_from_distributions(distribution_list,
 
     def split_into(n, p):
         return np.floor([n/p + 1] * (n%p) + [n/p] * (p - n%p)).astype(np.int64)
-                    
+                
+    
     random.seed(seed)
     np.random.seed(seed)
  
     X_data_list = []
     distribution_parameter_list = []
-
+    
     samples_class_0 = int(np.floor(number_of_samples/2))
-    samples_class_1 = number_of_samples - samples_class_0     
+    samples_class_1 = number_of_samples - samples_class_0    
+
     try:
         distrib_param_max = config['data']['distrib_param_max']
     except:
         distrib_param_max = 1       
     
     if distribution_dict_list is not None:
-        
-        #samples_class_0 = int(np.floor(number_of_samples/2))
-        #samples_class_1 = number_of_samples - samples_class_0    
         
         #max_distributions_per_class = max(1, config['data']['max_distributions_per_class'])
         
@@ -2254,7 +2246,6 @@ def generate_dataset_from_distributions(distribution_list,
         else:
             distributions_per_class_original = distributions_per_class
         for i in range(number_of_variables):
-            
             if tf.is_tensor(distribution_dict_list):
                 distribution_name = distribution_list[i]
             else:
@@ -2264,18 +2255,6 @@ def generate_dataset_from_distributions(distribution_list,
             except:
                 distributions_per_class = 1
 
-            if config['data']['fixed_class_probability']:
-                samples_class_0_distrib = samples_class_0
-                samples_class_1_distrib = samples_class_1                 
-            else:
-                #print('lambda_dataset_size', config['data']['lambda_dataset_size'])
-                #print('samples_class_0', distribution_dict_list[i][distribution_name]['samples_class_0'])
-                class_0_distrib_ratio = distribution_dict_list[i][distribution_name]['samples_class_0']/config['data']['lambda_dataset_size']
-                #print('class_0_distrib_ratio', class_0_distrib_ratio)
-                samples_class_0_distrib = np.round(number_of_samples * class_0_distrib_ratio).astype(np.int64)
-                samples_class_1_distrib = number_of_samples - samples_class_0_distrib 
-                #print('samples_class_0_distrib, samples_class_1_distrib', samples_class_0_distrib, samples_class_1_distrib)
-                
                 
             if distributions_per_class_original == 0:
                 pass
@@ -2285,8 +2264,8 @@ def generate_dataset_from_distributions(distribution_list,
                 class_1_data_list = [None] * (distributions_per_class)
                 distribution_parameter_1_list = [None] * (distributions_per_class)
 
-                samples_class_0_distrib_list = split_into(samples_class_0_distrib , distributions_per_class)
-                samples_class_1_distrib_list = split_into(samples_class_1_distrib , distributions_per_class)
+                samples_class_0_list = split_into(samples_class_0, distributions_per_class)
+                samples_class_1_list = split_into(samples_class_1, distributions_per_class)
 
             for j in range(distributions_per_class):
 
@@ -2310,9 +2289,9 @@ def generate_dataset_from_distributions(distribution_list,
                     
                 else:
                     #print('distribution_parameter_0', distribution_parameter_0)
-                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)                    
+                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)                    
                     #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
-                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_1, random_parameters=False, distrib_param_max=distrib_param_max)                    
+                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_1, random_parameters=False, distrib_param_max=distrib_param_max)                    
 
             if distributions_per_class_original != 0:
                 class_0_data = np.hstack(class_0_data_list)
@@ -2337,7 +2316,6 @@ def generate_dataset_from_distributions(distribution_list,
                     distribution_name: {
                         'class_0': distribution_parameter_0,
                         'class_1': distribution_parameter_1,
-                        'samples_class_0': samples_class_0_distrib,
                     }
                 }
             else:
@@ -2345,7 +2323,6 @@ def generate_dataset_from_distributions(distribution_list,
                     distribution_name: {
                         'class_0': distribution_parameters,
                         'class_1': distribution_parameters,
-                        'samples_class_0': samples_class_0,
                     }
                 }
                 
@@ -2369,13 +2346,13 @@ def generate_dataset_from_distributions(distribution_list,
    
 
     ################################################
-    else:   
+    else:
+
         accuracy_single_split = 1
         accuracy_max_split = 0
         #while accuracy_single_split > 0.75 or (accuracy_max_split-accuracy_single_split) > 0.15: ##used for 1
         #while accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) > 0.25: ##used for 2
-        #while accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) < 0.15: ##used for 2.5 and 1.5
-        while accuracy_single_split > 0.85 or (accuracy_max_split-accuracy_single_split) < 0.10 or accuracy_max_split < 0.85: ##used for 1.2
+        while accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) < 0.15: ##used for 2.5
             single_split_model = DecisionTreeClassifier(max_depth=1)   
             max_split_model = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])   
             
@@ -2386,9 +2363,6 @@ def generate_dataset_from_distributions(distribution_list,
             if distributions_per_class == 0:
 
                 for i in range(number_of_variables):
-                    samples_class_0 = np.random.randint(1, int(np.floor(number_of_samples/2)))
-                    samples_class_1 = number_of_samples - samples_class_0                             
-                    
                     distribution_name = np.random.choice(distribution_list)
                     #data_list = [None]
                     #distribution_parameter_list = [None]
@@ -2418,17 +2392,8 @@ def generate_dataset_from_distributions(distribution_list,
 
             else:
                 
-                for i in range(number_of_variables):                   
-                    
-                    if config['data']['fixed_class_probability']:
-                        samples_class_0_distrib = samples_class_0
-                        samples_class_1_distrib = samples_class_1                 
-                    else:
-                        samples_class_0_distrib = np.random.randint(1, number_of_samples)
-                        samples_class_1_distrib = number_of_samples - samples_class_0_distrib                         
+                for i in range(number_of_variables):
 
-                    #print('samples_class_0_distrib', samples_class_0_distrib, 'samples_class_1_distrib', samples_class_1_distrib)
-                        
                     distribution_name = np.random.choice(distribution_list)
 
                     class_0_data_list = [None] * (distributions_per_class)
@@ -2436,15 +2401,15 @@ def generate_dataset_from_distributions(distribution_list,
                     class_1_data_list = [None] * (distributions_per_class)
                     distribution_parameter_1_list = [None] * (distributions_per_class)
 
-                    samples_class_0_distrib_list = split_into(samples_class_0_distrib, distributions_per_class)
-                    samples_class_1_distrib_list = split_into(samples_class_1_distrib, distributions_per_class)
+                    samples_class_0_list = split_into(samples_class_0, distributions_per_class)
+                    samples_class_1_list = split_into(samples_class_1, distributions_per_class)
 
                     for j in range(distributions_per_class):
                         if False:
-                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
-                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                         else:
-                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             distribution_parameter_new = {}                        
                             for key, value in distribution_parameter_0_list[j].items():
                                 if distrib_param_max != 4.2:
@@ -2465,7 +2430,7 @@ def generate_dataset_from_distributions(distribution_list,
                                 else:
                                     distribution_parameter_new[key] =  value + value*multiplier   
 
-                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_new, random_parameters=random_parameters, distrib_param_max=distrib_param_max)                    
+                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_new, random_parameters=random_parameters, distrib_param_max=distrib_param_max)                    
 
                     class_0_data = np.hstack(class_0_data_list)
                     class_1_data = np.hstack(class_1_data_list)
@@ -2487,7 +2452,6 @@ def generate_dataset_from_distributions(distribution_list,
                         distribution_name: {
                             'class_0': distribution_parameter_0,
                             'class_1': distribution_parameter_1,
-                            'samples_class_0': samples_class_0_distrib,
                         }
                     }
                     distribution_parameter_list.append(distribution_parameter)
@@ -2505,7 +2469,7 @@ def generate_dataset_from_distributions(distribution_list,
                 idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
                 y_data[idx] = (y_data[idx] + 1) % 2  
             
-                if distrib_param_max != 1.1:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
+                if True:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
                     single_split_model.fit(X_data, y_data)
                     max_split_model.fit(X_data, y_data)
                     #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
@@ -2529,11 +2493,6 @@ def generate_dataset_from_distributions(distribution_list,
                     accuracy_max_split = 1
                 
         #print(distributions_per_class, distribution_parameter_list)
-        
-    #print('samples_class_0_distrib', samples_class_0_distrib, 'samples_class_1_distrib', samples_class_1_distrib)
-    #print('samples_class_0', samples_class_0, 'samples_class_1', samples_class_1)
-        
-    #print('distribution_parameter_list', distribution_parameter_list)
         
     return X_data, y_data, distribution_parameter_list, normalizer_list
 
@@ -4174,17 +4133,10 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                                                 data_noise=0.0,
                                                 #distribution_list=['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                                 seed_function=100_000):
-    try:
-        samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
-        samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
-
-        line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
-    except:
-        pass
     
     distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*config['data']['num_classes']*2)
     distribution_dict_list = []
-    for i, distribution in enumerate(distribution_list):
+    for distribution in distribution_list:
         distribution_name = distribution[0][1:]
         distribution_parameters= distribution[1:]
 
@@ -4217,8 +4169,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 'class_1': {
                     'loc': distribution_parameters_1_param_1,
                     'scale': distribution_parameters_1_param_2,            
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}
         elif distribution_name == 'uniform':
             distribution_dict = {distribution_name: {
@@ -4229,8 +4180,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 'class_1': {
                     'low': distribution_parameters_1_param_1,
                     'high': distribution_parameters_1_param_2,            
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}
 
         elif distribution_name == 'gamma':
@@ -4242,8 +4192,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 'class_1': {
                     'shape': distribution_parameters_1_param_1,
                     'scale': distribution_parameters_1_param_2,            
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}
         elif distribution_name == 'exponential':
             distribution_dict = {distribution_name: {
@@ -4252,8 +4201,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 },
                 'class_1': {
                     'scale': distribution_parameters_1_param_1,
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}        
         elif distribution_name == 'beta':
             distribution_dict = {distribution_name: {
@@ -4264,8 +4212,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 'class_1': {
                     'a': distribution_parameters_1_param_1,
                     'b': distribution_parameters_1_param_2,            
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}    
         elif distribution_name == 'binomial':
             distribution_dict = {distribution_name: {
@@ -4276,8 +4223,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 'class_1': {
                     'n': distribution_parameters_1_param_1,
                     'p': distribution_parameters_1_param_2,            
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}    
         elif distribution_name == 'poisson':
             distribution_dict = {distribution_name: {
@@ -4286,8 +4232,7 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                 },
                 'class_1': {
                     'lam': distribution_parameters_1_param_1,
-                },
-                'samples_class_0': samples_class_0_list[i],
+                }
             }}  
         distribution_dict_list.append(distribution_dict)
 
