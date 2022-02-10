@@ -258,15 +258,21 @@ def generate_paths(config, path_type='interpretation_net'):
     
     distrib_param_max_str = ''
     try:
-        distrib_param_max_str = 'distribParamMax' + str(config['data']['distrib_param_max'])
+        distrib_param_max_str = '_distribParamMax' + str(config['data']['distrib_param_max'])
     except:
         pass
         
     fixed_class_probability_str = ''
     try:
-        fixed_class_probability_str = 'randClassProb' if not config['data']['fixed_class_probability'] else ''
+        fixed_class_probability_str = '_randClassProb' if not config['data']['fixed_class_probability'] else ''
     except:
         pass
+        
+    data_generation_filtering_str = ''
+    try:
+        data_generation_filtering_str = '_filterGen' if not config['data']['data_generation_filtering'] else ''
+    except:
+        pass    
         
     dt_str = (
               '_depth' + str(maximum_depth) +
@@ -290,6 +296,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   max_distributions_per_class_string +       
                                   distrib_param_max_str +
                                   fixed_class_probability_str +
+                                  data_generation_filtering_str +
                                   dt_str
                                  )
 
@@ -2240,7 +2247,6 @@ def generate_dataset_from_distributions(distribution_list,
         distrib_param_max = config['data']['distrib_param_max']
     except:
         distrib_param_max = 1       
-    
     if distribution_dict_list is not None:
         
         #samples_class_0 = int(np.floor(number_of_samples/2))
@@ -2254,7 +2260,6 @@ def generate_dataset_from_distributions(distribution_list,
         else:
             distributions_per_class_original = distributions_per_class
         for i in range(number_of_variables):
-            
             if tf.is_tensor(distribution_dict_list):
                 distribution_name = distribution_list[i]
             else:
@@ -2365,17 +2370,18 @@ def generate_dataset_from_distributions(distribution_list,
 
         idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
         y_data[idx] = (y_data[idx] + 1) % 2              
-            
    
 
     ################################################
     else:   
         accuracy_single_split = 1
         accuracy_max_split = 0
-        #while accuracy_single_split > 0.75 or (accuracy_max_split-accuracy_single_split) > 0.15: ##used for 1
-        #while accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) > 0.25: ##used for 2
-        #while accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) < 0.15: ##used for 2.5 and 1.5
-        while accuracy_single_split > 0.85 or (accuracy_max_split-accuracy_single_split) < 0.10 or accuracy_max_split < 0.85: ##used for 1.2
+        
+        accuracy_single_split_threshold = 0.7
+        accuracy_max_split_threshold = 0.85
+        accuracy_diff_threshold = 0.10
+
+        while accuracy_single_split > accuracy_single_split_threshold or (accuracy_max_split-accuracy_single_split) < accuracy_diff_threshold or accuracy_max_split < accuracy_max_split_threshold: 
             single_split_model = DecisionTreeClassifier(max_depth=1)   
             max_split_model = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])   
             
@@ -2440,25 +2446,14 @@ def generate_dataset_from_distributions(distribution_list,
                     samples_class_1_distrib_list = split_into(samples_class_1_distrib, distributions_per_class)
 
                     for j in range(distributions_per_class):
-                        if False:
+                        if True:
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                         else:
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             distribution_parameter_new = {}                        
                             for key, value in distribution_parameter_0_list[j].items():
-                                if distrib_param_max != 4.2:
-                                    multiplier = np.random.choice([-0.2, 0.2])#np.random.uniform(-0.2, 0.2)#
-                                else:
-                                    multiplier = np.random.choice([-0.5, 0.5])#np.random.uniform(-0.2, 0.2)#
-                                    
-                                if distrib_param_max == 2.1:
-                                    multiplier = np.random.choice([-0.5, 0.5])#
-                                
-                                if distrib_param_max == 2.2:
-                                    multiplier = np.random.uniform(-0.5, 0.5)#
-
-                                multiplier = np.random.uniform(-0.5, 0.5)#np.random.choice([-0.2, 0.2])#
+                                multiplier = np.random.choice([-0.5, 0.5])#
                                     
                                 if key == 'p':
                                     distribution_parameter_new[key] =  np.clip(value + value*multiplier, 0, 1)
@@ -2505,7 +2500,7 @@ def generate_dataset_from_distributions(distribution_list,
                 idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
                 y_data[idx] = (y_data[idx] + 1) % 2  
             
-                if distrib_param_max != 1.1:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
+                if config['data']['data_generation_filtering']:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
                     single_split_model.fit(X_data, y_data)
                     max_split_model.fit(X_data, y_data)
                     #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
@@ -2555,10 +2550,8 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                         verbose=0
                                                         ):
     from utilities.InterpretationNet import load_inet
-    
     model = load_inet(loss_function, metrics, config)
     #encoder_model = load_encoder_model(loss_function, metrics, config)
-
     if True:
         random.seed(data_seed)
         distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
@@ -2604,7 +2597,6 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     X_train, y_train, X_valid, y_valid, X_test, y_test = split_train_test_valid(X_data, y_data, valid_frac=0.25, test_frac=0.1, seed=config['computation']['RANDOM_SEED'])
 
     test_network, model_history = train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=verbose)  
-    
     distances_dict_list = []
     evaluation_result_dict_list = [] 
     results_list_list = []
@@ -2612,7 +2604,6 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     dt_distilled_list_list = []
     
     for distribution_training in distribution_list:
-    
         evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list = evaluate_network_real_world_data(model,
                                                                                                     test_network, 
                                                                                                     X_train, 
