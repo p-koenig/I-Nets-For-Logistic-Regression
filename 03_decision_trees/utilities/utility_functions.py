@@ -2363,7 +2363,7 @@ def generate_dataset_from_distributions(distribution_list,
         if distributions_per_class_original == 0:
             X_data = np.sort(X_data, axis=0)
 
-        X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
+        X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
         X_data, normalizer_list = normalize_real_world_data(X_data)
         
         y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
@@ -2376,12 +2376,14 @@ def generate_dataset_from_distributions(distribution_list,
     else:   
         accuracy_single_split = 1
         accuracy_max_split = 0
-        
-        accuracy_single_split_threshold = 0.7
+              
+        accuracy_single_split_threshold = 0.75
         accuracy_max_split_threshold = 0.85
         accuracy_diff_threshold = 0.10
 
         while accuracy_single_split > accuracy_single_split_threshold or (accuracy_max_split-accuracy_single_split) < accuracy_diff_threshold or accuracy_max_split < accuracy_max_split_threshold: 
+            
+            
             single_split_model = DecisionTreeClassifier(max_depth=1)   
             max_split_model = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])   
             
@@ -2412,7 +2414,7 @@ def generate_dataset_from_distributions(distribution_list,
                 #print(X_data[:,:3])
                 X_data = np.sort(X_data, axis=0)
                 #print(X_data[:,:3])
-                X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#
+                X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#
 
                 #print(X_data[:,:3])
                 X_data, normalizer_list = normalize_real_world_data(X_data)
@@ -2492,7 +2494,7 @@ def generate_dataset_from_distributions(distribution_list,
 
                 X_data = np.vstack(X_data_list).T
 
-                X_data = X_data + X_data * np.random.choice([-data_noise, data_noise], X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
+                X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
                 X_data, normalizer_list = normalize_real_world_data(X_data)
 
                 y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
@@ -2500,28 +2502,24 @@ def generate_dataset_from_distributions(distribution_list,
                 idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
                 y_data[idx] = (y_data[idx] + 1) % 2  
             
-                if config['data']['data_generation_filtering']:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
-                    single_split_model.fit(X_data, y_data)
-                    max_split_model.fit(X_data, y_data)
-                    #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
-                    single_split_model_preds = single_split_model.predict(X_data)
-                    accuracy_single_split = accuracy_score(y_data, single_split_model_preds)
-                    
-                    max_split_model_preds = max_split_model.predict(X_data)
-                    accuracy_max_split = accuracy_score(y_data, max_split_model_preds)
-                    rand_int = np.random.randint(1, 10_000_000)
-                    seed = (seed + rand_int) % (2**32 - 1)
-                    #if accuracy_single_split > (0.7-flip_percentage):
-                        #print(accuracy_single_split)
-                        
-                    #print('accuracy_max_split', accuracy_max_split)
-                    #print('accuracy_single_split', accuracy_single_split)
-                    #print('accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) < 0.25', accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) < 0.25)
-                    #print('accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) > 0.25', accuracy_single_split > 0.70 or (accuracy_max_split-accuracy_single_split) > 0.25)
-                    #print('accuracy_single_split > (0.75-flip_percentage) or (accuracy_max_split-accuracy_single_split) > 0.15', accuracy_single_split > (0.75-flip_percentage) or (accuracy_max_split-accuracy_single_split) > 0.15)
-                else:
-                    accuracy_single_split = 0
-                    accuracy_max_split = 1
+            if config['data']['data_generation_filtering']:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
+                single_split_model.fit(X_data, y_data)
+                max_split_model.fit(X_data, y_data)
+                #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
+                single_split_model_preds = single_split_model.predict(X_data)
+                accuracy_single_split = accuracy_score(y_data, single_split_model_preds)
+
+                max_split_model_preds = max_split_model.predict(X_data)
+                accuracy_max_split = accuracy_score(y_data, max_split_model_preds)
+                rand_int = np.random.randint(1, 10_000_000)
+                seed = (seed + rand_int) % (2**32 - 1)
+
+                #print('accuracy_max_split', accuracy_max_split, accuracy_max_split_threshold)
+                #print('accuracy_single_split', accuracy_single_split, accuracy_single_split_threshold)
+
+            else:
+                accuracy_single_split = 0
+                accuracy_max_split = 1
                 
         #print(distributions_per_class, distribution_parameter_list)
         
@@ -4166,23 +4164,36 @@ def generate_dataset_from_distributions_line(line_distribution_parameters,
                                                 #distribution_list=['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                                 seed_function=100_000):
     try:
-        samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
-        samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
+        if config['data']['max_distributions_per_class'] != 0:
+            samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
+            samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
 
-        line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
+            line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
+        else:
+            samples_class_0_list = [np.nan]* config['data']['number_of_variables']
     except:
-        pass
-    
-    distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*config['data']['num_classes']*2)
+        samples_class_0_list = [np.nan]* config['data']['number_of_variables']
+        
+    if config['data']['max_distributions_per_class'] == 0:
+        distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*2)
+    else:
+        distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*config['data']['num_classes']*2)    
+
     distribution_dict_list = []
     for i, distribution in enumerate(distribution_list):
         distribution_name = distribution[0][1:]
         distribution_parameters= distribution[1:]
 
-        distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
-        distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
-        distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
-        distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+        if config['data']['max_distributions_per_class'] == 0:
+            distribution_parameters_0_param_1 = distribution_parameters.reshape(2, -1)[0]
+            distribution_parameters_0_param_2 = distribution_parameters.reshape(2, -1)[1]
+            distribution_parameters_1_param_1 = distribution_parameters_0_param_1
+            distribution_parameters_1_param_2 = distribution_parameters_0_param_2
+        else:               
+            distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
+            distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
+            distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
+            distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
 
         distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
         distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)

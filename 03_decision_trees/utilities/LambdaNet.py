@@ -292,6 +292,9 @@ class LambdaNet():
         
         data_generation_seed = self.seed + self.index
         
+        #print('HERE')
+        #print(line_distribution_parameters)
+        
         if line_distribution_parameters[0] is None:
             self.X_test_lambda = generate_random_data_points_custom(low=config['data']['x_min'], 
                                                                 high=config['data']['x_max'], 
@@ -310,27 +313,41 @@ class LambdaNet():
             distributions_per_class = config['data']['max_distributions_per_class']
             
             try:
-                samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
-                samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
-                self.samples_class_0_list = samples_class_0_list
-                line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
+                if distributions_per_class != 0:
+                    samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
+                    samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
+                    self.samples_class_0_list = samples_class_0_list
+                    line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
+                else:
+                    self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
             except:
                 self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
 
+            distributions_per_class_original = distributions_per_class
             if distributions_per_class == 0:
                 distributions_per_class = 1
-            distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*config['data']['num_classes']*2)
+                distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*2)
+            else:
+                distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*config['data']['num_classes']*2)
             self.distribution_dict_list = []
-
+            #print('distribution_list', distribution_list)
+            #print('distributions_per_class', distributions_per_class)
 
             for i, distribution in enumerate(distribution_list):
+                #print(distribution)
                 distribution_name = distribution[0][1:]
                 distribution_parameters= distribution[1:]
 
-                distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
-                distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
-                distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
-                distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+                if distributions_per_class_original == 0:
+                    distribution_parameters_0_param_1 = distribution_parameters.reshape(2, -1)[0]
+                    distribution_parameters_0_param_2 = distribution_parameters.reshape(2, -1)[1]
+                    distribution_parameters_1_param_1 = distribution_parameters_0_param_1
+                    distribution_parameters_1_param_2 = distribution_parameters_0_param_2
+                else:               
+                    distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
+                    distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
+                    distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
+                    distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
 
                 distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
                 distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)
@@ -357,7 +374,7 @@ class LambdaNet():
                             'loc': distribution_parameters_1_param_1,
                             'scale': distribution_parameters_1_param_2,            
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}
                 elif distribution_name == 'uniform':
                     distribution_dict = {distribution_name: {
@@ -369,7 +386,7 @@ class LambdaNet():
                             'low': distribution_parameters_1_param_1,
                             'high': distribution_parameters_1_param_2,            
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}
 
                 elif distribution_name == 'gamma':
@@ -382,7 +399,7 @@ class LambdaNet():
                             'shape': distribution_parameters_1_param_1,
                             'scale': distribution_parameters_1_param_2,            
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}
                 elif distribution_name == 'exponential':
                     distribution_dict = {distribution_name: {
@@ -392,7 +409,7 @@ class LambdaNet():
                         'class_1': {
                             'scale': distribution_parameters_1_param_1,
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}        
                 elif distribution_name == 'beta':
                     distribution_dict = {distribution_name: {
@@ -404,7 +421,7 @@ class LambdaNet():
                             'a': distribution_parameters_1_param_1,
                             'b': distribution_parameters_1_param_2,            
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}    
                 elif distribution_name == 'binomial':
                     distribution_dict = {distribution_name: {
@@ -416,7 +433,7 @@ class LambdaNet():
                             'n': distribution_parameters_1_param_1,
                             'p': distribution_parameters_1_param_2,            
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}    
                 elif distribution_name == 'poisson':
                     distribution_dict = {distribution_name: {
@@ -426,8 +443,10 @@ class LambdaNet():
                         'class_1': {
                             'lam': distribution_parameters_1_param_1,
                         },
-                        'samples_class_0': samples_class_0_list[i],
+                        #'samples_class_0': samples_class_0_list[i],
                     }}  
+                    
+                distribution_dict[distribution_name]['samples_class_0'] = self.samples_class_0_list[i]
                 self.distribution_dict_list.append(distribution_dict)
 
 
@@ -685,29 +704,36 @@ def train_lambda_net(config,
 
             text_file.close()          
 
-            
+        #print(distribution_parameter_list)
         if distribution_parameter_list is not None: 
             with open(path_distribution_parameters, 'a') as text_file: 
                 text_file.write(str(lambda_index))
+                #print('-----------------------------')
+                #print(str(lambda_index))
                 
                 for distrib_dict in distribution_parameter_list:
                     for key_1, value_1 in distrib_dict.items():
                         for key_2, value_2 in value_1.items():
                             if key_2 == 'samples_class_0':                        
                                 text_file.write(', ' + str(value_2))
+                                #print(', ' + str(value_2))
                 
                 if config['data']['max_distributions_per_class'] == 0:
                     for distrib_dict in distribution_parameter_list:
                         text_file.write(', ' + str(list(distrib_dict.keys())[0]))
                         for key_1, value_1 in distrib_dict.items():
-                            if len(value_1.values()) == 2:
-                                text_file.write(', ' + str(list(value_1.values())[0]))
-                                text_file.write(', ' + 'NaN')                         
+                            if list(value_1.keys())[0] != 'samples_class_0':
+                                if len(value_1.values()) == 1:
+                                    text_file.write(', ' + str(list(value_1.values())[0]))
+                                    text_file.write(', ' + 'NaN')          
+                                    #print(', ' + str(list(value_1.values())[0]))
+                                    #print(', ' + 'NaN')                                        
 
-                            elif len(value_1.values()) == 3: 
-                                for key_2, value_2 in value_1.items():
-                                    if key_2 != 'samples_class_0':
-                                        text_file.write(', ' + str(value_2))
+                                elif len(value_1.values()) == 2: 
+                                    for key_2, value_2 in value_1.items():
+                                        if key_2 != 'samples_class_0':
+                                            text_file.write(', ' + str(value_2))
+                                            #print(', ' + str(value_2))
                             else:
                                 raise SystemExit('Unknown Parameters')                             
                                          

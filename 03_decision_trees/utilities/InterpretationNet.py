@@ -350,6 +350,7 @@ def generate_inet_train_data(lambda_net_dataset, config, encoder_model=None):
     return X_data, X_data_flat, y_data, None
 
 
+
 def train_inet(lambda_net_train_dataset,
               lambda_net_valid_dataset,
               lambda_net_test_dataset, 
@@ -691,7 +692,29 @@ def train_inet(lambda_net_train_dataset,
                 #directory = './data/autokeras/' + paths_dict['path_identifier_lambda_net_data'] + dt_string + '/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_reshape' + str(config['i_net']['data_reshape_version']) + '_' + timestr
                     
                     
-                
+                    
+                def _compile_keras_model_adjusted(self, hp, model):
+                    # Specify hyperparameters from compile(...)
+                    optimizer_name = hp.Choice(
+                        "optimizer",
+                        ["adam", "rmsprop", "adadelta", "adagrad"],
+                        default="adam",
+                    )
+                    # TODO: add adadelta optimizer when it can optimize embedding layer on GPU.
+                    learning_rate = hp.Choice(
+                        "learning_rate", [1e-1, 1e-2, 1e-3, 1e-4, 2e-5, 1e-5], default=1e-3
+                    )
+                    
+                    optimizer = tf.keras.optimizers.get(optimizer_name)
+                    optimizer.learning_rate = learning_rate
+                    
+                    model.compile(
+                        optimizer=optimizer, metrics=self._get_metrics(), loss=self._get_loss()
+                    )
+
+                    return model
+                    
+                ak.graph.Graph._compile_keras_model = _compile_keras_model_adjusted
 
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
@@ -699,7 +722,7 @@ def train_inet(lambda_net_train_dataset,
                                     metrics=metric_names,
                                     objective='val_loss',
                                     overwrite=True,
-                                    tuner='greedy',#'hyperband',#"bayesian",'greedy', 'random'
+                                    tuner=config['i_net']['nas_optimizer'],#'hyperband',#"bayesian",'greedy', 'random'
                                     max_trials=config['i_net']['nas_trials'],
                                     directory=directory,
                                     seed=config['computation']['RANDOM_SEED'])

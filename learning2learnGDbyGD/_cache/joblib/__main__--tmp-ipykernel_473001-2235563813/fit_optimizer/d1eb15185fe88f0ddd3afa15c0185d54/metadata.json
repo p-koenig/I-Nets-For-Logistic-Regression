@@ -1,1 +1,0 @@
-{"duration": 39.778077363967896, "input_args": {"target_cls": "<class '__main__.QuadraticLoss'>", "target_to_opt": "<class '__main__.QuadOptimizee'>", "preproc": "False", "unroll": "20", "optim_it": "100", "n_epochs": "1", "n_tests": "100", "lr": "0.003", "out_mul": "1.0"}}
