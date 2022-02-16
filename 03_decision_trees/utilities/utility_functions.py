@@ -1283,7 +1283,7 @@ def generate_data_make_classification_distribution_decision_tree_trained(config,
 
     n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
 
-    X_data, y_data_tree, _, _ = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+    X_data, y_data_tree, distribution_parameter_list = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -1324,20 +1324,21 @@ def generate_data_make_classification_distribution_decision_tree_trained(config,
 
         #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
 
-        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data 
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data, distribution_parameter_list 
     
     return None
 
 
 def generate_data_make_classification_distribution(config, seed=42):
-            
-    informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
-    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
-    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
+           
+    np.random.seed(seed)
+    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
 
-    n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
+    n_clusters_per_class = max(2, np.random.randint(0, high=informative//2+1)) #2
 
-    X_data, y_data, _, _  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+    X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -1345,12 +1346,15 @@ def generate_data_make_classification_distribution(config, seed=42):
                                                        n_classes=config['data']['num_classes'], 
                                                        n_clusters_per_class=n_clusters_per_class, 
                                                        #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       #class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       class_sep=0.1, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
                                                        #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
                                                        #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
                                                        #scale=1.0, #Multiply features by the specified value. 
-                                                       shuffle=True, 
-                                                       random_state=seed) 
+                                                       shuffle=False, 
+                                                       random_state=seed,
+                                                       random_parameters=config['data']['random_parameters_distribution'],
+                                                       distrib_param_max=config['data']['distrib_param_max']
+                                                       ) 
     
     for i, column in enumerate(X_data.T):
         scaler = MinMaxScaler()
@@ -1370,7 +1374,7 @@ def generate_data_make_classification_distribution(config, seed=42):
     
     placeholder = [0 for i in range(function_representation_length)]
         
-    return placeholder, X_data, np.round(y_data), y_data 
+    return placeholder, X_data, np.round(y_data), y_data, distribution_parameter_list
 
 
 
@@ -2046,6 +2050,7 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
     elif distribution_name == 'binomial':   
         return np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=size), parameter_by_distribution['binomial']  
     elif distribution_name == 'poisson':
+        #return np.random.binomial(1000, np.clip(parameter_by_distribution['poisson']['lam'], 0, 1), size=size), parameter_by_distribution['poisson']  
         return np.random.poisson(parameter_by_distribution['poisson']['lam'], size=size), parameter_by_distribution['poisson'] 
     return None, None
     
@@ -2394,8 +2399,8 @@ def generate_dataset_from_distributions(distribution_list,
             if distributions_per_class == 0:
 
                 for i in range(number_of_variables):
-                    samples_class_0 = np.random.randint(1, int(np.floor(number_of_samples/2)))
-                    samples_class_1 = number_of_samples - samples_class_0                             
+                    #samples_class_0 = np.random.randint(1, int(np.floor(number_of_samples/2)))
+                    #samples_class_1 = number_of_samples - samples_class_0                             
                     
                     distribution_name = np.random.choice(distribution_list)
                     #data_list = [None]
@@ -2448,7 +2453,20 @@ def generate_dataset_from_distributions(distribution_list,
                     samples_class_1_distrib_list = split_into(samples_class_1_distrib, distributions_per_class)
 
                     for j in range(distributions_per_class):
-                        if True:
+                        
+                        condition = False
+                        
+                        try:
+                            condition = True if config['data']['number_of_generated_datasets'] != 11000 else condition
+                        except:
+                            pass
+                        
+                        try:
+                            condition = True if config['lambda_net']['number_of_trained_lambda_nets'] != 11000 else condition
+                        except:
+                            pass                        
+                        
+                        if condition:
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                         else:
@@ -2550,7 +2568,42 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     from utilities.InterpretationNet import load_inet
     model = load_inet(loss_function, metrics, config)
     #encoder_model = load_encoder_model(loss_function, metrics, config)
-    if True:
+    if 'make_class' in config['data']['function_generation_type']:
+        
+        np.random.seed(data_seed)
+        informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+        redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+        repeated = config['data']['number_of_variables']-informative-redundant # 0
+
+        n_clusters_per_class = max(2, np.random.randint(0, high=informative//2+1)) #2
+
+        X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+                                                           n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                           n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                           n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                           n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                           n_classes=config['data']['num_classes'], 
+                                                           n_clusters_per_class=n_clusters_per_class, 
+                                                           #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                           class_sep=0.1, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                           #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                           #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                           #scale=1.0, #Multiply features by the specified value. 
+                                                           shuffle=False, 
+                                                           random_state=data_seed,
+                                                           random_parameters=config['data']['random_parameters_distribution'],
+                                                           distrib_param_max=config['data']['distrib_param_max']
+                                                           )         
+        
+                
+        normalizer_list = []
+        for i, column in enumerate(X_data.T):
+            scaler = MinMaxScaler()
+            scaler.fit(column.reshape(-1, 1))
+            X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+            normalizer_list.append(scaler)
+
+    else:
         random.seed(data_seed)
         distributions_per_class = random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
         X_data, y_data, distribution_parameter_list, normalizer_list = generate_dataset_from_distributions(distribution_list, 
@@ -2562,35 +2615,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                                                           data_noise=data_noise,
                                                                                           random_parameters=random_parameters,
                                                                                           config=config)
-    else:
-        informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
-        redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
-        repeated = 0#config['data']['number_of_variables']-informative-redundant # 0        
         
-        n_clusters_per_class = max(2, np.random.randint(2, high=informative+1))#max(1, np.random.randint(0, high=informative//2+1))#2#max(1, np.random.randint(0, high=informative//2+1)) #2
-        #print('CLUSTERS', n_clusters_per_class)
-        X_data, y_data, distribution_parameter_list = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
-                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
-                                                       n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
-                                                       n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
-                                                       n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
-                                                       n_classes=config['data']['num_classes'], 
-                                                       n_clusters_per_class=n_clusters_per_class, 
-                                                       #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       #class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                       #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
-                                                       #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
-                                                       #scale=1.0, #Multiply features by the specified value. 
-                                                       shuffle=True, 
-                                                       random_state=data_seed) 
-        
-        normalizer_list = []
-        for i, column in enumerate(X_data.T):
-            scaler = MinMaxScaler()
-            scaler.fit(column.reshape(-1, 1))
-            X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
-            normalizer_list.append(scaler)
-
 
     X_train, y_train, X_valid, y_valid, X_test, y_test = split_train_test_valid(X_data, y_data, valid_frac=0.25, test_frac=0.1, seed=config['computation']['RANDOM_SEED'])
 

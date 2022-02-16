@@ -11,6 +11,7 @@ import scipy as sp
 
 from functools import reduce
 from more_itertools import random_product 
+from utilities.make_classification_distribution import make_classification_distribution
 
 #import math
 
@@ -305,167 +306,206 @@ class LambdaNet():
                                                                 seed=data_generation_seed)         
         
         else:
-            
             assert self.index == int(line_distribution_parameters[0]), 'indices do not match: ' + str(self.index) + ', ' + str(line_distribution_parameters[0])
-            line_distribution_parameters = line_distribution_parameters[1:]
-            self.distribution_dict_row = line_distribution_parameters
             
-            distributions_per_class = config['data']['max_distributions_per_class']
-            
-            try:
-                if distributions_per_class != 0:
-                    samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
-                    samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
-                    self.samples_class_0_list = samples_class_0_list
-                    line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
-                else:
-                    self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
-            except:
-                self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
+            if 'make_class' in config['data']['function_generation_type']:
+                
+                line_distribution_parameters = line_distribution_parameters[1:]
+                self.distribution_dict_row = line_distribution_parameters
+                
+                np.random.seed(data_generation_seed)
+                
+                informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+                redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+                repeated = config['data']['number_of_variables']-informative-redundant # 0
 
-            distributions_per_class_original = distributions_per_class
-            if distributions_per_class == 0:
-                distributions_per_class = 1
-                distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*2)
+                n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
+
+                X_data, _, self.distribution_dict_list = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+                                                                   n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                                   n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                                   n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                                   n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                                   n_classes=config['data']['num_classes'], 
+                                                                   n_clusters_per_class=n_clusters_per_class, 
+                                                                   #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                                   class_sep=0.1, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                                   #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                                   #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                                   #scale=1.0, #Multiply features by the specified value. 
+                                                                   shuffle=False, 
+                                                                   random_state=data_generation_seed,
+                                                                   random_parameters=config['data']['random_parameters_distribution'],
+                                                                   distrib_param_max=config['data']['distrib_param_max']
+                                                                   ) 
+
+                for i, column in enumerate(X_data.T):
+                    scaler = MinMaxScaler()
+                    scaler.fit(column.reshape(-1, 1))
+                    X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+            
+                self.X_test_lambda = X_data
             else:
-                distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*config['data']['num_classes']*2)
-            self.distribution_dict_list = []
-            #print('distribution_list', distribution_list)
-            #print('distributions_per_class', distributions_per_class)
 
-            for i, distribution in enumerate(distribution_list):
-                #print(distribution)
-                distribution_name = distribution[0][1:]
-                distribution_parameters= distribution[1:]
+                line_distribution_parameters = line_distribution_parameters[1:]
+                self.distribution_dict_row = line_distribution_parameters
 
-                if distributions_per_class_original == 0:
-                    distribution_parameters_0_param_1 = distribution_parameters.reshape(2, -1)[0]
-                    distribution_parameters_0_param_2 = distribution_parameters.reshape(2, -1)[1]
-                    distribution_parameters_1_param_1 = distribution_parameters_0_param_1
-                    distribution_parameters_1_param_2 = distribution_parameters_0_param_2
-                else:               
-                    distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
-                    distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
-                    distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
-                    distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+                distributions_per_class = config['data']['max_distributions_per_class']
 
-                distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
-                distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)
-                distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
-                distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
+                try:
+                    if distributions_per_class != 0:
+                        samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']]
+                        samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
+                        self.samples_class_0_list = samples_class_0_list
+                        line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']:]
+                    else:
+                        self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
+                except:
+                    self.samples_class_0_list = [np.nan]* config['data']['number_of_variables']
 
-                if len(distribution_parameters_0_param_1) == 1:
-                    distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
-                if len(distribution_parameters_0_param_2) == 1:
-                    distribution_parameters_0_param_2 = distribution_parameters_0_param_2[0]
-                if len(distribution_parameters_1_param_1) == 1:
-                    distribution_parameters_1_param_1 = distribution_parameters_1_param_1[0]
-                if len(distribution_parameters_1_param_2) == 1:
-                    distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
-                distribution_dict = None
+                distributions_per_class_original = distributions_per_class
+                if distributions_per_class == 0:
+                    distributions_per_class = 1
+                    distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*2)
+                else:
+                    distribution_list = line_distribution_parameters.reshape(-1, 1+distributions_per_class*config['data']['num_classes']*2)
+                self.distribution_dict_list = []
+                #print('distribution_list', distribution_list)
+                #print('distributions_per_class', distributions_per_class)
 
-                if distribution_name == 'normal':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'loc': distribution_parameters_0_param_1,
-                            'scale': distribution_parameters_0_param_2,
-                        },
-                        'class_1': {
-                            'loc': distribution_parameters_1_param_1,
-                            'scale': distribution_parameters_1_param_2,            
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}
-                elif distribution_name == 'uniform':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'low': distribution_parameters_0_param_1,
-                            'high': distribution_parameters_0_param_2,
-                        },
-                        'class_1': {
-                            'low': distribution_parameters_1_param_1,
-                            'high': distribution_parameters_1_param_2,            
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}
+                for i, distribution in enumerate(distribution_list):
+                    #print(distribution)
+                    distribution_name = distribution[0][1:]
+                    distribution_parameters= distribution[1:]
 
-                elif distribution_name == 'gamma':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'shape': distribution_parameters_0_param_1,
-                            'scale': distribution_parameters_0_param_2,
-                        },
-                        'class_1': {
-                            'shape': distribution_parameters_1_param_1,
-                            'scale': distribution_parameters_1_param_2,            
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}
-                elif distribution_name == 'exponential':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'scale': distribution_parameters_0_param_1,
-                        },
-                        'class_1': {
-                            'scale': distribution_parameters_1_param_1,
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}        
-                elif distribution_name == 'beta':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'a': distribution_parameters_0_param_1,
-                            'b': distribution_parameters_0_param_2,
-                        },
-                        'class_1': {
-                            'a': distribution_parameters_1_param_1,
-                            'b': distribution_parameters_1_param_2,            
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}    
-                elif distribution_name == 'binomial':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'n': distribution_parameters_0_param_1,
-                            'p': distribution_parameters_0_param_2,
-                        },
-                        'class_1': {
-                            'n': distribution_parameters_1_param_1,
-                            'p': distribution_parameters_1_param_2,            
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}    
-                elif distribution_name == 'poisson':
-                    distribution_dict = {distribution_name: {
-                        'class_0': {
-                            'lam': distribution_parameters_0_param_1,
-                        },
-                        'class_1': {
-                            'lam': distribution_parameters_1_param_1,
-                        },
-                        #'samples_class_0': samples_class_0_list[i],
-                    }}  
-                    
-                distribution_dict[distribution_name]['samples_class_0'] = self.samples_class_0_list[i]
-                self.distribution_dict_list.append(distribution_dict)
+                    if distributions_per_class_original == 0:
+                        distribution_parameters_0_param_1 = distribution_parameters.reshape(2, -1)[0]
+                        distribution_parameters_0_param_2 = distribution_parameters.reshape(2, -1)[1]
+                        distribution_parameters_1_param_1 = distribution_parameters_0_param_1
+                        distribution_parameters_1_param_2 = distribution_parameters_0_param_2
+                    else:               
+                        distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
+                        distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
+                        distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
+                        distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+
+                    distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
+                    distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)
+                    distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
+                    distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
+
+                    if len(distribution_parameters_0_param_1) == 1:
+                        distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
+                    if len(distribution_parameters_0_param_2) == 1:
+                        distribution_parameters_0_param_2 = distribution_parameters_0_param_2[0]
+                    if len(distribution_parameters_1_param_1) == 1:
+                        distribution_parameters_1_param_1 = distribution_parameters_1_param_1[0]
+                    if len(distribution_parameters_1_param_2) == 1:
+                        distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
+                    distribution_dict = None
+
+                    if distribution_name == 'normal':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'loc': distribution_parameters_0_param_1,
+                                'scale': distribution_parameters_0_param_2,
+                            },
+                            'class_1': {
+                                'loc': distribution_parameters_1_param_1,
+                                'scale': distribution_parameters_1_param_2,            
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}
+                    elif distribution_name == 'uniform':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'low': distribution_parameters_0_param_1,
+                                'high': distribution_parameters_0_param_2,
+                            },
+                            'class_1': {
+                                'low': distribution_parameters_1_param_1,
+                                'high': distribution_parameters_1_param_2,            
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}
+
+                    elif distribution_name == 'gamma':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'shape': distribution_parameters_0_param_1,
+                                'scale': distribution_parameters_0_param_2,
+                            },
+                            'class_1': {
+                                'shape': distribution_parameters_1_param_1,
+                                'scale': distribution_parameters_1_param_2,            
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}
+                    elif distribution_name == 'exponential':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'scale': distribution_parameters_0_param_1,
+                            },
+                            'class_1': {
+                                'scale': distribution_parameters_1_param_1,
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}        
+                    elif distribution_name == 'beta':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'a': distribution_parameters_0_param_1,
+                                'b': distribution_parameters_0_param_2,
+                            },
+                            'class_1': {
+                                'a': distribution_parameters_1_param_1,
+                                'b': distribution_parameters_1_param_2,            
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}    
+                    elif distribution_name == 'binomial':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'n': distribution_parameters_0_param_1,
+                                'p': distribution_parameters_0_param_2,
+                            },
+                            'class_1': {
+                                'n': distribution_parameters_1_param_1,
+                                'p': distribution_parameters_1_param_2,            
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}    
+                    elif distribution_name == 'poisson':
+                        distribution_dict = {distribution_name: {
+                            'class_0': {
+                                'lam': distribution_parameters_0_param_1,
+                            },
+                            'class_1': {
+                                'lam': distribution_parameters_1_param_1,
+                            },
+                            #'samples_class_0': samples_class_0_list[i],
+                        }}  
+
+                    distribution_dict[distribution_name]['samples_class_0'] = self.samples_class_0_list[i]
+                    self.distribution_dict_list.append(distribution_dict)
 
 
-                            
-            
-            self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
-                                                                     number_of_variables=config['data']['number_of_variables'], 
-                                                                     number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
-                                                                     distributions_per_class = distributions_per_class, 
-                                                                     seed = data_generation_seed, 
-                                                                     flip_percentage=config['data']['noise_injected_level'], 
-                                                                     data_noise=config['data']['data_noise'],
-                                                                     random_parameters=config['data']['random_parameters_distribution'],
-                                                                     distribution_dict_list=self.distribution_dict_list,
-                                                                     config=config)   
-        
-        #self.network = network_parameters_to_network(self.network_parameters, config)           
-        #self.target_function = generate_decision_tree_from_array(self.target_function_parameters, config)
-                        
+
+
+                self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                                                                         number_of_variables=config['data']['number_of_variables'], 
+                                                                         number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
+                                                                         distributions_per_class = distributions_per_class, 
+                                                                         seed = data_generation_seed, 
+                                                                         flip_percentage=config['data']['noise_injected_level'], 
+                                                                         data_noise=config['data']['data_noise'],
+                                                                         random_parameters=config['data']['random_parameters_distribution'],
+                                                                         distribution_dict_list=self.distribution_dict_list,
+                                                                         config=config)   
+
+            #self.network = network_parameters_to_network(self.network_parameters, config)           
+            #self.target_function = generate_decision_tree_from_array(self.target_function_parameters, config)
+
     def __repr__(self):
         return str(self.network_parameters)
     def __str__(self):
