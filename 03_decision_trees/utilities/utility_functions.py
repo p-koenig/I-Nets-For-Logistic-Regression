@@ -1277,13 +1277,14 @@ def generate_data_make_classification(config, seed=42):
 
 def generate_data_make_classification_distribution_decision_tree_trained(config, seed=42):
            
-    informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
-    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
-    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
+    np.random.seed(seed)
+    informative = 3#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
 
-    n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
+    n_clusters_per_class = min(informative//2+1, config['data']['max_distributions_per_class'])#max(2, np.random.randint(0, high=informative//2+1)) #2
 
-    X_data, y_data_tree, distribution_parameter_list = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+    X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
@@ -1291,12 +1292,15 @@ def generate_data_make_classification_distribution_decision_tree_trained(config,
                                                        n_classes=config['data']['num_classes'], 
                                                        n_clusters_per_class=n_clusters_per_class, 
                                                        #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       #class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                       #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       class_sep=0.5, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
                                                        #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
                                                        #scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
-                                                       random_state=seed)     
+                                                       random_state=seed,
+                                                       random_parameters=config['data']['random_parameters_distribution'],
+                                                       distrib_param_max=config['data']['distrib_param_max']
+                                                       ) 
 
     for i, column in enumerate(X_data.T):
         scaler = MinMaxScaler()
@@ -1332,11 +1336,11 @@ def generate_data_make_classification_distribution_decision_tree_trained(config,
 def generate_data_make_classification_distribution(config, seed=42):
            
     np.random.seed(seed)
-    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    informative = 3#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
     redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
     repeated = config['data']['number_of_variables']-informative-redundant # 0
 
-    n_clusters_per_class = max(2, np.random.randint(0, high=informative//2+1)) #2
+    n_clusters_per_class = min(informative//2+1, config['data']['max_distributions_per_class'])#max(2, np.random.randint(0, high=informative//2+1)) #2
 
     X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
@@ -1346,11 +1350,11 @@ def generate_data_make_classification_distribution(config, seed=42):
                                                        n_classes=config['data']['num_classes'], 
                                                        n_clusters_per_class=n_clusters_per_class, 
                                                        #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       class_sep=0.1, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                       #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       class_sep=0.5, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
                                                        #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
                                                        #scale=1.0, #Multiply features by the specified value. 
-                                                       shuffle=False, 
+                                                       shuffle=True, 
                                                        random_state=seed,
                                                        random_parameters=config['data']['random_parameters_distribution'],
                                                        distrib_param_max=config['data']['distrib_param_max']
@@ -2571,12 +2575,12 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
     if 'make_class' in config['data']['function_generation_type']:
         
         np.random.seed(data_seed)
-        informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+        informative = 3#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
         redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
         repeated = config['data']['number_of_variables']-informative-redundant # 0
 
-        n_clusters_per_class = max(2, np.random.randint(0, high=informative//2+1)) #2
-
+        n_clusters_per_class = min(informative//2+1, config['data']['max_distributions_per_class'])#max(2, np.random.randint(0, high=informative//2+1)) #2
+        print('HI')
         X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
                                                            n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                            n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
@@ -2585,11 +2589,11 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                            n_classes=config['data']['num_classes'], 
                                                            n_clusters_per_class=n_clusters_per_class, 
                                                            #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                           class_sep=0.1, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                           #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                           class_sep=0.5, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                           hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
                                                            #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
                                                            #scale=1.0, #Multiply features by the specified value. 
-                                                           shuffle=False, 
+                                                           shuffle=True, 
                                                            random_state=data_seed,
                                                            random_parameters=config['data']['random_parameters_distribution'],
                                                            distrib_param_max=config['data']['distrib_param_max']

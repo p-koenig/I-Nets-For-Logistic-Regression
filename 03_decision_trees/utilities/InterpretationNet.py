@@ -429,10 +429,10 @@ def train_inet(lambda_net_train_dataset,
         
         if 'make_class' in config['data']['function_generation_type']:
 
-            random_evaluation_dataset_array_train = lambda_net_train_dataset.X_test_lambda_array[:, np.random.choice(lambda_net_train_dataset.shape[1], config['evaluation']['random_evaluation_dataset_size'], replace=False), :]#[:,:config['evaluation']['random_evaluation_dataset_size'],:]
+            random_evaluation_dataset_array_train = lambda_net_train_dataset.X_test_lambda_array#[:, np.random.choice(lambda_net_train_dataset.shape[1], config['evaluation']['random_evaluation_dataset_size'], replace=False), :]#[:,:config['evaluation']['random_evaluation_dataset_size'],:]
             random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))  
             
-            random_evaluation_dataset_array_valid = lambda_net_valid_dataset.X_test_lambda_array[:, np.random.choice(lambda_net_valid_dataset.shape[1], config['evaluation']['random_evaluation_dataset_size'], replace=False), :]#[:,:config['evaluation']['random_evaluation_dataset_size'],:]         
+            random_evaluation_dataset_array_valid = lambda_net_valid_dataset.X_test_lambda_array#[:, np.random.choice(lambda_net_valid_dataset.shape[1], config['evaluation']['random_evaluation_dataset_size'], replace=False), :]#[:,:config['evaluation']['random_evaluation_dataset_size'],:]         
             random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))   
             
             

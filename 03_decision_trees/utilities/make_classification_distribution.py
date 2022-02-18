@@ -391,7 +391,18 @@ def make_classification_distribution(
 
     # Fill useless features
     if n_useless > 0:
-        X[:, -n_useless:] = generator.randn(n_samples, n_useless)
+        if False:
+            X[:, -n_useless:] = generator.randn(n_samples, n_useless)
+        else:
+            for i in range(n_features):
+                if i >= n_informative + n_redundant + n_repeated:
+                    distribution = generator.choice(distribution_list)
+                    #print(distribution)
+                    #X[:, i], distribution_parameter_list[i], scaler_list[i] = get_distribution_data_from_string_sklearn(distribution, n_samples, generator)
+                    X[:, i], A_rand[:, i], distribution_parameter_list[i] = get_distribution_data_from_string_sklearn(distribution, n_samples, generator, n_informative, random_parameters=random_parameters, distrib_param_max=distrib_param_max)           
+                else:
+                    continue
+                
 
     # Randomly replace labels
     if flip_y >= 0.0:
