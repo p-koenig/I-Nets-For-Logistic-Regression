@@ -2554,7 +2554,7 @@ def generate_dataset_from_distributions(distribution_list,
                     #print('samples_class_1_distrib_list', samples_class_1_distrib_list)                    
                     for j in range(distributions_per_class):
                         
-                        condition = False                    
+                        condition = True                    
                         if condition:
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
@@ -2567,7 +2567,7 @@ def generate_dataset_from_distributions(distribution_list,
                                 no_parameters = len(list(distribution_parameter_0_list[j].keys()))
                                 no_parameters_to_change = np.random.randint(0, no_parameters)
                                 parameters_to_change = np.random.choice([num for num in range(no_parameters)], no_parameters_to_change, replace=False)
-                            elif False:
+                            elif True:
                                 no_parameters = len(list(distribution_parameter_0_list[j].keys()))
                                 #no_parameters_to_change = np.random.randint(0, no_parameters)
                                 parameters_to_change = np.random.choice([num for num in range(no_parameters)], no_parameters, replace=False)
@@ -2581,7 +2581,7 @@ def generate_dataset_from_distributions(distribution_list,
                                     multiplier = np.random.choice([-0.5, 0.5])
                                     #multiplier = np.random.uniform(-0.5, 0.5)
 
-                                    new_value = value + 1#value*multiplier
+                                    new_value = value + value*multiplier
                                     new_value_clipped = np.clip(new_value, 0, config['data']['distrib_param_max'])
 
                                     if key == 'p':
@@ -2674,7 +2674,7 @@ def generate_dataset_from_distributions(distribution_list,
                     X_data_list.append(feature_data)
                     feature_weights_list.append(feature_weights)
 
-                X_data = np.vstack(X_data_list).T
+                X_data = np.vstack(X_data_list).T.astype(np.float64)
                 feature_weights = np.vstack(feature_weights_list).T
 
                 X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         

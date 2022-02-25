@@ -561,3 +561,299 @@ class SDT(nn.Module):
         
         
     
+    
+    
+    
+class parameterDT():
+
+    parameters = None
+    shaped_parameters = None
+    
+    config = None
+    normalizer_list = None
+
+    def __init__(self, parameter_array, config, normalizer_list=None):
+        self.parameters = parameter_array
+        self.config = config
+        self.normalizer_list = None
+        
+        self.shaped_parameters = self.get_shaped_parameters(self.parameters)
+        
+    def predict(self, X_data):
+        y_data_predicted, _  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_data, self.config)(self.parameters)
+        return y_data_predicted.numpy()
+
+    def plot(self, path='./data/plotting/temp.png'):
+        from anytree import Node, RenderTree
+        from anytree.exporter import DotExporter
+        
+        normalizer_list = self.normalizer_list
+
+        splits, leaf_classes = self.shaped_parameters
+
+        splits = splits.numpy()
+        leaf_classes = leaf_classes.numpy()
+
+
+        if normalizer_list is not None: 
+            transpose = splits.transpose()
+            transpose_normalized = []
+            for i, column in enumerate(transpose):
+                column_new = column
+                if len(column_new[column_new != 0]) != 0:
+                    column_new[column_new != 0] = normalizer_list[i].inverse_transform(column[column != 0].reshape(-1, 1)).ravel()
+                #column_new = normalizer_list[i].inverse_transform(column.reshape(-1, 1)).ravel()
+                transpose_normalized.append(column_new)
+            splits = np.array(transpose_normalized).transpose()
+
+        splits_by_layer = []
+        for i in range(config['function_family']['maximum_depth']+1):
+            start = 2**i - 1
+            end = 2**(i+1) -1
+            splits_by_layer.append(splits[start:end])
+
+        nodes = {
+        }
+        #tree = Tree()
+        for i, splits in enumerate(splits_by_layer):
+            for j, split in enumerate(splits):
+                if i == 0:
+                    current_node_id = int(2**i - 1 + j)
+                    name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+                    split_variable = np.argmax(np.abs(split))
+                    split_value = np.round(split[split_variable], 3)
+                    split_description = 'x' + str(split_variable) + ' <= '  + str(split_value)
+
+                    nodes[name] = Node(name=name, display_name=split_description)
+
+                    #tree.create_node(tag=split_description, identifier=name, data=None)            
+                else:
+                    current_node_id = int(2**i - 1 + j)
+                    name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+                    parent_node_id = int(np.floor((current_node_id-1)/2))
+                    parent_name = 'n' + str(parent_node_id)
+                    split_variable = np.argmax(np.abs(split))
+                    split_value = np.round(split[split_variable], 3)
+                    split_description = 'x' + str(split_variable) + ' <= '  + str(split_value)
+
+                    nodes[name] = Node(name=name, parent=nodes[parent_name], display_name=split_description)
+
+                    #tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)
+
+        for j, leaf_class in enumerate(leaf_classes):
+            i = config['function_family']['maximum_depth']
+            current_node_id = int(2**i - 1 + j)
+            name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
+            parent_node_id = int(np.floor((current_node_id-1)/2))
+            parent_name = 'n' + str(parent_node_id)
+            #split_variable = np.argmax(np.abs(split))
+            #split_value = np.round(split[split_variable], 3)
+            split_description = str(np.round((1-leaf_class), 3))#'x' + str(split_variable) + ' <= '  + str(split_value)
+            nodes[name] = Node(name=name, parent=nodes[parent_name], display_name=split_description)
+            #tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)        
+
+            DotExporter(nodes['n0'], nodeattrfunc=lambda node: 'label="{}"'.format(node.display_name)).to_picture(path)
+
+
+        return Image(path)#, nodes#nodes#tree        
+
+    
+    def get_shaped_parameters(self, flat_parameters, eager_execution=False):
+
+        config = self.config
+
+        input_dim = config['data']['number_of_variables']
+        output_dim = config['data']['num_classes']
+        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']
+
+        if 'i_net' not in config.keys():
+            config['i_net'] = {'function_representation_type': 1}
+
+        if config['i_net']['function_representation_type'] == 1:
+
+            splits_coeff = flat_parameters[:config['function_family']['decision_sparsity']*internal_node_num_]
+            splits_coeff = tf.clip_by_value(splits_coeff, clip_value_min=config['data']['x_min'], clip_value_max=config['data']['x_max'])
+            splits_coeff_list = tf.split(splits_coeff, internal_node_num_)
+            splits_index = tf.cast(tf.clip_by_value(tf.round(flat_parameters[config['function_family']['decision_sparsity']*internal_node_num_:(config['function_family']['decision_sparsity']*internal_node_num_)*2]), clip_value_min=0, clip_value_max=config['data']['number_of_variables']-1), tf.int64)
+            splits_index_list = tf.split(splits_index, internal_node_num_)
+
+            splits_list = []
+            for values_node, indices_node in zip(splits_coeff_list, splits_index_list):
+                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                splits_list.append(dense_tensor)             
+
+            splits = tf.stack(splits_list)            
+
+
+            leaf_classes = flat_parameters[(config['function_family']['decision_sparsity']*internal_node_num_)*2:]  
+            leaf_classes = tf.clip_by_value(leaf_classes, clip_value_min=0, clip_value_max=1)
+            #tf.print(splits, leaf_classes)
+
+            return splits, leaf_classes
+
+        elif config['i_net']['function_representation_type'] == 2:
+
+            split_values_num_params = internal_node_num_ * config['function_family']['decision_sparsity']
+            split_index_num_params = config['data']['number_of_variables'] *  config['function_family']['decision_sparsity'] * internal_node_num_
+            leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
+
+            split_values = flat_parameters[:split_values_num_params]
+            split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
+
+            split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
+            split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)
+            split_index_list_by_internal_node_by_decision_sparsity = []
+            for tensor in split_index_list_by_internal_node:
+                split_tensor = tf.split(tensor, config['function_family']['decision_sparsity'])
+                split_index_list_by_internal_node_by_decision_sparsity.append(split_tensor)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax = tf.split(tf.argmax(split_index_list_by_internal_node_by_decision_sparsity, axis=2), internal_node_num_)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax_new = []
+            for tensor in split_index_list_by_internal_node_by_decision_sparsity_argmax:
+                tensor_squeeze = tf.squeeze(tensor, axis=0)
+                split_index_list_by_internal_node_by_decision_sparsity_argmax_new.append(tensor_squeeze)
+            split_index_list_by_internal_node_by_decision_sparsity_argmax = split_index_list_by_internal_node_by_decision_sparsity_argmax_new    
+            dense_tensor_list = []
+            for indices_node, values_node in zip(split_index_list_by_internal_node_by_decision_sparsity_argmax,  split_values_list_by_internal_node):
+                sparse_tensor = tf.sparse.SparseTensor(indices=tf.expand_dims(indices_node, axis=1), values=values_node, dense_shape=[input_dim])
+                dense_tensor = tf.sparse.to_dense(sparse_tensor)
+                dense_tensor_list.append(dense_tensor) 
+            splits = tf.stack(dense_tensor_list)
+
+            leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
+            split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
+            #leaf_classes_list = []
+            #for tensor in split_index_list_by_leaf_node:
+                #argmax = tf.argmax(tensor)
+                #argsort = tf.argsort(tensor, direction='DESCENDING')
+                #leaf_classes_list.append(argsort[0])
+                #leaf_classes_list.append(argsort[1])
+
+            leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))#tf.stack(leaf_classes_list)
+
+            #tf.print(splits, leaf_classes)
+            return splits, leaf_classes
+
+        elif config['i_net']['function_representation_type'] == 3:
+            split_values_num_params = config['data']['number_of_variables'] * internal_node_num_#config['function_family']['decision_sparsity']
+            split_index_num_params = config['data']['number_of_variables'] * internal_node_num_
+            leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']
+
+            split_values = flat_parameters[:split_values_num_params]
+            split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
+
+            split_index_array = flat_parameters[split_values_num_params:split_values_num_params+split_index_num_params]    
+            split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)         
+
+            split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(split_index_list_by_internal_node)
+
+            splits = tf.stack(tf.multiply(split_values_list_by_internal_node, split_index_list_by_internal_node_max))
+
+            leaf_classes_array = flat_parameters[split_values_num_params+split_index_num_params:]  
+            split_index_list_by_leaf_node = tf.split(leaf_classes_array, leaf_node_num_)
+
+            leaf_classes = tf.squeeze(tf.stack(split_index_list_by_leaf_node))
+
+            return splits, leaf_classes
+
+        return None
+
+    def calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(self, random_evaluation_dataset, config):
+
+        random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)       
+
+        maximum_depth = config['function_family']['maximum_depth']
+        leaf_node_num_ = 2 ** maximum_depth
+        internal_node_num_ = 2 ** maximum_depth - 1
+
+        #@tf.function(jit_compile=True)
+        def calculate_function_value_from_vanilla_decision_tree_parameters(function_array):
+
+            from utilities.utility_functions import get_shaped_parameters_for_decision_tree
+
+            #tf.print('function_array', function_array)
+            weights, leaf_probabilities = get_shaped_parameters_for_decision_tree(function_array, config)
+            #tf.print('weights', weights)
+            #tf.print('leaf_probabilities', leaf_probabilities)
+
+            function_values_vanilla_dt = tf.vectorized_map(calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, config['data']['number_of_variables']), random_evaluation_dataset)
+            #tf.print('function_values_vanilla_dt', function_values_vanilla_dt, summarize=-1)
+
+
+
+            #penalty = tf.math.maximum(tf.cast((tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 0)) or tf.math.reduce_all(tf.equal(tf.round(leaf_probabilities), 1))), tf.float32) * 1.25, 1)
+
+            return function_values_vanilla_dt, tf.constant(1.0, dtype=tf.float32)#penalty
+        return calculate_function_value_from_vanilla_decision_tree_parameters
+
+
+
+    def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample_wrapper(self, weights, leaf_probabilities, leaf_node_num_, internal_node_num_, maximum_depth, number_of_variables):
+
+        weights = tf.cast(weights, tf.float32)
+        leaf_probabilities = tf.cast(leaf_probabilities, tf.float32)   
+
+        #@tf.function(jit_compile=True)
+        def calculate_function_value_from_vanilla_decision_tree_parameter_single_sample(evaluation_entry):
+
+            evaluation_entry = tf.cast(evaluation_entry, tf.float32)
+
+            weights_split = tf.split(weights, internal_node_num_)
+            weights_split_new = [[] for _ in range(maximum_depth)]
+            for i, tensor in enumerate(weights_split):
+                current_depth = np.ceil(np.log2((i+1)+1)).astype(np.int32)
+
+                weights_split_new[current_depth-1].append(tf.squeeze(tensor, axis=0))
+
+            weights_split = weights_split_new
+
+            #TDOD if multiclass, take index of min and max of leaf_proba to generate classes
+            #leaf_probabilities_split = tf.split(leaf_probabilities, leaf_node_num_)
+            #leaf_classes_list = []
+            #for leaf_probability in leaf_probabilities_split:
+            #    leaf_classes = tf.stack([tf.argmax(leaf_probability), tf.argmin(leaf_probability)])
+            #    leaf_classes_list.append(leaf_classes)
+            #leaf_classes = tf.keras.backend.flatten(tf.stack(leaf_classes_list))
+
+            split_value_list = []
+
+            for i in range(maximum_depth):
+                #print('LOOP 1 ', i)
+                current_depth = i+1#np.ceil(np.log2((i+1)+1)).astype(np.int32)
+                num_nodes_current_layer = 2**current_depth - 1 - (2**(current_depth-1) - 1)
+                #print('current_depth', current_depth, 'num_nodes_current_layer', num_nodes_current_layer)
+                split_value_list_per_depth = []
+                for j in range(num_nodes_current_layer):
+                    #tf.print('weights_split[i][j]', weights_split[i][j])
+                    #print('LOOP 2 ', j)
+                    zero_identifier = tf.not_equal(weights_split[i][j], tf.zeros_like(weights_split[i][j]))
+                    #tf.print('zero_identifier', zero_identifier)
+                    split_complete = tf.greater(evaluation_entry, weights_split[i][j])
+                    #tf.print('split_complete', split_complete, 'evaluation_entry', evaluation_entry, 'weights_split[i][j]', weights_split[i][j])
+                    split_value = tf.reduce_any(tf.logical_and(zero_identifier, split_complete))
+                    #tf.print('split_value', split_value)
+                    split_value_filled = tf.fill( [2**(maximum_depth-current_depth)] , split_value)
+                    split_value_neg_filled = tf.fill( [2**(maximum_depth-current_depth)], tf.logical_not(split_value))
+                    #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+                    #print('LOOP 2 OUTPUT', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+                    split_value_list_per_depth.append(tf.keras.backend.flatten(tf.stack([split_value_neg_filled, split_value_filled])))        
+                    #tf.print('tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled]))', tf.keras.backend.flatten(tf.stack([split_value_filled, split_value_neg_filled])))
+                #print('LOOP 1 OUTPUT', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
+                split_value_list.append(tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)))
+                #tf.print('DT SPLITS ENCODED', tf.keras.backend.flatten(tf.stack(split_value_list_per_depth)), summarize=-1)
+                    #node_index_in_layer += 1        
+            #tf.print(split_value_list)
+            #tf.print(tf.stack(split_value_list))
+            #tf.print('split_value_list', split_value_list, summarize=-1)
+            #tf.print('tf.stack(split_value_list)\n', tf.stack(split_value_list), summarize=-1)
+            split_values = tf.cast(tf.reduce_all(tf.stack(split_value_list), axis=0), tf.float32)    
+            #tf.print('split_values', split_values, summarize=-1)
+            leaf_classes = tf.cast(leaf_probabilities, tf.float32)
+            #tf.print('leaf_classes', leaf_classes, summarize=-1)
+            final_class_probability = 1-tf.reduce_max(tf.multiply(leaf_classes, split_values))                                                                                                                                            
+            return final_class_probability#y_pred
+
+        return calculate_function_value_from_vanilla_decision_tree_parameter_single_sample
+
+   
