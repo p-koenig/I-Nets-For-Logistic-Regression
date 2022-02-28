@@ -303,16 +303,7 @@ class LambdaNet():
         self.y_test_data = line_y_data.reshape(-1,1)
                 
         if normalize_lambda_nets:
-            if self.index == 1:
-                #print('NORMALIZE PRE')
-                #print(self.weights)
-                #print(weights_to_pred(self.weights, self.X_test_data[:5]))
-            self.weights = shaped_network_parameters_to_array(normal_neural_net(shape_flat_network_parameters(copy.deepcopy(self.weights), generate_base_model().get_weights())))            
-            if self.index == 1:
-                #print('NORMALIZE AFTER')
-                #print(self.weights)    
-                #print(weights_to_pred(self.weights, self.X_test_data[:5]))
-        
+            self.weights = shaped_network_parameters_to_array(normal_neural_net(shape_flat_network_parameters(copy.deepcopy(self.weights), generate_base_model().get_weights())))           
 
     def __repr__(self):
         return str(self.weights)

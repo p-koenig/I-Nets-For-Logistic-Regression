@@ -2998,7 +2998,7 @@ def evaluate_real_world_dataset(model,
         'y_test': y_test,
     }
         
-    return distances_dict, evaluation_result_dict, results_list, dt_inet, dt_distilled_list, data_dict, normalizer_list
+    return distances_dict, evaluation_result_dict, results_list, dt_inet, dt_distilled_list, data_dict, normalizer_list, test_network
 
 
 

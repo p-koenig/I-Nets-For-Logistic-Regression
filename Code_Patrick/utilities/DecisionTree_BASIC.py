@@ -558,10 +558,6 @@ class SDT(nn.Module):
         self.inner_nodes[0].bias = torch.nn.Parameter(torch.FloatTensor(biases))
         self.leaf_nodes.weight = torch.nn.Parameter(torch.FloatTensor(leaf_probabilities))
         
-        
-        
-    
-    
     
     
 class parameterDT():

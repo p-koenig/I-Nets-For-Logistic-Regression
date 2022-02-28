@@ -67,6 +67,7 @@ import itertools
 from interruptingcow import timeout
 from livelossplot import PlotLossesKerasTF
 from sklearn.datasets import make_classification
+from utilities.make_classification_distribution import make_classification_distribution
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 
 import warnings
@@ -86,6 +87,12 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, LabelEncoder, OrdinalEncoder
 
 from copy import deepcopy
+
+from collections import deque
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import _tree as ctree
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
                                     
 #######################################################################################################################################################
@@ -241,6 +248,10 @@ def generate_paths(config, path_type='interpretation_net'):
         decision_sparsity = config['data']['decision_sparsity_train'] if config['data']['decision_sparsity_train'] is not None else config['function_family']['decision_sparsity']
     except:
         decision_sparsity = config['function_family']['decision_sparsity']       
+        
+
+        
+    data_noise = '' if config['data']['data_noise'] is None else '_dNoise' + str(config['data']['data_noise'])
                 
     decision_sparsity = -1 if decision_sparsity == config['data']['number_of_variables'] else decision_sparsity
      
@@ -248,12 +259,32 @@ def generate_paths(config, path_type='interpretation_net'):
     if len(config['data']['categorical_indices']) > 0:
         categorical_sting = '_cat' + '-'.join(str(e) for e in config['data']['categorical_indices'])
         
+    random_parameters_distribution_string = '_randParamDist' if config['data']['random_parameters_distribution'] else ''
+    max_distributions_per_class_string = '_maxDistClass' + str(config['data']['max_distributions_per_class']) if config['data']['max_distributions_per_class'] is not None else ''
+    
+    distrib_param_max_str = ''
+    try:
+        distrib_param_max_str = '_distribParamMax' + str(config['data']['distrib_param_max'])
+    except:
+        pass
+        
+    fixed_class_probability_str = ''
+    try:
+        fixed_class_probability_str = '_randClassProb' if not config['data']['fixed_class_probability'] else ''
+    except:
+        pass
+        
+    data_generation_filtering_str = ''
+    try:
+        data_generation_filtering_str = '_filterGen' if not config['data']['data_generation_filtering'] else ''
+    except:
+        pass    
+        
     dt_str = (
               '_depth' + str(maximum_depth) +
               '_beta' + str(config['function_family']['beta']) +
               '_decisionSpars' +  str(decision_sparsity) + 
               '_' + str(dt_type) +
-              #'_weightTransform' + str(config['lambda_net']['weight_transformation']) +
               '_' + ('fullyGrown' if config['function_family']['fully_grown'] else 'partiallyGrown')
              ) if config['data']['function_generation_type'] != 'make_classification' else ''
 
@@ -265,21 +296,24 @@ def generate_paths(config, path_type='interpretation_net'):
                                   '_xMax' + str(config['data']['x_max']) +
                                   '_xMin' + str(config['data']['x_min']) +
                                   '_xDist' + str(config['data']['x_distrib']) +
+                                  data_noise +
                                   categorical_sting +
+                                  random_parameters_distribution_string + 
+                                  max_distributions_per_class_string +       
+                                  distrib_param_max_str +
+                                  fixed_class_probability_str +
+                                  data_generation_filtering_str +
                                   dt_str
                                  )
 
-        
-        
-
-    if path_type == 'data_creation' or path_type == 'lambda_net': #Data Generation
+    if path_type == 'data_creation' or path_type == 'lambda_net' or path_type == 'interpretation_net': #Data Generation
   
         path_identifier_function_data = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
                                          '_numDatasets' + str(config['data']['number_of_generated_datasets']) +
                                          data_specification_string)            
 
         paths_dict['path_identifier_function_data'] = path_identifier_function_data
-    
+        
     if path_type == 'lambda_net' or path_type == 'interpretation_net': #Lambda-Net
             
         
@@ -321,8 +355,15 @@ def generate_paths(config, path_type='interpretation_net'):
             interpretation_network_layers_string += 'conv' + '-'.join([str(neurons) for neurons in config['i_net']['convolution_layers']])
         if config['i_net']['lstm_layers'] != None:
             interpretation_network_layers_string += 'lstm' + '-'.join([str(neurons) for neurons in config['i_net']['lstm_layers']])
+            
+        if config['i_net']['additional_hidden']:
+            interpretation_network_layers_string += '_addHidden'
+            
+        function_representation_type_string = '_funcRep' + str(config['i_net']['function_representation_type'])
+        
+        data_reshape_version_strin = '_reshape'+ str(config['i_net']['data_reshape_version'])
 
-        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer']
+        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer'] + function_representation_type_string + data_reshape_version_strin
         
         path_identifier_interpretation_net = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
                                                    '_numLNets' + str(config['lambda_net']['number_of_trained_lambda_nets']) +
@@ -379,10 +420,10 @@ def generate_lambda_net_directory(config):
     #clear files
     try:
         # Create target Directory
-        os.makedirs('./data/weights/weights_' + str(config['lambda_net']['weight_transformation']) + paths_dict['path_identifier_lambda_net_data'])
+        os.makedirs('./data/weights/weights_' + paths_dict['path_identifier_lambda_net_data'])
 
     except FileExistsError:
-        folder = './data/weights/weights_' + str(config['lambda_net']['weight_transformation']) + paths_dict['path_identifier_lambda_net_data']
+        folder = './data/weights/weights_' + paths_dict['path_identifier_lambda_net_data']
         for filename in os.listdir(folder):
             file_path = os.path.join(folder, filename)
             try:
@@ -394,7 +435,7 @@ def generate_lambda_net_directory(config):
                 print('Failed to delete %s. Reason: %s' % (file_path, e)) 
     try:
         # Create target Directory
-        os.makedirs('./data/results/weights_' + str(config['lambda_net']['weight_transformation']) + paths_dict['path_identifier_lambda_net_data'])
+        os.makedirs('./data/results/weights_' + paths_dict['path_identifier_lambda_net_data'])
     except FileExistsError:
         pass
     
@@ -782,50 +823,171 @@ def generate_decision_tree_from_array(parameter_array, config):
 
 
 
-def generate_random_data_points_custom(low, high, size, variables, categorical_indices, seed=42, distrib='uniform'):
+def generate_random_data_points_custom(low, high, size, variables, categorical_indices=None, seed=None, distrib=None, random_parameters=False, parameters=None, distrib_param_max=1):
     
-    random.seed(seed)
-    np.random.seed(seed)
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+        
+    if parameters == None:
+        parameter_by_distribution = {
+            'normal': {
+                'loc': 1.5,#distrib_param_max/2,
+                'scale': 1.5,#distrib_param_max/2,
+            },
+            'uniform': {
+                'low': 0,
+                'high': 1,#distrib_param_max/2,
+            },
+            'gamma': {
+                'shape': 0.75,#distrib_param_max/2,#2,
+                'scale': 1.5,#distrib_param_max/2,#2,
+            },        
+            'exponential': {
+                'scale': distrib_param_max/2,
+            },        
+            'beta': {
+                'a': 0.75,#distrib_param_max/2,#2,
+                'b': 5,#distrib_param_max/2,#5,
+            },
+            'binomial': {
+                'n': 100,
+                'p': 0.5,
+            },
+            'poisson': {
+                'lam': distrib_param_max/2,#1,
+            },        
+
+        }          
+    else:
+        parameter_by_distribution = {
+            distrib: parameters
+        }             
     
-    if distrib=='normal':
-        list_of_data_points = []
-        for _ in range(size):
-            random_data_points = np.random.normal(loc=(low+high)/2, scale=(low+high)/4, size=variables)
-            while max(random_data_points) > high and min(random_data_points) < low:
-                random_poly = np.random.normal(loc=(low+high)/2, scale=1.0, size= variables)
-            list_of_data_points.append(random_poly)
-        list_of_data_points = np.array(list_of_polynomials)
-        
-    elif distrib=='uniform':
-        list_of_data_points = np.random.uniform(low=low, high=high, size=(size, variables))
-        
+    list_of_data_points = None 
+    
+    if random_parameters == True and parameters is None:
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters, distrib_param_max=distrib_param_max)        
+    elif distrib == 'uniform':
+        list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
+    elif distrib == 'normal':
+        list_of_data_points = np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=(size, variables)) 
+    elif distrib == 'gamma':
+        list_of_data_points = np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=(size, variables))
+    elif distrib == 'exponential':
+        list_of_data_points = np.random.exponential(parameter_by_distribution['exponential']['scale'], size=(size, variables))
+    elif distrib == 'beta':
+        list_of_data_points = np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=(size, variables))
+    elif distrib == 'binomial':
+        list_of_data_points = np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=(size, variables))       
+    elif distrib == 'poisson':
+        list_of_data_points = np.random.poisson(parameter_by_distribution['poisson']['lam'], size=(size, variables))
+    
+    list_of_data_points_scaled = []
+    for i, column in enumerate(list_of_data_points.T):
+        scaler = MinMaxScaler(feature_range=(low, high))
+        scaler.fit(column.reshape(-1, 1))
+        #list_of_data_points[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+        list_of_data_points_scaled.append(scaler.transform(column.reshape(-1, 1)).ravel())
+    list_of_data_points = np.array(list_of_data_points_scaled).T
+
+            
     if categorical_indices is not None:
         for categorical_index in categorical_indices:
             list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])       
         
     return list_of_data_points
 
-def generate_random_data_points(config, seed):
+def generate_random_data_points(config, seed, parameters=None):
+            
+    low = config['data']['x_min'] 
+    high = config['data']['x_max']
+    size = config['data']['lambda_dataset_size'] 
+    variables = config['data']['number_of_variables'] 
+    categorical_indices = config['data']['categorical_indices']
+    distrib=config['data']['x_distrib']
+    #random_parameters = config['data']['random_parameters_trained']
     
-    random.seed(seed)
-    np.random.seed(seed)
+    random_parameters=False
     
-    if config['data']['x_distrib']=='normal':
-        list_of_data_points = []
-        x_range = config['data']['x_max']-config['data']['x_min']
-        for _ in range(config['data']['lambda_dataset_size']):
-            random_data_point = np.random.normal(loc=x_range/2, scale=x_range/4, size=config['data']['number_of_variables'])
-            while max(random_data_point) > config['data']['x_max'] or min(random_data_point) < config['data']['x_min']:
-                random_data_point = np.random.normal(loc=x_range/2, scale=x_range, size=config['data']['number_of_variables'])
-            list_of_data_points.append(random_data_point)
-        list_of_data_points = np.array(list_of_data_points)
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
         
-    elif config['data']['x_distrib']=='uniform':
-        list_of_data_points = np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['data']['lambda_dataset_size'], config['data']['number_of_variables']))
+    try:
+        distrib_param_max = config['data']['distrib_param_max']
+    except:
+        distrib_param_max = 1          
+    
+    if parameters == None:
+        parameter_by_distribution = {
+            'normal': {
+                'loc': 1.5,#distrib_param_max/2,
+                'scale': 1.5,#distrib_param_max/2,
+            },
+            'uniform': {
+                'low': 0,
+                'high': 1,#distrib_param_max/2,
+            },
+            'gamma': {
+                'shape': 0.75,#distrib_param_max/2,#2,
+                'scale': 1.5,#distrib_param_max/2,#2,
+            },        
+            'exponential': {
+                'scale': distrib_param_max/2,
+            },        
+            'beta': {
+                'a': 0.75,#distrib_param_max/2,#2,
+                'b': 5,#distrib_param_max/2,#5,
+            },
+            'binomial': {
+                'n': 100,
+                'p': 0.5,
+            },
+            'poisson': {
+                'lam': distrib_param_max/2,#1,
+            },        
+
+        }                
+    else:
+        parameter_by_distribution = {
+            distrib: parameters
+        }
         
-    if config['data']['categorical_indices'] is not None:
-        for categorical_index in config['data']['categorical_indices']:
-            list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])        
+    list_of_data_points = None
+    
+    if random_parameters == True and parameters is None:
+        list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters, distrib_param_max=distrib_param_max)        
+    elif distrib == 'uniform':
+        list_of_data_points = np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=(size, variables))
+    elif distrib == 'normal':
+        list_of_data_points = np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=(size, variables)) 
+    elif distrib == 'gamma':
+        list_of_data_points = np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=(size, variables))
+    elif distrib == 'exponential':
+        list_of_data_points = np.random.exponential(parameter_by_distribution['exponential']['scale'], size=(size, variables))
+    elif distrib == 'beta':
+        list_of_data_points = np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=(size, variables))
+    elif distrib == 'binomial':
+        list_of_data_points = np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=(size, variables))       
+    elif distrib == 'poisson':
+        list_of_data_points = np.random.poisson(parameter_by_distribution['poisson']['lam'], size=(size, variables))
+    
+    list_of_data_points_scaled = []
+    for i, column in enumerate(list_of_data_points.T):
+        scaler = MinMaxScaler(feature_range=(low, high))
+        scaler.fit(column.reshape(-1, 1))
+        #list_of_data_points[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+        list_of_data_points_scaled.append(scaler.transform(column.reshape(-1, 1)).ravel())
+    list_of_data_points = np.array(list_of_data_points_scaled).T
+
+            
+    if categorical_indices is not None:
+        for categorical_index in categorical_indices:
+            list_of_data_points[:,categorical_index] = np.round(list_of_data_points[:,categorical_index])                   
+            
+            
+            
         
     return list_of_data_points 
 
@@ -864,10 +1026,10 @@ def generate_random_decision_tree(config, seed=42):
 
 def generate_data_random_decision_tree(config, seed=42):
     
+    X_data = generate_random_data_points(config, seed)
+    
     if config['function_family']['dt_type'] == 'SDT':    
         decision_tree = generate_random_decision_tree(config, seed)
-
-        X_data = generate_random_data_points(config, seed)
 
         y_data = decision_tree.predict_proba(X_data)
         counter = 1
@@ -877,12 +1039,84 @@ def generate_data_random_decision_tree(config, seed=42):
             counter += 1
 
             decision_tree = generate_random_decision_tree(config, seed)
+            
             y_data = decision_tree.predict_proba(X_data)    #predict_proba #predict
 
         return decision_tree.to_array(), X_data, np.round(y_data), y_data 
 
     elif config['function_family']['dt_type'] == 'vanilla': 
-        raise SystemExit('Untrained sklearn trees not possible')
+        
+        config_dt = deepcopy(config)
+        config_dt['i_net'] = {'function_representation_type': 1}
+        config_dt['i_net']['function_representation_type'] = 1
+        config_dt['data']['categorical_indices'] = []        
+        
+        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+        leaf_node_num_ = 2 ** config['function_family']['maximum_depth']  
+
+        np.random.seed(seed)
+        random.seed(seed)        
+        inner_nodes_split_value = []
+        for _ in range(internal_node_num_):
+            random_number = np.random.uniform(0, 1)
+            inner_nodes_split_value.append(random_number)      
+            
+        inner_nodes_split_feature = []
+        for _ in range(internal_node_num_):
+            random_number = np.random.randint(0, config['data']['number_of_variables'])
+            inner_nodes_split_feature.append(random_number)  
+
+        leaf_nodes = []
+        for _ in range(leaf_node_num_):
+            random_number = np.random.uniform(0, 1)
+            leaf_nodes.append(random_number)        
+        
+        decision_tree = inner_nodes_split_value
+        decision_tree.extend(inner_nodes_split_feature)
+        decision_tree.extend(leaf_nodes)
+        
+        decision_tree = np.array(decision_tree)
+        
+        #print('decision_tree.shape', decision_tree.shape)
+        
+        y_data, _  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_data, config_dt)(decision_tree)
+        y_data = y_data.numpy()
+        
+        counter = 1
+
+        while np.unique(np.round(y_data)).shape[0] == 1 or np.min(np.unique(np.round(y_data), return_counts=True)[1]) < config['data']['lambda_dataset_size']/4:
+            seed = seed+(config['data']['number_of_generated_datasets'] * counter)    
+            np.random.seed(seed)
+            random.seed(seed)            
+            
+            inner_nodes_split_value = []
+            for _ in range(internal_node_num_):
+                random_number = np.random.uniform(0, 1)
+                inner_nodes_split_value.append(random_number)      
+
+            inner_nodes_split_feature = []
+            for _ in range(internal_node_num_):
+                random_number = np.random.randint(0, config['data']['number_of_variables'])
+                inner_nodes_split_feature.append(random_number)  
+
+            leaf_nodes = []
+            for _ in range(leaf_node_num_):
+                random_number = np.random.uniform(0, 1)
+                leaf_nodes.append(random_number)        
+
+            decision_tree = inner_nodes_split_value
+            decision_tree.extend(inner_nodes_split_feature)
+            decision_tree.extend(leaf_nodes)
+
+            decision_tree = np.array(decision_tree)
+
+            #print('decision_tree.shape', decision_tree.shape)
+
+            y_data, _  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_data, config_dt)(decision_tree)
+            y_data = y_data.numpy()
+        
+            
+        return decision_tree, X_data, np.round(y_data), y_data 
     
     return None
 
@@ -941,17 +1175,18 @@ def generate_data_random_decision_tree_trained(config, seed=42):
     return None
 
 
+
+
+
+
+
 def generate_data_make_classification_decision_tree_trained(config, seed=42):
            
-    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
-    #print('informative', informative)
-    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
-    #print('redundant', redundant)
+    informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
     repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
-    #print('repeated', repeated)
 
-    n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
-    #print('n_clusters_per_class', n_clusters_per_class)
+    n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
 
     X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
@@ -960,16 +1195,18 @@ def generate_data_make_classification_decision_tree_trained(config, seed=42):
                                                        n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
                                                        n_classes=config['data']['num_classes'], 
                                                        n_clusters_per_class=n_clusters_per_class, 
-                                                       flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
-                                                       shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
-                                                       scale=1.0, #Multiply features by the specified value. 
+                                                       #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       #class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       #scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
-                                                       random_state=seed)     
+                                                       random_state=seed)    
 
-    scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
-    X_data = scaler.fit_transform(X_data)    
+    for i, column in enumerate(X_data.T):
+        scaler = MinMaxScaler()
+        scaler.fit(column.reshape(-1, 1))
+        X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
     
     if config['data']['categorical_indices'] is not None:
         for categorical_index in config['data']['categorical_indices']:
@@ -999,33 +1236,31 @@ def generate_data_make_classification_decision_tree_trained(config, seed=42):
 
 def generate_data_make_classification(config, seed=42):
             
-    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
-    #print('informative', informative)
-    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
-    #print('redundant', redundant)
+    informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
     repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
-    #print('repeated', repeated)
 
-    n_clusters_per_class =  max(1, np.random.randint(0, high=informative//2+1)) #2
-    #print('n_clusters_per_class', n_clusters_per_class)
+    n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
 
-    X_data, y_data_tree = make_classification(n_samples=config['data']['lambda_dataset_size'], 
+    X_data, y_data = make_classification(n_samples=config['data']['lambda_dataset_size'], 
                                                        n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
                                                        n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
                                                        n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
                                                        n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
                                                        n_classes=config['data']['num_classes'], 
                                                        n_clusters_per_class=n_clusters_per_class, 
-                                                       flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
-                                                       class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
-                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
-                                                       shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
-                                                       scale=1.0, #Multiply features by the specified value. 
+                                                       #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       #class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       #scale=1.0, #Multiply features by the specified value. 
                                                        shuffle=True, 
-                                                       random_state=seed)  
+                                                       random_state=seed) 
     
-    scaler = MinMaxScaler(feature_range=(config['data']['x_min'], config['data']['x_max']))
-    X_data = scaler.fit_transform(X_data)                
+    for i, column in enumerate(X_data.T):
+        scaler = MinMaxScaler()
+        scaler.fit(column.reshape(-1, 1))
+        X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
     
     if config['data']['categorical_indices'] is not None:
         for categorical_index in config['data']['categorical_indices']:
@@ -1041,6 +1276,198 @@ def generate_data_make_classification(config, seed=42):
     placeholder = [0 for i in range(function_representation_length)]
         
     return placeholder, X_data, np.round(y_data), y_data 
+
+
+
+
+
+def generate_data_make_classification_distribution_decision_tree_trained(config, seed=42):
+           
+    np.random.seed(seed)
+    informative = 3#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
+
+    n_clusters_per_class = min(informative//2+1, config['data']['max_distributions_per_class'])#max(2, np.random.randint(0, high=informative//2+1)) #2
+
+    X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                       n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                       n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                       n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                       n_classes=config['data']['num_classes'], 
+                                                       n_clusters_per_class=n_clusters_per_class, 
+                                                       #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       class_sep=0.5, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       #scale=1.0, #Multiply features by the specified value. 
+                                                       shuffle=True, 
+                                                       random_state=seed,
+                                                       random_parameters=config['data']['random_parameters_distribution'],
+                                                       distrib_param_max=config['data']['distrib_param_max']
+                                                       ) 
+
+    for i, column in enumerate(X_data.T):
+        scaler = MinMaxScaler()
+        scaler.fit(column.reshape(-1, 1))
+        X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+    
+    if config['data']['categorical_indices'] is not None:
+        for categorical_index in config['data']['categorical_indices']:
+            X_data[:,categorical_index] = np.round(X_data[:,categorical_index])      
+            
+    decision_tree = generate_random_decision_tree(config, seed)
+        
+    if config['function_family']['dt_type'] == 'SDT':   
+        decision_tree.fit(X_data, y_data_tree, epochs=50)    
+
+        y_data = decision_tree.predict_proba(X_data)
+
+        return decision_tree.to_array(), X_data, np.round(y_data), y_data     
+    
+    
+    elif config['function_family']['dt_type'] == 'vanilla': 
+        decision_tree.fit(X_data, y_data_tree)    
+
+        y_data = decision_tree.predict(X_data)    
+
+        #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
+
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data, distribution_parameter_list 
+    
+    return None
+
+
+def generate_data_make_classification_distribution(config, seed=42):
+           
+    np.random.seed(seed)
+    informative = 3#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
+
+    n_clusters_per_class = min(informative//2+1, config['data']['max_distributions_per_class'])#max(2, np.random.randint(0, high=informative//2+1)) #2
+
+    X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+                                                       n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                       n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                       n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                       n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                       n_classes=config['data']['num_classes'], 
+                                                       n_clusters_per_class=n_clusters_per_class, 
+                                                       #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                       class_sep=0.5, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                       hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                       #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                       #scale=1.0, #Multiply features by the specified value. 
+                                                       shuffle=True, 
+                                                       random_state=seed,
+                                                       random_parameters=config['data']['random_parameters_distribution'],
+                                                       distrib_param_max=config['data']['distrib_param_max']
+                                                       ) 
+    
+    for i, column in enumerate(X_data.T):
+        scaler = MinMaxScaler()
+        scaler.fit(column.reshape(-1, 1))
+        X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+    
+    if config['data']['categorical_indices'] is not None:
+        for categorical_index in config['data']['categorical_indices']:
+            X_data[:,categorical_index] = np.round(X_data[:,categorical_index])    
+            
+    function_representation_length = ( 
+       ((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables']) + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']
+  if config['function_family']['dt_type'] == 'SDT'
+  else ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth']) if config['function_family']['dt_type'] == 'vanilla'
+  else None
+                                                            ) 
+    
+    placeholder = [0 for i in range(function_representation_length)]
+        
+    return placeholder, X_data, np.round(y_data), y_data, distribution_parameter_list
+
+
+
+def generate_data_distribtion_trained(config, 
+                                      seed=42, 
+                                      max_distributions_per_class=0, 
+                                      distribution_list = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                                      random_parameters=False, 
+                                      data_noise = 0):
+           
+    random.seed(seed)
+    distributions_per_class = max_distributions_per_class#random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
+    
+    X_data, y_data_tree, distribution_parameter_list, _ = generate_dataset_from_distributions(distribution_list = distribution_list, 
+                                                               number_of_variables = config['data']['number_of_variables'], 
+                                                               number_of_samples = config['data']['lambda_dataset_size'], 
+                                                               distributions_per_class = distributions_per_class, 
+                                                               seed = seed, 
+                                                               data_noise = data_noise,
+                                                               random_parameters=random_parameters,
+                                                               config=config)        
+        
+
+            
+    decision_tree = generate_random_decision_tree(config, seed)
+        
+    if config['function_family']['dt_type'] == 'SDT':   
+        decision_tree.fit(X_data, y_data_tree, epochs=50)    
+
+        y_data = decision_tree.predict_proba(X_data)
+
+        return decision_tree.to_array(), X_data, np.round(y_data), y_data     
+    
+    
+    elif config['function_family']['dt_type'] == 'vanilla': 
+        decision_tree.fit(X_data, y_data_tree)    
+
+        y_data = decision_tree.predict(X_data)    
+
+        #placeholder = [0 for i in range((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables'] + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes'])]
+
+        return get_parameters_from_sklearn_decision_tree(decision_tree, config), X_data, np.round(y_data), y_data, distribution_parameter_list
+    
+    return None
+
+
+def generate_data_distribtion(config, 
+                              seed=42, 
+                              max_distributions_per_class=0, 
+                              distribution_list = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                              random_parameters=False, 
+                              data_noise = 0):
+        
+    random.seed(seed)
+    distributions_per_class = max_distributions_per_class#random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
+     
+    X_data, y_data, distribution_parameter_list, _ = generate_dataset_from_distributions(distribution_list = distribution_list, 
+                                                               number_of_variables = config['data']['number_of_variables'], 
+                                                               number_of_samples = config['data']['lambda_dataset_size'], 
+                                                               distributions_per_class = distributions_per_class, 
+                                                               seed = seed, 
+                                                               data_noise = data_noise,
+                                                               random_parameters=random_parameters,
+                                                                config=config)
+    
+    
+    function_representation_length = ( 
+       ((2 ** config['function_family']['maximum_depth'] - 1) * config['data']['number_of_variables']) + (2 ** config['function_family']['maximum_depth'] - 1) + (2 ** config['function_family']['maximum_depth']) * config['data']['num_classes']
+  if config['function_family']['dt_type'] == 'SDT'
+  else ((2 ** config['function_family']['maximum_depth'] - 1) * config['function_family']['decision_sparsity']) * 2 + (2 ** config['function_family']['maximum_depth']) if config['function_family']['dt_type'] == 'vanilla'
+  else None
+                                                            ) 
+    
+    placeholder = [0 for i in range(function_representation_length)]
+        
+    return placeholder, X_data, np.round(y_data), y_data , distribution_parameter_list
+
+
+
+
+
+
+
 
 def anytree_decision_tree_from_parameters(dt_parameter_array, config, normalizer_list=None, path='./data/plotting/temp.png'):
     
@@ -1535,6 +1962,966 @@ def get_number_of_function_parameters(dt_type, maximum_depth, number_of_variable
 ######################################################################################################################################################################################################################
 ###########################################################################################  REAL WORLD & SYNTHETIC EVALUATION ################################################################################################ 
 ######################################################################################################################################################################################################################
+def get_distribution_data_from_string(distribution_name, size, seed=None, parameters=None, random_parameters=False, distrib_param_max=1, class_identifier=None):
+        
+
+    random.seed(seed)
+    np.random.seed(seed)
+
+        
+    if parameters == None:
+        value_1 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2)
+        value_2 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2)   
+        
+        if random_parameters:
+            if class_identifier is None:
+                parameter_by_distribution = {
+                    'normal': {
+                        'loc': np.random.uniform(0, distrib_param_max),
+                        'scale': np.random.uniform(0, distrib_param_max),
+                    },
+                    'uniform': {
+                        'low': np.minimum(value_1, value_2),
+                        'high': np.maximum(value_1, value_2),
+                    },
+                    'gamma': {
+                        'shape': np.random.uniform(0, distrib_param_max),
+                        'scale': np.random.uniform(0, distrib_param_max),
+                    },        
+                    'exponential': {
+                        'scale': np.random.uniform(0, distrib_param_max),
+                    },        
+                    'beta': {
+                        'a': np.random.uniform(0, distrib_param_max),
+                        'b': np.random.uniform(0, distrib_param_max),
+                    },
+                    'binomial': {
+                        'n': 100,
+                        'p': np.random.uniform(0, 1),
+                    },
+                    'poisson': {
+                        'lam': np.random.uniform(0, distrib_param_max),
+                    },        
+
+                }
+            elif class_identifier == 0:
+                parameter_by_distribution = {
+                    'normal': {
+                        'loc': np.random.uniform(0, 2),
+                        'scale': np.random.uniform(0, 3),
+                    },
+                    'uniform': {
+                        'low': np.random.uniform(0, 0.4),
+                        'high': np.random.uniform(0.7, 0.9),
+                    },
+                    'gamma': {
+                        'shape': np.random.uniform(0, 0.5),
+                        'scale': np.random.uniform(2, 3),
+                    },        
+                    'exponential': {
+                        'scale': np.random.uniform(0, -1),
+                    },        
+                    'beta': {
+                        'a': np.random.uniform(0, 0.25),
+                        'b': np.random.uniform(1, 2),
+                    },
+                    'binomial': {
+                        'n': 100,
+                        'p': np.random.uniform(0, 1),
+                    },
+                    'poisson': {
+                        'lam': np.random.uniform(0, -1),
+                    },        
+
+                }
+            elif class_identifier == 1:
+                parameter_by_distribution = {
+                    'normal': {
+                        'loc': np.random.uniform(1, 3),
+                        'scale': np.random.uniform(0, 3),
+                    },
+                    'uniform': {
+                        'low': np.random.uniform(0.1, 0.3),
+                        'high': np.random.uniform(0.6, 1),
+                    },
+                    'gamma': {
+                        'shape': np.random.uniform(0.5, 1.5),
+                        'scale': np.random.uniform(0.5, 1),
+                    },        
+                    'exponential': {
+                        'scale': np.random.uniform(0, -1),
+                    },        
+                    'beta': {
+                        'a': np.random.uniform(0.5, 1.5),
+                        'b': np.random.uniform(5, 10),
+                    },
+                    'binomial': {
+                        'n': 100,
+                        'p': np.random.uniform(0, 1),
+                    },
+                    'poisson': {
+                        'lam': np.random.uniform(0, -1),
+                    },              
+
+                }
+                
+                
+            
+            random.seed(seed)
+            np.random.seed(seed)
+        else:        
+            parameter_by_distribution = {
+                'normal': {
+                    'loc': 1.5,#distrib_param_max/2,
+                    'scale': 1.5,#distrib_param_max/2,
+                },
+                'uniform': {
+                    'low': 0,
+                    'high': 1,#distrib_param_max/2,
+                },
+                'gamma': {
+                    'shape': 0.75,#distrib_param_max/2,#2,
+                    'scale': 1.5,#distrib_param_max/2,#2,
+                },        
+                'exponential': {
+                    'scale': distrib_param_max/2,
+                },        
+                'beta': {
+                    'a': 0.75,#distrib_param_max/2,#2,
+                    'b': 5,#distrib_param_max/2,#5,
+                },
+                'binomial': {
+                    'n': 100,
+                    'p': 0.5,
+                },
+                'poisson': {
+                    'lam': distrib_param_max/2,#1,
+                },        
+
+            }           
+        
+        
+    else:
+        if tf.is_tensor(parameters):
+            parameter_by_distribution = parameters[distribution_name]
+        else:
+            parameter_by_distribution = {
+                distribution_name: parameters
+            }        
+    
+    
+    if distribution_name == 'normal':
+        return np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=size), parameter_by_distribution['normal']
+    elif distribution_name == 'uniform':
+        return np.random.uniform(parameter_by_distribution['uniform']['low'], parameter_by_distribution['uniform']['high'], size=size), parameter_by_distribution['uniform']
+    elif distribution_name == 'gamma':     
+        return np.random.gamma(parameter_by_distribution['gamma']['shape'], parameter_by_distribution['gamma']['scale'], size=size), parameter_by_distribution['gamma']
+    elif distribution_name == 'exponential':    
+        return np.random.exponential(parameter_by_distribution['exponential']['scale'], size=size), parameter_by_distribution['exponential']   
+    elif distribution_name == 'beta':
+        return np.random.beta(parameter_by_distribution['beta']['a'], parameter_by_distribution['beta']['b'], size=size), parameter_by_distribution['beta']
+    elif distribution_name == 'binomial':   
+        return np.random.binomial(parameter_by_distribution['binomial']['n'], parameter_by_distribution['binomial']['p'], size=size), parameter_by_distribution['binomial']  
+    elif distribution_name == 'poisson':
+        #return np.random.binomial(1000, np.clip(parameter_by_distribution['poisson']['lam'], 0, 1), size=size), parameter_by_distribution['poisson']  
+        return np.random.poisson(parameter_by_distribution['poisson']['lam'], size=size), parameter_by_distribution['poisson'] 
+    return None, None
+    
+
+def distribution_evaluation_interpretation_net_synthetic_data(loss_function, 
+                                                               metrics,
+                                                               #model,
+                                                               config,
+                                                               identifier,
+                                                               lambda_net_parameters_train,
+                                                               mean_train_parameters,
+                                                               std_train_parameters,
+                                                               distances_dict={},
+                                                               max_distributions_per_class=0,
+                                                               flip_percentage=0.0,
+                                                               data_noise=0.0,
+                                                               verbose=0,
+                                                               distribution_list_generation = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],
+                                                               distribution_list_evaluation = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                               random_parameters=None,
+
+                                                               #encoder_model=encoder_model,
+                                                               backend='loky'):
+
+    #print(loss_function)
+    #print(metrics)
+    #distribution_list = ['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson']
+    
+    
+    #distances_dict_list_unstructured= []
+    ##inet_evaluation_result_dict = []
+    #inet_evaluation_results = []
+    #dt_inet_list = []
+    #dt_distilled_list_list = []
+    #data_dict_list = []
+    #normalizer_list_list = []
+        
+    inet_evaluation_result_dict_complete_by_distribution = {}
+    inet_evaluation_result_dict_mean_by_distribution = {}
+
+    parallel_inet_evaluation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend=backend) #loky #sequential multiprocessing
+    evaluation_results_by_dataset = parallel_inet_evaluation(delayed(distribution_evaluation_single_model_synthetic_data)(loss_function, 
+                                                                                                               metrics,
+                                                                                                               #model,
+                                                                                                               config,
+                                                                                                               lambda_net_parameters_train=lambda_net_parameters_train,
+                                                                                                               mean_train_parameters=mean_train_parameters,
+                                                                                                               std_train_parameters=std_train_parameters,    
+                                                                                                               data_seed=i,
+                                                                                                               distribution_list_generation = distribution_list_generation,
+                                                                                                               distribution_list_evaluation = distribution_list_evaluation,
+                                                                                                               max_distributions_per_class = max_distributions_per_class,
+                                                                                                               flip_percentage=flip_percentage,
+                                                                                                               data_noise=data_noise,
+                                                                                                               #encoder_model=encoder_model,
+                                                                                                               verbose=verbose,
+                                                                                                               random_parameters=random_parameters) for i in range(config['i_net']['test_size'])) 
+
+
+
+
+    del parallel_inet_evaluation
+
+    distribution_parameter_list_list = [result[-1] for result in evaluation_results_by_dataset]
+    
+    test_network_list = []
+    model_history_list = []
+    normalizer_list_list = []
+    data_dict_list = []
+            
+    distances_dict_list_unstructured = np.array([[None] * config['i_net']['test_size']] * len(distribution_list_evaluation))
+    inet_evaluation_results = np.array([[None] * config['i_net']['test_size']] * len(distribution_list_evaluation))
+    dt_inet_list = np.array([[None] * config['i_net']['test_size']] * len(distribution_list_evaluation))
+    dt_distilled_list_list = np.array([[None] * config['i_net']['test_size']] * len(distribution_list_evaluation))
+
+    #print(distances_dict_list_unstructured.shape)
+    #print(inet_evaluation_results.shape)
+    #print(dt_inet_list.shape)
+    #print(dt_distilled_list_list.shape)
+    for i, evaluation_result_by_dataset in enumerate(evaluation_results_by_dataset):
+        #print(len(evaluation_result_by_dataset))
+        #for (distances_dict_list, evaluation_result_dict_list, results_list_list, dt_inet_list, dt_distilled_list_list, data_dict, normalizer_list, test_network, model_history) in evaluation_result_by_dataset:
+        (distances_dict_by_dataset, _, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset, data_dict_by_dataset, normalizer_list_by_dataset, test_network_by_dataset, model_history_by_dataset, _) = evaluation_result_by_dataset
+        test_network_list.append(test_network_by_dataset)
+        model_history_list.append(model_history_by_dataset)
+        normalizer_list_list.append(normalizer_list_by_dataset)
+        data_dict_list.append(data_dict_by_dataset)
+
+        for j, (distances_dict_unstructured_by_distribution, results_list_by_distribution, dt_inet_by_distribution, dt_distilled_list_by_distribution) in enumerate(zip(distances_dict_by_dataset, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset)):
+            distances_dict_list_unstructured[j][i] = distances_dict_unstructured_by_distribution
+            inet_evaluation_results[j][i] = results_list_by_distribution#[0]
+            dt_inet_list[j][i] = dt_inet_by_distribution#[0]
+            dt_distilled_list_list[j][i] = dt_distilled_list_by_distribution#[0]
+
+    #print(inet_evaluation_results)
+    
+    for distribution, distances_dict_list_unstructured_by_distribution, inet_evaluation_results_by_distribution, dt_inet_list_by_distribution, dt_distilled_list_list_by_distribution in zip(distribution_list_evaluation, distances_dict_list_unstructured, inet_evaluation_results, dt_inet_list, dt_distilled_list_list):      
+        
+        #print(inet_evaluation_results_by_distribution)
+        
+        inet_evaluation_result_dict_by_distribution= None
+        for some_dict in inet_evaluation_results_by_distribution:
+            if inet_evaluation_result_dict_by_distribution == None:
+                inet_evaluation_result_dict_by_distribution = some_dict
+            else:
+                inet_evaluation_result_dict_by_distribution = mergeDict(inet_evaluation_result_dict_by_distribution, some_dict)
+
+        #inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/config['i_net']['test_size'] for _ in range(config['i_net']['test_size'])]
+
+
+        inet_evaluation_result_dict_mean_by_distribution[distribution] = {}
+
+        for key_l1, values_l1 in inet_evaluation_result_dict_by_distribution.items():
+            if key_l1 != 'function_values':
+                if isinstance(values_l1, dict):
+                    inet_evaluation_result_dict_mean_by_distribution[distribution][key_l1] = {}
+                    for key_l2, values_l2 in values_l1.items():
+                        inet_evaluation_result_dict_mean_by_distribution[distribution][key_l1][key_l2] = np.mean(values_l2)
+                        inet_evaluation_result_dict_mean_by_distribution[distribution][key_l1][key_l2 + '_median'] = np.median(values_l2)   
+
+        inet_evaluation_result_dict_complete_by_distribution[distribution] = inet_evaluation_result_dict_by_distribution        
+        
+
+    #distances_dict_list_unstructured = distances_dict_list_unstructured.reshape(-1,2)
+    #inet_evaluation_results = inet_evaluation_results.reshape(-1,2)
+    
+    #dt_inet_list = dt_inet_list.reshape(-1,2)
+    #dt_distilled_list_list = dt_distilled_list_list.reshape(-1,2)
+        
+    inet_evaluation_result_dict = None    
+    for some_dict in inet_evaluation_results.ravel():#.reshape(-1,2):
+        #print(inet_evaluation_result_dict)
+        if inet_evaluation_result_dict == None:
+            inet_evaluation_result_dict = some_dict
+        else:
+            inet_evaluation_result_dict = mergeDict(inet_evaluation_result_dict, some_dict)
+
+    #inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/config['i_net']['test_size'] for _ in range(config['i_net']['test_size'])]
+
+
+    inet_evaluation_result_dict_mean = {}
+
+    for key_l1, values_l1 in inet_evaluation_result_dict.items():
+        if key_l1 != 'function_values':
+            if isinstance(values_l1, dict):
+                inet_evaluation_result_dict_mean[key_l1] = {}
+                for key_l2, values_l2 in values_l1.items():
+                    inet_evaluation_result_dict_mean[key_l1][key_l2] = np.mean(values_l2)
+                    inet_evaluation_result_dict_mean[key_l1][key_l2 + '_median'] = np.median(values_l2)                                                     
+
+    distances_dict_list = None                                              
+    for distances_dict_single in distances_dict_list_unstructured.ravel():#.reshape(-1,2):
+        if distances_dict_list == None:
+            distances_dict_list = distances_dict_single
+        else:
+            distances_dict_list = mergeDict(distances_dict_list, distances_dict_single)     
+
+    distances_dict[identifier] = {}
+
+    for key, value in distances_dict_list.items():
+        distances_dict[identifier][key] = np.mean(value)   
+            
+    return (distances_dict, 
+            inet_evaluation_result_dict, 
+            inet_evaluation_result_dict_complete_by_distribution, 
+            inet_evaluation_result_dict_mean, 
+            inet_evaluation_result_dict_mean_by_distribution, 
+            inet_evaluation_results, 
+            dt_inet_list, 
+            dt_distilled_list_list, 
+            data_dict_list, 
+            normalizer_list_list,
+            test_network_list,
+            model_history_list,
+            distribution_parameter_list_list)
+         
+    
+def generate_dataset_from_distributions(distribution_list, 
+                                        number_of_variables, 
+                                        number_of_samples, 
+                                        distributions_per_class = 0, 
+                                        seed = None, 
+                                        flip_percentage=0.0, 
+                                        data_noise=0.0, 
+                                        random_parameters=None, 
+                                        distribution_dict_list=None,
+                                        config=None):  
+
+    def split_into(n, p):
+        return np.floor([n/p + 1] * (n%p) + [n/p] * (p - n%p)).astype(np.int64)
+                    
+    random.seed(seed)
+    np.random.seed(seed)
+ 
+    X_data_list = []
+    feature_weights_list = []
+    distribution_parameter_list = []
+
+    samples_class_0 = int(np.floor(number_of_samples/2))
+    samples_class_1 = number_of_samples - samples_class_0     
+    
+    #print('samples_class_0', samples_class_0)
+    #print('samples_class_1', samples_class_1)
+    
+    try:
+        distrib_param_max = config['data']['distrib_param_max']
+    except:
+        distrib_param_max = 1       
+    if distribution_dict_list is not None:
+        
+        #samples_class_0 = int(np.floor(number_of_samples/2))
+        #samples_class_1 = number_of_samples - samples_class_0    
+        
+        #max_distributions_per_class = max(1, config['data']['max_distributions_per_class'])
+        
+        if config is not None:
+            distributions_per_class_original = config['data']['max_distributions_per_class']#distributions_per_class
+        else:
+            distributions_per_class_original = distributions_per_class
+            
+        #feature_weight_list = np.zeros(number_of_variables)
+            
+        for i in range(number_of_variables):
+            if tf.is_tensor(distribution_dict_list):
+                distribution_name = distribution_list[i]
+            else:
+                distribution_name = list(distribution_dict_list[i].keys())[0]
+            try:
+                distributions_per_class = len(list(distribution_dict_list[i][distribution_name]['class_0'].values())[0])
+            except:
+                distributions_per_class = 1
+
+            if config['data']['fixed_class_probability']:
+                samples_class_0_distrib = samples_class_0
+                samples_class_1_distrib = samples_class_1                 
+            else:
+                #print('lambda_dataset_size', config['data']['lambda_dataset_size'])
+                #print('samples_class_0', distribution_dict_list[i][distribution_name]['samples_class_0'])
+                class_0_distrib_ratio = distribution_dict_list[i][distribution_name]['samples_class_0']/config['data']['lambda_dataset_size']
+                #print('class_0_distrib_ratio', class_0_distrib_ratio)
+                samples_class_0_distrib = np.round(number_of_samples * class_0_distrib_ratio).astype(np.int64)
+                samples_class_1_distrib = number_of_samples - samples_class_0_distrib 
+                #print('samples_class_0_distrib, samples_class_1_distrib', samples_class_0_distrib, samples_class_1_distrib)
+                
+                
+            if distributions_per_class_original == 0:
+                pass
+            else:
+                class_0_data_list = [None] * (distributions_per_class)
+                distribution_parameter_0_list = [None] * (distributions_per_class)
+                class_1_data_list = [None] * (distributions_per_class)
+                distribution_parameter_1_list = [None] * (distributions_per_class)
+
+                samples_class_0_distrib_list = split_into(samples_class_0_distrib , distributions_per_class)
+                samples_class_1_distrib_list = split_into(samples_class_1_distrib , distributions_per_class)
+                
+            #print(distribution_dict_list[i])
+            feature_weight = distribution_dict_list[i][distribution_name]['feature_weight_0']#np.random.uniform(0, 1)
+
+            for j in range(distributions_per_class):
+
+                distribution_parameter_0 = {}
+                for key, value in distribution_dict_list[i][distribution_name]['class_0'].items():
+                    if distributions_per_class > 1:
+                        distribution_parameter_0[key] = value[j]
+                    else:
+                        distribution_parameter_0[key] = value
+
+                distribution_parameter_1 = {}
+                for key, value in distribution_dict_list[i][distribution_name]['class_1'].items():
+                    if distributions_per_class > 1:
+                        distribution_parameter_1[key] = value[j]
+                    else:
+                        distribution_parameter_1[key] = value
+                        
+                if distributions_per_class_original == 0:
+                    feature_data, distribution_parameters = get_distribution_data_from_string(distribution_name, number_of_samples, seed=((seed+1)*(i+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)  
+
+                    
+                else:
+                    #print('distribution_parameter_0', distribution_parameter_0)
+                    class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)                    
+                    #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
+                    class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_1, random_parameters=False, distrib_param_max=distrib_param_max)                    
+
+            if distributions_per_class_original != 0:
+                seed = distribution_dict_list[i][distribution_name]['seed_shuffeling']
+                
+                class_0_data = np.hstack(class_0_data_list)
+                class_1_data = np.hstack(class_1_data_list)
+                #print('class_0_data', class_0_data)
+                #print('feature_weight', feature_weight)
+                #print("np.full_like(a=class_0_data, fill_value=feature_weight)", np.full_like(a=class_0_data, fill_value=feature_weight))
+                feature_0_weights = np.full_like(a=class_0_data, fill_value=feature_weight, dtype=np.float32)
+                #print('feature_weight', feature_weight)
+                feature_1_weights = np.full_like(a=class_1_data, fill_value=-feature_weight, dtype=np.float32)  
+                
+                #print(feature_0_weights)
+                #print(feature_1_weights)
+                
+                feature_data = np.hstack([class_0_data, class_1_data])
+                
+                feature_weights = np.hstack([feature_0_weights, feature_1_weights])
+                #print(feature_weights)
+                
+                def make_batch(iterable, n=1):
+                    l = len(iterable)
+                    for ndx in range(0, l, n):
+                        yield iterable[ndx:min(ndx + n, l)]                
+                
+                if config['data']['weighted_data_generation']:
+                    if config['data']['fixed_class_probability']:
+                        batch_size_0 = 100
+                        batch_size_1 = 100
+                    else:
+                        max_samples = max(class_0_data.shape[0], class_1_data.shape[0])
+
+                        fraction = np.ceil(feature_data.shape[0]/100*2)
+
+                        batch_size_0 = int(np.ceil(class_0_data.shape[0] / fraction))
+                        batch_size_1 = int(np.ceil(class_0_data.shape[0] / fraction))                 
+                    
+                    batch_list_feature_data = []
+                    for batch_0, batch_1 in zip(make_batch(class_0_data, batch_size_0), make_batch(class_1_data, batch_size_1)):
+                        batch = np.hstack([batch_0, batch_1])
+                        #print(batch.shape)
+                        np.random.seed(seed+i)
+                        np.random.shuffle(batch)
+                        batch_list_feature_data.append(batch)
+                    feature_data = np.hstack(batch_list_feature_data)
+                    #print(feature_data.shape)
+                    
+                    #print('feature_weights', feature_weights)
+                    batch_list_feature_weights = []
+                    for batch_0, batch_1 in zip(make_batch(feature_0_weights, batch_size_0), make_batch(feature_1_weights, batch_size_1)):
+                        batch = np.hstack([batch_0, batch_1])
+                        #print(batch.shape)
+                        np.random.seed(seed+i)
+                        np.random.shuffle(batch)
+                        batch_list_feature_weights.append(batch)
+                    feature_weights = np.hstack(batch_list_feature_weights)                           
+                    #print(feature_weights.shape)
+                    
+                distribution_parameter_0 = None
+                for distribution_parameter in distribution_parameter_0_list:
+                    if distribution_parameter_0 is None:
+                        distribution_parameter_0 = distribution_parameter
+                    else:
+                        distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
+
+                distribution_parameter_1 = None 
+                for distribution_parameter in distribution_parameter_1_list:
+                    if distribution_parameter_1 is None:
+                        distribution_parameter_1 = distribution_parameter
+                    else:
+                        distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
+
+                distribution_parameter = {
+                    distribution_name: {
+                        'class_0': distribution_parameter_0,
+                        'class_1': distribution_parameter_1,
+                        'samples_class_0': samples_class_0_distrib,
+                        'feature_weight_0': feature_weight,
+                        'seed_shuffeling': seed,
+                    }
+                }
+            else:
+                distribution_parameter = {
+                    distribution_name: {
+                        'class_0': distribution_parameters,
+                        'class_1': distribution_parameters,
+                        'samples_class_0': samples_class_0,
+                        #'feature_weight_0': feature_weight,
+                    }
+                }
+                
+            distribution_parameter_list.append(distribution_parameter)
+
+            X_data_list.append(feature_data)
+            feature_weights_list.append(feature_weights)
+
+        X_data = np.vstack(X_data_list).T
+        feature_weights = np.vstack(feature_weights_list).T
+        
+        if distributions_per_class_original == 0:
+            X_data = np.sort(X_data, axis=0)
+
+        X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
+        X_data, normalizer_list = normalize_real_world_data(X_data)
+        
+        if config['data']['weighted_data_generation']:
+            feature_weights_reduced = np.sum(feature_weights, axis=1)
+            threshold = np.median(feature_weights_reduced)
+
+            y_data = deepcopy(feature_weights_reduced)
+            y_data[feature_weights_reduced >= threshold] = 1
+            y_data[feature_weights_reduced < threshold] = 0     
+        else:
+            y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+                    
+        idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
+        y_data[idx] = (y_data[idx] + 1) % 2              
+   
+
+    ################################################
+    else:   
+        accuracy_single_split = 1
+        accuracy_max_split = 0
+              
+        accuracy_single_split_threshold = 0.65
+        accuracy_max_split_threshold = 0.75
+        accuracy_diff_threshold = 0.15
+
+        while accuracy_single_split > accuracy_single_split_threshold or (accuracy_max_split-accuracy_single_split) < accuracy_diff_threshold or accuracy_max_split < accuracy_max_split_threshold: 
+            
+            
+            single_split_model = DecisionTreeClassifier(max_depth=1)   
+            max_split_model = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])   
+            
+            
+            X_data_list = []
+            distribution_parameter_list = []   
+                
+            #list1, list2 = zip(*sorted(zip(list1, list2)))
+        
+            if distributions_per_class == 0:
+
+                for i in range(number_of_variables):
+                    #samples_class_0 = np.random.randint(1, int(np.floor(number_of_samples/2)))
+                    #samples_class_1 = number_of_samples - samples_class_0                             
+                    
+                    distribution_name = np.random.choice(distribution_list)
+                    #data_list = [None]
+                    #distribution_parameter_list = [None]
+
+                    feature_data, distribution_parameter = get_distribution_data_from_string(distribution_name, samples_class_0+samples_class_1, seed=((seed+1)*(i+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+
+
+                    #feature_data = np.sort(feature_data, axis=0)
+                    distribution_parameter = {distribution_name: distribution_parameter}
+
+                    distribution_parameter_list.append(distribution_parameter)
+                    X_data_list.append(feature_data)    
+
+                X_data = np.vstack(X_data_list).T
+                #print(X_data[:,:3])
+                X_data = np.sort(X_data, axis=0)
+                #print(X_data[:,:3])
+                X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#
+
+                #print(X_data[:,:3])
+                X_data, normalizer_list = normalize_real_world_data(X_data)
+                #print(X_data[:,:3])
+                y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+
+                idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
+                y_data[idx] = (y_data[idx] + 1) % 2  
+
+            else:
+                
+                for i in range(number_of_variables):   
+                    
+                    if config['data']['weighted_data_generation']:
+                        np.random.seed(seed + i)
+                        feature_weight = np.random.uniform(0, 1)
+                    else:
+                        feature_weight = 1
+                
+                    if config['data']['fixed_class_probability']:
+                        samples_class_0_distrib = samples_class_0
+                        samples_class_1_distrib = samples_class_1                 
+                    else:
+                        samples_class_0_distrib = np.random.randint(1, number_of_samples)
+                        samples_class_1_distrib = number_of_samples - samples_class_0_distrib                         
+
+                    #print('samples_class_0_distrib', samples_class_0_distrib)
+                    #print('samples_class_1_distrib', samples_class_1_distrib)
+                    #print('samples_class_0_distrib', samples_class_0_distrib, 'samples_class_1_distrib', samples_class_1_distrib)
+                        
+                    distribution_name = np.random.choice(distribution_list)
+
+                    class_0_data_list = [None] * (distributions_per_class)
+                    distribution_parameter_0_list = [None] * (distributions_per_class)
+                    class_1_data_list = [None] * (distributions_per_class)
+                    distribution_parameter_1_list = [None] * (distributions_per_class)
+
+                    samples_class_0_distrib_list = split_into(samples_class_0_distrib, distributions_per_class)
+                    samples_class_1_distrib_list = split_into(samples_class_1_distrib, distributions_per_class)
+
+                    #print('samples_class_0_distrib_list', samples_class_0_distrib_list)
+                    #print('samples_class_1_distrib_list', samples_class_1_distrib_list)                    
+                    for j in range(distributions_per_class):
+                        
+                        condition = True                    
+                        if condition:
+                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=0)
+                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=1)
+                        else:
+                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                            distribution_parameter_new = {}                 
+                            
+                            #!!!!!NOT ALWAYS CHANGE ALL PARAMETERS (RANDOM 0, 1, 2)!!!!!!!
+                            if False:
+                                no_parameters = len(list(distribution_parameter_0_list[j].keys()))
+                                no_parameters_to_change = np.random.randint(0, no_parameters)
+                                parameters_to_change = np.random.choice([num for num in range(no_parameters)], no_parameters_to_change, replace=False)
+                            elif True:
+                                no_parameters = len(list(distribution_parameter_0_list[j].keys()))
+                                #no_parameters_to_change = np.random.randint(0, no_parameters)
+                                parameters_to_change = np.random.choice([num for num in range(no_parameters)], no_parameters, replace=False)
+                            else:
+                                no_parameters = len(list(distribution_parameter_0_list[j].keys()))
+                                #no_parameters_to_change = np.random.randint(0, no_parameters)
+                                parameters_to_change = np.random.choice([num for num in range(no_parameters)], 1, replace=False)                                
+                            #print(parameters_to_change)
+                            for index, (key, value) in enumerate(distribution_parameter_0_list[j].items()):
+                                if index in parameters_to_change:
+                                    multiplier = np.random.choice([-0.5, 0.5])
+                                    #multiplier = np.random.uniform(-0.5, 0.5)
+
+                                    new_value = value + value*multiplier
+                                    new_value_clipped = np.clip(new_value, 0, config['data']['distrib_param_max'])
+
+                                    if key == 'p':
+                                        distribution_parameter_new[key] =  np.clip(new_value_clipped, 0, 1)
+                                    else:
+                                        distribution_parameter_new[key] =  new_value_clipped
+                                else:
+                                    distribution_parameter_new[key] =  value
+
+                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_new, random_parameters=random_parameters, distrib_param_max=distrib_param_max)                    
+                            
+                    class_0_data = np.hstack(class_0_data_list)
+                    class_1_data = np.hstack(class_1_data_list)
+                    
+                    feature_0_weights = np.full_like(a=class_0_data, fill_value=feature_weight, dtype=np.float32)
+                    feature_1_weights = np.full_like(a=class_1_data, fill_value=-feature_weight, dtype=np.float32)                      
+
+                    distribution_parameter_0 = None
+                    for distribution_parameter in distribution_parameter_0_list:
+                        if distribution_parameter_0 is None:
+                            distribution_parameter_0 = distribution_parameter
+                        else:
+                            distribution_parameter_0 = mergeDict(distribution_parameter_0, distribution_parameter)
+
+                    distribution_parameter_1 = None 
+                    for distribution_parameter in distribution_parameter_1_list:
+                        if distribution_parameter_1 is None:
+                            distribution_parameter_1 = distribution_parameter
+                        else:
+                            distribution_parameter_1 = mergeDict(distribution_parameter_1, distribution_parameter)
+                    distribution_parameter = {
+                        distribution_name: {
+                            'class_0': distribution_parameter_0,
+                            'class_1': distribution_parameter_1,
+                            'samples_class_0': samples_class_0_distrib,
+                            'feature_weight_0': feature_weight,
+                            'seed_shuffeling': seed,
+                        }
+                    }
+                    distribution_parameter_list.append(distribution_parameter)
+
+                    feature_data = np.hstack([class_0_data, class_1_data])
+                    feature_weights = np.hstack([feature_0_weights, feature_1_weights])
+
+                    def make_batch(iterable, n=1):
+                        l = len(iterable)
+                        for ndx in range(0, l, n):
+                            yield iterable[ndx:min(ndx + n, l)]                
+
+                    if config['data']['weighted_data_generation']:
+                        if config['data']['fixed_class_probability']:
+                            batch_size_0 = 100
+                            batch_size_1 = 100
+                        else:
+                            if False:
+                                #max_samples = max(class_0_data.shape[0], class_1_data.shape[0])
+                                #print('max_samples', max_samples)
+                                fraction = min(class_0_data.shape[0], class_1_data.shape[0])/max(class_0_data.shape[0], class_1_data.shape[0]) #np.ceil(max_samples/100)
+                                print('fraction', fraction)
+                                if class_0_data.shape[0] > class_1_data.shape[0]:
+                                    batch_size_0 = int(np.ceil(100/fraction))#int(np.ceil(class_0_data.shape[0] / fraction))
+                                    batch_size_1 = 100#int(np.ceil(class_1_data.shape[0] / fraction))
+                                else:
+                                    batch_size_0 = 100#int(np.ceil(class_0_data.shape[0] / fraction))
+                                    batch_size_1 = int(np.ceil(100/fraction))#int(np.ceil(class_1_data.shape[0] / fraction))                                
+                                print('batch_size_0', batch_size_0, len(list(make_batch(class_0_data, batch_size_0))))
+                                print('batch_size_1', batch_size_1, len(list(make_batch(class_1_data, batch_size_1))))
+                            else:
+                                pass
+                            
+                            
+                        batch_list_feature_data = []
+                        for batch_0, batch_1 in zip(make_batch(class_0_data, batch_size_0), make_batch(class_1_data, batch_size_1)):
+                            batch = np.hstack([batch_0, batch_1])
+                            np.random.seed(seed+i)
+                            np.random.shuffle(batch)
+                            batch_list_feature_data.append(batch)
+                        feature_data = np.hstack(batch_list_feature_data)
+
+                        #print('feature_weights', feature_weights)
+                        batch_list_feature_weights = []
+                        for batch_0, batch_1 in zip(make_batch(feature_0_weights, batch_size_0), make_batch(feature_1_weights, batch_size_1)):
+                            batch = np.hstack([batch_0, batch_1])
+                            np.random.seed(seed+i)
+                            np.random.shuffle(batch)
+                            batch_list_feature_weights.append(batch)
+                        feature_weights = np.hstack(batch_list_feature_weights)                           
+                                       
+                    
+                    X_data_list.append(feature_data)
+                    feature_weights_list.append(feature_weights)
+
+                X_data = np.vstack(X_data_list).T.astype(np.float64)
+                feature_weights = np.vstack(feature_weights_list).T
+
+                X_data = X_data + X_data * np.random.uniform(-data_noise, data_noise, X_data.shape) #np.random.uniform(-flip_percentage, flip_percentage, X_data.shape)#         
+                X_data, normalizer_list = normalize_real_world_data(X_data)
+
+                if config['data']['weighted_data_generation']:
+                    feature_weights_reduced = np.sum(feature_weights, axis=1)
+                    threshold = np.median(feature_weights_reduced)
+                    
+                    y_data = deepcopy(feature_weights_reduced)
+                    y_data[feature_weights_reduced >= threshold] = 1
+                    y_data[feature_weights_reduced < threshold] = 0     
+                else:
+                    y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+
+                idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
+                y_data[idx] = (y_data[idx] + 1) % 2  
+            
+            if config['data']['data_generation_filtering']:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
+                single_split_model.fit(X_data, y_data)
+                max_split_model.fit(X_data, y_data)
+                #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
+                single_split_model_preds = single_split_model.predict(X_data)
+                accuracy_single_split = accuracy_score(y_data, single_split_model_preds)
+
+                max_split_model_preds = max_split_model.predict(X_data)
+                accuracy_max_split = accuracy_score(y_data, max_split_model_preds)
+                rand_int = np.random.randint(1, 10_000_000)
+                seed = (seed + rand_int) % (2**32 - 1)
+
+                #print('accuracy_max_split', accuracy_max_split, accuracy_max_split_threshold)
+                #print('accuracy_single_split', accuracy_single_split, accuracy_single_split_threshold)
+
+            else:
+                accuracy_single_split = 0
+                accuracy_max_split = 1
+                
+        #print(distributions_per_class, distribution_parameter_list)
+        
+    #print('samples_class_0_distrib', samples_class_0_distrib, 'samples_class_1_distrib', samples_class_1_distrib)
+    #print('samples_class_0', samples_class_0, 'samples_class_1', samples_class_1)
+        
+    #print('distribution_parameter_list', distribution_parameter_list)
+        
+    return X_data, y_data, distribution_parameter_list, normalizer_list
+
+
+def distribution_evaluation_single_model_synthetic_data(loss_function, 
+                                                        metrics,
+                                                        #model,
+                                                        config,
+                                                        lambda_net_parameters_train,
+                                                        mean_train_parameters,
+                                                        std_train_parameters,    
+                                                        data_seed=42,
+                                                        distribution_list_generation = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],
+                                                        distribution_list_evaluation = ['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                        max_distributions_per_class = 0,
+                                                        random_parameters=None,
+                                                        flip_percentage=0.0,
+                                                        data_noise=0.0,
+                                                        #encoder_model=encoder_model,
+                                                        verbose=0
+                                                        ):
+    from utilities.InterpretationNet import load_inet
+    model = load_inet(loss_function, metrics, config)
+    #encoder_model = load_encoder_model(loss_function, metrics, config)
+    if 'make_class' in config['data']['function_generation_type']:
+        
+        np.random.seed(data_seed)
+        informative = 3#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+        redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+        repeated = config['data']['number_of_variables']-informative-redundant # 0
+
+        n_clusters_per_class = min(informative//2+1, config['data']['max_distributions_per_class'])#max(2, np.random.randint(0, high=informative//2+1)) #2
+        X_data, y_data, distribution_parameter_list  = make_classification_distribution(n_samples=config['data']['lambda_dataset_size'], 
+                                                           n_features=config['data']['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                           n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                           n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                           n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                           n_classes=config['data']['num_classes'], 
+                                                           n_clusters_per_class=n_clusters_per_class, 
+                                                           #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                           class_sep=0.5, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                           hypercube=True, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                           #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                           #scale=1.0, #Multiply features by the specified value. 
+                                                           shuffle=True, 
+                                                           random_state=data_seed,
+                                                           random_parameters=config['data']['random_parameters_distribution'],
+                                                           distrib_param_max=config['data']['distrib_param_max']
+                                                           )         
+        
+                
+        normalizer_list = []
+        for i, column in enumerate(X_data.T):
+            scaler = MinMaxScaler()
+            scaler.fit(column.reshape(-1, 1))
+            X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+            normalizer_list.append(scaler)
+
+    else:
+        random.seed(data_seed)
+        distributions_per_class = max_distributions_per_class#random.randint(1, max_distributions_per_class) if max_distributions_per_class != 0 else max_distributions_per_class
+        
+        X_data, y_data, distribution_parameter_list, normalizer_list = generate_dataset_from_distributions(distribution_list_generation, 
+                                                                                          config['data']['number_of_variables'], 
+                                                                                          config['data']['lambda_dataset_size'],
+                                                                                          distributions_per_class = distributions_per_class, 
+                                                                                          seed=data_seed,
+                                                                                          flip_percentage=flip_percentage,
+                                                                                          data_noise=data_noise,
+                                                                                          random_parameters=random_parameters,
+                                                                                          config=config)
+        
+
+    X_train, y_train, X_valid, y_valid, X_test, y_test = split_train_test_valid(X_data, y_data, valid_frac=0.25, test_frac=0.1, seed=config['computation']['RANDOM_SEED'])
+
+    test_network, model_history = train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=verbose)  
+    distances_dict_list = []
+    evaluation_result_dict_list = [] 
+    results_list_list = []
+    dt_inet_list = []
+    dt_distilled_list_list = []
+    
+    for distribution_training in distribution_list_evaluation: #distribution_list
+        evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list = evaluate_network_real_world_data(model,
+                                                                                                    test_network, 
+                                                                                                    X_train, 
+                                                                                                    X_test, 
+                                                                                                    dataset_size_list=[10000, 'TRAIN_DATA'],
+                                                                                                    config=config,
+                                                                                                    distribution=distribution_training)
+
+
+        results_list_extended = results_list[0]
+
+        results_list_extended['dt_scores']['soft_binary_crossentropy_train_data'] = results_list[1]['dt_scores']['soft_binary_crossentropy']
+        results_list_extended['dt_scores']['binary_crossentropy_train_data'] = results_list[1]['dt_scores']['binary_crossentropy']
+        results_list_extended['dt_scores']['accuracy_train_data'] = results_list[1]['dt_scores']['accuracy']
+        results_list_extended['dt_scores']['f1_score_train_data'] = results_list[1]['dt_scores']['f1_score']
+
+        results_list = results_list_extended
+        evaluation_result_dict = results_list
+
+        test_network_parameters = test_network_parameters#[:1]
+        dt_inet = dt_inet#[:1]
+        dt_distilled_list = dt_distilled_list#[:1]
+
+        distances_dict = calculate_network_distance(mean=mean_train_parameters, 
+                                                               std=std_train_parameters, 
+                                                               network_parameters=test_network_parameters, 
+                                                               lambda_net_parameters_train=lambda_net_parameters_train, 
+                                                               config=config)
+
+        data_dict = {
+            'X_train': X_train,
+            'y_train': y_train,
+            'X_valid': X_valid,
+            'y_valid': y_valid,
+            'X_test': X_test,
+            'y_test': y_test,
+        }
+        
+        distances_dict_list.append(distances_dict)
+        evaluation_result_dict_list.append(evaluation_result_dict)
+        results_list_list.append(results_list)
+        dt_inet_list.append(dt_inet)
+        dt_distilled_list_list.append(dt_distilled_list)    
+        
+    return (distances_dict_list, 
+            evaluation_result_dict_list, 
+            results_list_list, 
+            dt_inet_list, 
+            dt_distilled_list_list, 
+            data_dict, 
+            normalizer_list, 
+            test_network.get_weights(), 
+            model_history.history,
+            distribution_parameter_list)
+
+
+
+
 
 def evaluate_real_world_dataset(model,
                                 dataset_size_list,
@@ -1547,6 +2934,7 @@ def evaluate_real_world_dataset(model,
                                 ordinal_features, 
                                 config,
                                 config_train_network=None):
+    
     transformer = ColumnTransformer(transformers=[('cat', OneHotEncoder(), nominal_features)], remainder='passthrough', sparse_threshold=0)
     transformer.fit(X_data)
 
@@ -1559,6 +2947,69 @@ def evaluate_real_world_dataset(model,
     X_data = X_data.astype(np.float64)
     
     print('Original Data Shape: ', X_data.shape)
+    
+    if not config['i_net']['force_evaluate_real_world'] and X_data.shape[1] != config['data']['number_of_variables']:
+
+        evaluation_result_dict_placeholder =  {
+                                    #'function_values': {
+                                    #    'y_test_inet_dt': y_test_inet_dt,
+                                    #    'y_test_distilled_dt': None,
+                                    #},
+                                    'dt_scores': {
+                                        'soft_binary_crossentropy': [np.nan] * len(dataset_size_list),
+                                        'soft_binary_crossentropy_data_random': [np.nan] * len(dataset_size_list),                            
+                                        'binary_crossentropy': [np.nan] * len(dataset_size_list),
+                                        'binary_crossentropy_data_random': [np.nan] * len(dataset_size_list),
+                                        'accuracy': [np.nan] * len(dataset_size_list),
+                                        'accuracy_data_random': [np.nan] * len(dataset_size_list),
+                                        'f1_score': [np.nan] * len(dataset_size_list),   
+                                        'f1_score_data_random': [np.nan] * len(dataset_size_list),   
+                                        'runtime': [np.nan] * len(dataset_size_list)
+                                    },
+                                'inet_scores': {
+                                    'soft_binary_crossentropy': [np.nan] * len(dataset_size_list),
+                                    'binary_crossentropy': [np.nan] * len(dataset_size_list),
+                                    'accuracy': [np.nan] * len(dataset_size_list),
+                                    'f1_score': [np.nan] * len(dataset_size_list),           
+                                    'runtime': [np.nan] * len(dataset_size_list)
+                                },                
+                               } 
+
+        results_placeholder =  {
+                                    #'function_values': {
+                                    #    'y_test_inet_dt': y_test_inet_dt,
+                                    #    'y_test_distilled_dt': None,
+                                    #},
+                                    'dt_scores': {
+                                        'soft_binary_crossentropy': np.nan,
+                                        'soft_binary_crossentropy_data_random': np.nan,                            
+                                        'binary_crossentropy': np.nan,
+                                        'binary_crossentropy_data_random': np.nan,
+                                        'accuracy': np.nan,
+                                        'accuracy_data_random': np.nan,
+                                        'f1_score': np.nan,   
+                                        'f1_score_data_random': np.nan,   
+                                        'runtime': np.nan
+                                    },
+                                'inet_scores': {
+                                    'soft_binary_crossentropy': np.nan,
+                                    'binary_crossentropy': np.nan,
+                                    'accuracy': np.nan,
+                                    'f1_score': np.nan,           
+                                    'runtime': np.nan
+                                },                
+                               }                    
+        
+        distances_dict_placeholder = {
+                'z_score_aggregate': np.nan,
+                'distance_to_initialization_aggregate': np.nan,
+                'distance_to_sample_average': np.nan,
+                'distance_to_sample_min': np.nan,
+                'max_distance_to_neuron_average': np.nan,
+                'max_distance_to_neuron_min': np.nan,        
+            }     
+        
+        return distances_dict_placeholder, evaluation_result_dict_placeholder, [results_placeholder for _ in range(len(dataset_size_list))], None, None, None, None
     
     X_data = adjust_data_to_number_of_variables(X_data=X_data, 
                                                 y_data=y_data, 
@@ -1573,7 +3024,8 @@ def evaluate_real_world_dataset(model,
      X_test, 
      y_test) = split_train_test_valid(X_data, 
                                       y_data, 
-                                      seed=config['computation']['RANDOM_SEED'])
+                                      seed=config['computation']['RANDOM_SEED'],
+                                      verbose=1)
 
     X_train, y_train = rebalance_data(X_train, y_train)
 
@@ -1584,11 +3036,12 @@ def evaluate_real_world_dataset(model,
                                                                 y_train, 
                                                                 X_valid, 
                                                                 y_valid, 
-                                                                config_train_network)
+                                                                config_train_network,
+                                                                verbose=1)
 
 
     evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list = evaluate_network_real_world_data(model,
-                                                                                               test_network, 
+                                                                                                test_network, 
                                                                                                 X_train, 
                                                                                                 X_test, 
                                                                                                 dataset_size_list,
@@ -1608,7 +3061,7 @@ def evaluate_real_world_dataset(model,
         'y_test': y_test,
     }
         
-    return distances_dict, evaluation_result_dict, results_list, dt_inet, dt_distilled_list, data_dict, normalizer_list
+    return distances_dict, evaluation_result_dict, results_list, dt_inet, dt_distilled_list, data_dict, normalizer_list, test_network
 
 
 
@@ -1617,18 +3070,31 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                                                          X_test_lambda, 
                                                          #y_test_lambda,
                                                          config,
-                                                         train_data=None):
+                                                         train_data=None,
+                                                         distribution=None):
 
     from utilities.metrics import calculate_function_value_from_decision_tree_parameters_wrapper, calculate_function_value_from_vanilla_decision_tree_parameters_wrapper
+    
+    if distribution is None:
+        distribution = config['evaluation']['random_evaluation_dataset_distribution']
     
     with tf.device('/CPU:0'):
         
         if train_data is None:
+            
+            try:
+                distrib_param_max = config['data']['distrib_param_max']
+            except:
+                distrib_param_max = 1            
+                
             X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
                                                                config['data']['x_max'],
                                                                config['evaluation']['per_network_optimization_dataset_size'], 
                                                                config['data']['number_of_variables'], 
-                                                               config['data']['categorical_indices'])
+                                                               config['data']['categorical_indices'],
+                                                               distrib=distribution,
+                                                               random_parameters=config['data']['random_parameters_distribution'],
+                                                              distrib_param_max=distrib_param_max)
         else:
             X_data_random = train_data
         
@@ -1644,6 +3110,9 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         y_test_lambda_pred_diff = tf.math.subtract(1.0, y_test_lambda_pred)
         y_test_lambda_pred_softmax = tf.stack([y_test_lambda_pred, y_test_lambda_pred_diff], axis=1)         
 
+        #print(dt_inet.shape)
+        #print(dt_inet)
+        
         if config['function_family']['dt_type'] == 'SDT':
             y_test_inet_dt, _  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet)
             y_test_inet_dt = y_test_inet_dt.numpy()
@@ -1659,13 +3128,14 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         accuracy_inet_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
         f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))        
         
+        
         if config['evaluation']['per_network_optimization_dataset_size'] > 50_000 and config['function_family']['dt_type'] == 'SDT': 
         
             results =  {
-                            'function_values': {
-                                'y_test_inet_dt': y_test_inet_dt,
-                                'y_test_distilled_dt': None,
-                            },
+                            #'function_values': {
+                            #    'y_test_inet_dt': y_test_inet_dt,
+                            #    'y_test_distilled_dt': None,
+                            #},
                             'dt_scores': {
                                 'soft_binary_crossentropy': np.nan,
                                 'soft_binary_crossentropy_data_random': np.nan,                            
@@ -1697,7 +3167,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         dt_distilled = generate_random_decision_tree(config, config['computation']['RANDOM_SEED'])
         if config['function_family']['dt_type'] == 'SDT':
-            dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64), epochs=50)  
+            dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64), epochs=50)
 
             end_dt_distilled = time.time()     
             dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)        
@@ -1729,7 +3199,11 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         epsilon = 1e-6
         
-
+        #print(dt_inet)
+        #print('y_test_lambda_pred[:10]', y_test_lambda_pred[:10])
+        #print('y_test_inet_dt[:10]', y_test_inet_dt[:10])
+        #print('y_test_distilled_dt[:10]', y_test_distilled_dt[:10])        
+        
 
         y_test_distilled_dt_diff = tf.math.subtract(1.0, y_test_distilled_dt)
         y_test_distilled_dt_softmax = tf.stack([y_test_distilled_dt, y_test_distilled_dt_diff], axis=1)
@@ -1751,8 +3225,10 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         accuracy_data_random_distilled_dt = accuracy_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))
         f1_score_data_random_distilled_dt = f1_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))     
 
-
-
+        #if train_data is not None:
+            #print('np.round(y_test_lambda_pred)',np.round(y_test_lambda_pred))
+            #print('accuracy_data_random_distilled_dt, accuracy_distilled_dt', accuracy_data_random_distilled_dt, accuracy_distilled_dt)
+            
         #soft_binary_crossentropy_distilled_dt_median = tfp.stats.percentile(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_distilled_dt_softmax), 50.0, interpolation='midpoint').numpy()    
         #binary_crossentropy_distilled_dt_median = tf.keras.losses.get('binary_crossentropy')(np.round(tf.reshape(y_test_lambda_pred, [-1, 1])), tf.reshape(y_test_distilled_dt, [-1, 1]), labels=[0,1])  
         
@@ -1764,10 +3240,10 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         
 
         results =  {
-                        'function_values': {
-                            'y_test_inet_dt': y_test_inet_dt,
-                            'y_test_distilled_dt': y_test_distilled_dt,
-                        },
+                        #'function_values': {
+                        #    'y_test_inet_dt': y_test_inet_dt,
+                        #    'y_test_distilled_dt': y_test_distilled_dt,
+                        #},
                         'dt_scores': {
                             'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_distilled_dt),
                             'soft_binary_crossentropy_data_random': np.nan_to_num(soft_binary_crossentropy_data_random_distilled_dt),                            
@@ -1800,9 +3276,13 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
                                                config, 
                                                identifier, 
                                                mean_train_parameters, 
-                                               std_train_parameters, 
+                                               std_train_parameters,
+                                               network_parameters_train_array,
                                                distances_dict={},
+                                               encoder_model=None,
                                                verbosity=0):
+    
+    from utilities.InterpretationNet import autoencode_data
             
     def print_results_synthetic_evaluation_single(inet_evaluation_result_dict_mean):
         tab = PrettyTable()
@@ -1833,16 +3313,15 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         print(tab)       
     
     with tf.device('/CPU:0'):
-        number = min(X_test_lambda_array.shape[0], 100)
+        number = min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1))
 
         start_inet = time.time() 
-
         network_parameters = np.array(network_parameters_array[:number])
         if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
             network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
         elif config['i_net']['data_reshape_version'] == 3: #autoencoder
             network_parameters, network_parameters_flat, _ = autoencode_data([network_parameters], config, encoder_model)    
-        dt_inet_list = model.predict(network_parameters)   
+        dt_inet_list = model.predict(network_parameters)  
 
         end_inet = time.time()     
         inet_runtime = (end_inet - start_inet)    
@@ -1894,7 +3373,7 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         distances_dict_single = calculate_network_distance(mean=mean_train_parameters, 
                                                                    std=std_train_parameters, 
                                                                    network_parameters=network, 
-                                                                   lambda_net_parameters_train=network_parameters_array, 
+                                                                   lambda_net_parameters_train=network_parameters_train_array, 
                                                                    config=config)    
 
         if distances_dict_list == None:
@@ -1965,7 +3444,17 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
 
     
     #columns=['Soft BC', 'BC', 'Acc', 'F1 Score', 'Runtime']
-    columns=['Soft BC Distilled', 'Soft BC I-Net', 'BC Distilled', 'BC I-Net', 'Acc Distilled', 'Acc I-Net', 'F1 Score Distilled', 'F1 Score I-Net', 'Runtime Distilled', 'Runtime I-Net']
+    columns=[
+             'Acc Distilled', 
+             'Acc I-Net',         
+             'Soft BC Distilled', 
+             'Soft BC I-Net', 
+             'BC Distilled', 
+             'BC I-Net', 
+             'F1 Score Distilled', 
+             'F1 Score I-Net', 
+             'Runtime Distilled', 
+             'Runtime I-Net']
     
     #index = [] #'Metric'
 
@@ -1976,6 +3465,11 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
         
     data = np.array([
                       flatten_list([[
+                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_data_random']
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy'], 3),
+                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
+                        ] for identifier in identifier_list]),          
+                      flatten_list([[
                           #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy_data_random']
                           np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy'], 3),
                           np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
@@ -1984,12 +3478,7 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
                           #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy_data_random']
                           np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy'], 3),
                           np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
-                        ] for identifier in identifier_list]),
-                      flatten_list([[
-                          #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_data_random']
-                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy'], 3),
-                          np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
-                        ] for identifier in identifier_list]),   
+                        ] for identifier in identifier_list]), 
                       flatten_list([[
                           #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_data_random']
                           np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score'], 3),
@@ -2016,6 +3505,91 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
     
     return dataframe
 
+
+def get_complete_distribution_evaluation_results_dataframe(inet_evaluation_result_dict_mean_by_distribution):
+
+    identifier_list = list(inet_evaluation_result_dict_mean_by_distribution.keys())
+    
+    #columns=['Soft BC', 'BC', 'Acc', 'F1 Score', 'Runtime']
+    columns=[
+             'Acc Distilled Train Data', 
+             'Acc Distilled Data Random', 
+             'Acc Distilled', 
+             'Acc I-Net', 
+             'Soft BC Distilled Train Data',
+             'Soft BC Distilled Data Random', 
+             'Soft BC Distilled', 
+             'Soft BC I-Net',     
+             'BC Distilled Train Data', 
+             'BC Distilled Data Random', 
+             'BC Distilled', 
+             'BC I-Net', 
+             'F1 Score Distilled Train Data', 
+             'F1 Score Distilled Data Random', 
+             'F1 Score Distilled', 
+             'F1 Score I-Net', 
+             'Runtime Distilled Train Data', 
+             'Runtime Distilled Data Random', 
+             'Runtime Distilled', 
+             'Runtime I-Net']
+    #index = [] #'Metric'
+
+    #for identifier in identifier_list:
+        #index.append('Dist. (Random) ' + identifier)
+        #index.append('Dist. ' + identifier)
+        #index.append('I-Net ' + identifier)
+        
+    data = np.array([
+                      flatten_list([[
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['accuracy_train_data'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['accuracy_data_random'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['accuracy'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['accuracy'], 3)
+                        ] for identifier in identifier_list]),           
+                      flatten_list([[
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['soft_binary_crossentropy_train_data'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['soft_binary_crossentropy_data_random'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['soft_binary_crossentropy'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['soft_binary_crossentropy'], 3)
+                        ] for identifier in identifier_list]),
+                      flatten_list([[
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['binary_crossentropy_train_data'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['binary_crossentropy_data_random'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['binary_crossentropy'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['binary_crossentropy'], 3)
+                        ] for identifier in identifier_list]),
+                      flatten_list([[
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['f1_score_train_data'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['f1_score_data_random'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['f1_score'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['f1_score'], 3)
+                        ] for identifier in identifier_list]),        
+                      flatten_list([[
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['runtime'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['runtime'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['runtime'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['runtime'], 3)
+                        ] for identifier in identifier_list])        
+                    ]).T
+    
+    data_new = []
+    index = 0
+    
+    for _ in range(data.T.shape[1]//4):
+        new_row_1 = np.insert(data[index+3], np.arange(len(data[index])), data[index+1])
+        new_row_2 = np.insert(data[index+2], np.arange(len(data[index])), data[index])
+        new_row = np.insert(new_row_1, np.arange(len(new_row_1)), new_row_2)
+        
+        data_new.append(new_row)
+        #data_new.append(flatten_list([, data[index+1]]))
+        index=index+4
+
+    data = np.array(data_new)
+    
+    #dataframe = pd.DataFrame(data=data, columns=columns, index=index)
+    dataframe = pd.DataFrame(data=data, columns=columns, index=identifier_list)
+    
+    return dataframe
 
 
     
@@ -2233,15 +3807,22 @@ def adjust_data_to_number_of_variables(X_data, y_data, number_of_variables, seed
 
 def normalize_real_world_data(X_data):
     normalizer_list = []
-    for column_name in X_data:
-        scaler = MinMaxScaler()
-        scaler.fit(X_data[column_name].values.reshape(-1, 1))
-        X_data[column_name] = scaler.transform(X_data[column_name].values.reshape(-1, 1)).ravel()
-        normalizer_list.append(scaler)
-    
+    if isinstance(X_data, pd.DataFrame):
+        for column_name in X_data:
+            scaler = MinMaxScaler()
+            scaler.fit(X_data[column_name].values.reshape(-1, 1))
+            X_data[column_name] = scaler.transform(X_data[column_name].values.reshape(-1, 1)).ravel()
+            normalizer_list.append(scaler)
+    else:
+        for i, column in enumerate(X_data.T):
+            scaler = MinMaxScaler()
+            scaler.fit(column.reshape(-1, 1))
+            X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+            normalizer_list.append(scaler)
+        
     return X_data, normalizer_list
 
-def split_train_test_valid(X_data, y_data, valid_frac=0.2, test_frac=0.2, seed=42):
+def split_train_test_valid(X_data, y_data, valid_frac=0.2, test_frac=0.2, seed=42, verbose=0):
     data_size = X_data.shape[0]
     
     test_size = int(data_size*test_frac)
@@ -2250,23 +3831,20 @@ def split_train_test_valid(X_data, y_data, valid_frac=0.2, test_frac=0.2, seed=4
     X_train_with_valid, X_test, y_train_with_valid, y_test = train_test_split(X_data, y_data, test_size=test_size, random_state=seed)
     X_train, X_valid, y_train, y_valid = train_test_split(X_train_with_valid, y_train_with_valid, test_size=valid_size, random_state=seed)
 
-    print(X_train.shape, y_train.shape)
-    print(X_valid.shape, y_valid.shape)
-    print(X_test.shape, y_test.shape)    
+    if verbose > 0:
+        print(X_train.shape, y_train.shape)
+        print(X_valid.shape, y_valid.shape)
+        print(X_test.shape, y_test.shape)    
     
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
-def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE'):
+def rebalance_data(X_train, y_train, balance_ratio=0.2, strategy=None, seed=42):#, strategy='SMOTE'
     true_labels = len(y_train[y_train >= 0.5 ]) 
     false_labels = len(y_train[y_train < 0.5 ]) 
 
     true_ratio = true_labels/(true_labels+false_labels)
 
-    print('True Ratio: ', str(true_ratio))
-
-
-    
-    if true_ratio <= balance_ratio or true_ratio >= (1-balance_ratio):
+    if true_ratio <= balance_ratio or (1-true_ratio) >= balance_ratio:
         from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 
         if strategy == 'SMOTE':
@@ -2274,7 +3852,7 @@ def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE'):
         elif strategy == 'ADASYN':
             oversample = ADASYN()
         else:
-            oversample = RandomOverSampler(sampling_strategy='minority', random_state=RANDOM_SEED)
+            oversample = RandomOverSampler(sampling_strategy='minority', random_state=seed)
 
         X_train, y_train = oversample.fit_resample(X_train, y_train)
 
@@ -2285,7 +3863,7 @@ def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE'):
 
     return X_train, y_train
 
-def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config):
+def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=1):
     
     from utilities.LambdaNet import generate_lambda_net_from_config
 
@@ -2302,10 +3880,11 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config):
 
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', 
                                                           patience=50, 
-                                                          min_delta=0.001, 
+                                                          min_delta=0.0001, 
                                                           verbose=0, 
                                                           mode='min', 
-                                                          restore_best_weights=False)
+                                                          restore_best_weights=False#True
+                                                         )
 
         model_history = test_network.fit(X_train,
                                           y_train,
@@ -2315,23 +3894,23 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config):
                                           validation_data=(X_valid, y_valid),
                                           verbose=0)
         
+        if verbose > 0:
+            fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
 
-        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
+            axes[0].plot(model_history.history['loss'])
+            axes[0].plot(model_history.history['val_loss'])      
+            axes[0].set_title('model loss')
+            axes[0].set_ylabel('loss')
+            axes[0].set_xlabel('epoch')
+            axes[0].legend(['train loss', 'valid loss'], loc='upper left')  
 
-        axes[0].plot(model_history.history['loss'])
-        axes[0].plot(model_history.history['val_loss'])      
-        axes[0].set_title('model loss')
-        axes[0].set_ylabel('loss')
-        axes[0].set_xlabel('epoch')
-        axes[0].legend(['train loss', 'valid loss'], loc='upper left')  
-        
-        axes[1].plot(model_history.history['binary_accuracy'])
-        axes[1].plot(model_history.history['val_binary_accuracy'])  
-        axes[1].set_title('model accuracy')
-        axes[1].set_ylabel('accuracy')
-        axes[1].set_xlabel('epoch')
-        axes[1].legend(['train acc', 'valid acc'], loc='upper left')  
-        plt.show()                    
+            axes[1].plot(model_history.history['binary_accuracy'])
+            axes[1].plot(model_history.history['val_binary_accuracy'])  
+            axes[1].set_title('model accuracy')
+            axes[1].set_ylabel('accuracy')
+            axes[1].set_xlabel('epoch')
+            axes[1].legend(['train acc', 'valid acc'], loc='upper left')  
+            plt.show()                    
                     
         
         return test_network, model_history
@@ -2339,16 +3918,9 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config):
                     
     
 def make_inet_prediction(model, test_network, config):
+    from utilities.InterpretationNet import autoencode_data
     
-    transformation = config['lambda_net']['weight_transformation']
-    
-    if  transformation == 0:
-        test_network_parameters = shaped_network_parameters_to_array_vers0(test_network.get_weights(), config)
-    elif transformation == 1:
-        test_network_parameters = shaped_network_parameters_to_array_vers1(test_network.get_weights(), config)
-    else:
-        test_network_parameters = shaped_network_parameters_to_array_vers2(test_network.get_weights(), config)
-        
+    test_network_parameters = shaped_network_parameters_to_array(test_network.get_weights(), config)
 
     start_inet = time.time() 
 
@@ -2362,81 +3934,9 @@ def make_inet_prediction(model, test_network, config):
     end_inet = time.time()     
     inet_runtime = (end_inet - start_inet)   
     
-    
-    if  transformation == 0:
-        test_network_parameters = shaped_network_parameters_to_array_vers0(test_network.get_weights(), config)
-    elif transformation == 1:
-        test_network_parameters = shaped_network_parameters_to_array_vers1(test_network.get_weights(), config)
-    else:
-        test_network_parameters = shaped_network_parameters_to_array_vers2(test_network.get_weights(), config)
-    
-    
+    test_network_parameters = shaped_network_parameters_to_array(test_network.get_weights(), config)
     return dt_inet, test_network_parameters, inet_runtime
 
-def evaluate_network_real_world_data(model, test_network, X_train, X_test, dataset_size_list, config, verbosity=0):
-        
-    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
-
-    results_list = []
-    dt_distilled_list = []
-    for dataset_size in dataset_size_list:
-
-        if dataset_size == 'TRAIN_DATA': 
-            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
-                                                                               dt_inet,
-                                                                               X_test.values, 
-                                                                               #y_test_lambda,
-                                                                               config,
-                                                                               train_data=X_train.values)
-
-        else:
-            config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
-
-            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
-                                                                               dt_inet,
-                                                                               X_test.values, 
-                                                                               #y_test_lambda,
-                                                                               config_test)
-
-
-        results['inet_scores']['runtime'] = inet_runtime
-        results_list.append(results)
-        dt_distilled_list.append(dt_distilled)
-
-        if verbosity > 0:
-            print('Dataset Size:\t\t', dataset_size)
-            tab = PrettyTable()
-            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
-            
-            max_width = {}   
-            for field in tab.field_names:
-                if field == 'Metric':
-                    max_width[field] = 25
-                else:
-                    max_width[field] = 10
-            tab._max_width = max_width
-    
-            tab.add_rows(
-                [
-                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
-                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
-                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
-                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
-                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
-                ]    
-            )
-            print(tab)
-            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
-
-    evaluation_result_dict = None
-    for some_dict in results_list:
-        if evaluation_result_dict == None:
-            evaluation_result_dict = some_dict
-        else:
-            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
-
-    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
                 
     
 def print_results_different_data_sizes(results, dataset_size_list_print):
@@ -2497,6 +3997,79 @@ def plot_decision_tree_from_model(dt_model, config):
     
 
 
+def evaluate_network_real_world_data(model, test_network, X_train, X_test, dataset_size_list, config, verbosity=0, distribution=None):
+        
+    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
+
+    results_list = []
+    dt_distilled_list = []
+    for dataset_size in dataset_size_list:
+
+        if dataset_size == 'TRAIN_DATA': 
+            if isinstance(X_train, pd.DataFrame):
+                X_train = X_train.values
+            if isinstance(X_test, pd.DataFrame):
+                X_test = X_test.values            
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test, 
+                                                                               #y_test_lambda,
+                                                                               config,
+                                                                               distribution=distribution,
+                                                                               train_data=X_train)
+
+        else:
+            config_test = deepcopy(config)
+            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
+
+            if isinstance(X_test, pd.DataFrame):
+                X_test = X_test.values            
+                
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test, 
+                                                                               #y_test_lambda,
+                                                                               config_test,
+                                                                               distribution=distribution)
+
+
+        results['inet_scores']['runtime'] = inet_runtime
+        results_list.append(results)
+        dt_distilled_list.append(dt_distilled)
+
+        if verbosity > 0:
+            print('Dataset Size:\t\t', dataset_size)
+            tab = PrettyTable()
+            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
+            
+            max_width = {}   
+            for field in tab.field_names:
+                if field == 'Metric':
+                    max_width[field] = 25
+                else:
+                    max_width[field] = 10
+            tab._max_width = max_width
+    
+            tab.add_rows(
+                [
+                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
+                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
+                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
+                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
+                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
+                ]    
+            )
+            print(tab)
+            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
+
+    evaluation_result_dict = None
+    for some_dict in results_list:
+        if evaluation_result_dict == None:
+            evaluation_result_dict = some_dict
+        else:
+            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
+            
+    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
 
 
 
@@ -2665,8 +4238,7 @@ def network_parameters_to_network(network_parameters, config, base_model=None):
     return model  
 
 
-def shaped_network_parameters_to_array_vers0(shaped_network_parameters, config):
-    
+def shaped_network_parameters_to_array(shaped_network_parameters, config):
     network_parameter_list = []
     for layer_weights, biases in pairwise(shaped_network_parameters):    #clf.get_weights()
         for neuron in layer_weights:
@@ -2676,39 +4248,6 @@ def shaped_network_parameters_to_array_vers0(shaped_network_parameters, config):
             network_parameter_list.append(bias)
                 
     return np.array(network_parameter_list)
-
-
-
-############################################################ NEW BY ME ############################################################
-def shaped_network_parameters_to_array_vers1(shaped_network_parameters, config):
-    network_parameter_list = []
-    hiddenNodes = shaped_network_parameters[0].shape[1]
-    inputNodes = shaped_network_parameters[0].shape[0]
-    #print(hiddenNodes, inputNodes)
-    counter = 0
-    for i in range(hiddenNodes):
-        for j in range(inputNodes):
-            network_parameter_list.append(shaped_network_parameters[0][j][i])
-        network_parameter_list.append(shaped_network_parameters[1][counter])
-        network_parameter_list.append(shaped_network_parameters[2][counter][0])
-        counter += 1
-    network_parameter_list.append(shaped_network_parameters[3][0])    
-    return np.array(network_parameter_list)
-
-def shaped_network_parameters_to_array_vers2(shaped_network_parameters, config):
-    network_parameter_list = []
-    hiddenNodes = shaped_network_parameters[0].shape[1]
-    inputNodes = shaped_network_parameters[0].shape[0]
-    print(hiddenNodes, inputNodes)
-    for i in range(hiddenNodes):
-        for j in range(inputNodes):
-            network_parameter_list.append(shaped_network_parameters[0][j][i])
-            network_parameter_list.append(shaped_network_parameters[1][j])
-            network_parameter_list.append(shaped_network_parameters[2][j][0])
-    network_parameter_list.append(shaped_network_parameters[3][0])    
-    return np.array(network_parameter_list)
-
-########################################################################################################################
 
 
 
@@ -2723,16 +4262,7 @@ def calculate_network_distance(mean,
     z_score = z_score[~np.isinf(z_score)]
     z_score_aggregate = np.sum(np.abs(z_score))
     
-    transformation = config['lambda_net']['weight_transformation']
-    
-    if  transformation == 0:
-        initialization_array = shaped_network_parameters_to_array_vers0(generate_base_model(config).get_weights(), config)
-    elif transformation == 1:
-        initialization_array = shaped_network_parameters_to_array_vers1(generate_base_model(config).get_weights(), config)
-    else:
-        initialization_array = shaped_network_parameters_to_array_vers2(generate_base_model(config).get_weights(), config)
-    
-
+    initialization_array = shaped_network_parameters_to_array(generate_base_model(config).get_weights(), config)
 
     distance_to_initialization = network_parameters - initialization_array
     distance_to_initialization_aggregate = np.sum(np.abs(distance_to_initialization))
@@ -2883,332 +4413,257 @@ def per_network_dt_optimization_tf(network_parameters,
     
     return per_network_dt
 
-######################################################################################################################################################################################################################
-###########################################################################################  PER NETWORK OPTIMIZATION ################################################################################################ 
-######################################################################################################################################################################################################################
 
 
 
-def per_network_poly_optimization_tf(per_network_dataset_size, 
-                                  lambda_network_weights, 
-                                  list_of_monomial_identifiers_numbers, 
-                                  config, 
-                                  optimizer = tf.optimizers.Adam,
-                                  lr=0.05, 
-                                  max_steps = 1000, 
-                                  early_stopping=10, 
-                                  restarts=5, 
-                                  printing=True,
-                                  return_error=False):
-    
-    
-    from utilities.metrics import calculate_poly_fv_tf_wrapper
-    from utilities.metrics import r2_keras_loss
+def generate_dataset_from_distributions_line(line_distribution_parameters,
+                                                number_of_samples_function, 
+                                                max_distributions_per_class_function, 
+                                                config,
+                                                random_parameters_distribution=True,
+                                                flip_percentage=0.0,
+                                                data_noise=0.0,
+                                                #distribution_list=['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
+                                                seed_function=100_000):
+    try:
+        if config['data']['max_distributions_per_class'] != 0:
+            samples_class_0_list = line_distribution_parameters[:config['data']['number_of_variables']*3].reshape(-1, 3).T[0]
+            samples_class_0_list = np.array(samples_class_0_list).astype(np.int64)
 
-    ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
-            
-    globals().update(config)
+            feature_weight_0_list = line_distribution_parameters[:config['data']['number_of_variables']*3].reshape(-1, 3).T[1]
+            feature_weight_0_list = np.array(feature_weight_0_list).astype(np.float32)
+
+            seed_shuffeling_list = line_distribution_parameters[:config['data']['number_of_variables']*3].reshape(-1, 3).T[2]
+            seed_shuffeling_list = np.array(seed_shuffeling_list).astype(np.int64)
+
+            line_distribution_parameters = line_distribution_parameters[config['data']['number_of_variables']*3:]
+        else:
+            samples_class_0_list = [np.nan]* config['data']['number_of_variables']
+            feature_weight_0_list = [np.nan]* config['data']['number_of_variables']
+            seed_shuffeling_list = [np.nan]* config['data']['number_of_variables']
+    except:
+        samples_class_0_list = [np.nan]* config['data']['number_of_variables']
+        feature_weight_0_list = [np.nan]* config['data']['number_of_variables']
+        seed_shuffeling_list = [np.nan]* config['data']['number_of_variables']
         
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)    
-    if int(tf.__version__[0]) >= 2:
-        tf.random.set_seed(RANDOM_SEED)
+    if config['data']['max_distributions_per_class'] == 0:
+        distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*2)
     else:
-        tf.set_random_seed(RANDOM_SEED)       
+        distribution_list = line_distribution_parameters.reshape(-1, 1+max_distributions_per_class_function*config['data']['num_classes']*2)    
+
+    distribution_dict_list = []
+    for i, distribution in enumerate(distribution_list):
+        distribution_name = distribution[0][1:]
+        distribution_parameters= distribution[1:]
+
+        if config['data']['max_distributions_per_class'] == 0:
+            distribution_parameters_0_param_1 = distribution_parameters.reshape(2, -1)[0]
+            distribution_parameters_0_param_2 = distribution_parameters.reshape(2, -1)[1]
+            distribution_parameters_1_param_1 = distribution_parameters_0_param_1
+            distribution_parameters_1_param_2 = distribution_parameters_0_param_2
+        else:               
+            distribution_parameters_0_param_1 = distribution_parameters.reshape(4, -1)[0]
+            distribution_parameters_0_param_2 = distribution_parameters.reshape(4, -1)[1]
+            distribution_parameters_1_param_1 = distribution_parameters.reshape(4, -1)[2]
+            distribution_parameters_1_param_2 = distribution_parameters.reshape(4, -1)[3]
+
+        distribution_parameters_0_param_1 = distribution_parameters_0_param_1[distribution_parameters_0_param_1 != ' NaN'].astype(np.float64)
+        distribution_parameters_0_param_2 = distribution_parameters_0_param_2[distribution_parameters_0_param_2 != ' NaN'].astype(np.float64)
+        distribution_parameters_1_param_1 = distribution_parameters_1_param_1[distribution_parameters_1_param_1 != ' NaN'].astype(np.float64)
+        distribution_parameters_1_param_2 = distribution_parameters_1_param_2[distribution_parameters_1_param_2 != ' NaN'].astype(np.float64)
+
+        if len(distribution_parameters_0_param_1) == 1:
+            distribution_parameters_0_param_1 = distribution_parameters_0_param_1[0]
+        if len(distribution_parameters_0_param_2) == 1:
+            distribution_parameters_0_param_2 = distribution_parameters_0_param_2[0]
+        if len(distribution_parameters_1_param_1) == 1:
+            distribution_parameters_1_param_1 = distribution_parameters_1_param_1[0]
+        if len(distribution_parameters_1_param_2) == 1:
+            distribution_parameters_1_param_2 = distribution_parameters_1_param_2[0]        
+        distribution_dict = None
+
+        if distribution_name == 'normal':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'loc': distribution_parameters_0_param_1,
+                    'scale': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'loc': distribution_parameters_1_param_1,
+                    'scale': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}
+        elif distribution_name == 'uniform':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'low': distribution_parameters_0_param_1,
+                    'high': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'low': distribution_parameters_1_param_1,
+                    'high': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}
+
+        elif distribution_name == 'gamma':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'shape': distribution_parameters_0_param_1,
+                    'scale': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'shape': distribution_parameters_1_param_1,
+                    'scale': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}
+        elif distribution_name == 'exponential':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'scale': distribution_parameters_0_param_1,
+                },
+                'class_1': {
+                    'scale': distribution_parameters_1_param_1,
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}        
+        elif distribution_name == 'beta':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'a': distribution_parameters_0_param_1,
+                    'b': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'a': distribution_parameters_1_param_1,
+                    'b': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}    
+        elif distribution_name == 'binomial':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'n': distribution_parameters_0_param_1,
+                    'p': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'n': distribution_parameters_1_param_1,
+                    'p': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}    
+        elif distribution_name == 'poisson':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'lam': distribution_parameters_0_param_1,
+                },
+                'class_1': {
+                    'lam': distribution_parameters_1_param_1,
+                },
+                'samples_class_0': samples_class_0_list[i],
+                'feature_weight_0': feature_weight_0_list[i],
+                'seed_shuffeling': seed_shuffeling_list[i],       
+            }}  
+        distribution_dict_list.append(distribution_dict)
+
+
+
+    random_evaluation_dataset, _, _, _ = generate_dataset_from_distributions(distribution_list=distribution_list, 
+                                                             number_of_variables=config['data']['number_of_variables'], 
+                                                             number_of_samples=number_of_samples_function, 
+                                                             distributions_per_class = max_distributions_per_class_function, 
+                                                             seed = seed_function, 
+                                                             flip_percentage=flip_percentage, 
+                                                             data_noise=data_noise,
+                                                             random_parameters=random_parameters_distribution,
+                                                             distribution_dict_list=distribution_dict_list,
+                                                             config=config)   
     
+    return random_evaluation_dataset
 
-    base_model = Sequential()
+######################################################################################################################################################################################################################
 
-    base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
+def unstack_array_to_list(a, axis=0):
+    return list(np.moveaxis(a, axis, 0))
 
-    for neurons in lambda_network_layers[1:]:
-        base_model.add(Dense(neurons, activation='relu'))
 
-    base_model.add(Dense(1))
+class AABB:
+    """Axis-aligned bounding box"""
+    def __init__(self, n_features):
+        self.limits = np.array([[-np.inf, np.inf]] * n_features)
+
+    def split(self, f, v):
+        left = AABB(self.limits.shape[0])
+        right = AABB(self.limits.shape[0])
+        left.limits = self.limits.copy()
+        right.limits = self.limits.copy()
+
+        left.limits[f, 1] = v
+        right.limits[f, 0] = v
+
+        return left, right
+
+
+def tree_bounds(tree, n_features=None):
+    """Compute final decision rule for each node in tree"""
+    if n_features is None:
+        n_features = np.max(tree.feature) + 1
+    aabbs = [AABB(n_features) for _ in range(tree.node_count)]
+    queue = deque([0])
+    while queue:
+        i = queue.pop()
+        l = tree.children_left[i]
+        r = tree.children_right[i]
+        if l != ctree.TREE_LEAF:
+            aabbs[l], aabbs[r] = aabbs[i].split(tree.feature[i], tree.threshold[i])
+            queue.extend([l, r])
+    return aabbs
+
+
+def decision_areas(tree_classifier, maxrange, x=0, y=1, n_features=None):
     
-    weights_structure = base_model.get_weights()
-    
-    
-    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(per_network_dataset_size, max(1, n)))
-    random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)
-    list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)
-    
-    model_lambda_placeholder = tf.keras.models.clone_model(base_model)  
-    
-    dims = [np_arrays.shape for np_arrays in weights_structure]
-    
-
-    lambda_network_weights = tf.dtypes.cast(tf.convert_to_tensor(lambda_network_weights), tf.float32)
-    
-    #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
-    # build models
-    start = 0
-    layers = []
-    for i in range(len(dims)//2):
-
-        # set weights of layer
-        index = i*2
-        size = np.product(dims[index])
-        weights_tf_true = tf.reshape(lambda_network_weights[start:start+size], dims[index])
-        model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
-        start += size
-
-        # set biases of layer
-        index += 1
-        size = np.product(dims[index])
-        biases_tf_true = tf.reshape(lambda_network_weights[start:start+size], dims[index])
-        model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-        start += size
-
-
-    lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_lambda_input_data))    
-    
-
-    
-    ########################################### OPTIMIZATION ########################################################
-        
-    current_monomial_degree = tf.Variable(0, dtype=tf.int64)
-    best_result = np.inf
-
-    for current_iteration in range(restarts):
-                
-        @tf.function(jit_compile=True) 
-        def function_to_optimize():
-            
-            poly_optimize = poly_optimize_input[0]
-
-            if interpretation_net_output_monomials != None:
-                poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
-                poly_optimize_identifiers_list = []
-                if sparse_poly_representation_version == 1:
-                    for i in range(interpretation_net_output_monomials):
-                        poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
-                        poly_optimize_identifiers_list.append(poly_optimize_identifiers)
-                    poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
-                else:
-                    for i in range(interpretation_net_output_monomials):
-                        for j in range(n):
-                            poly_optimize_identifiers = tf.math.softmax(poly_optimize[i*n*j*(d+1)+interpretation_net_output_monomials:(i+1)*n*j*(d+1)+interpretation_net_output_monomials])
-                            poly_optimize_identifiers_list.append(poly_optimize_identifiers)
-                    poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)                
-                poly_optimize = tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
-
-            poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, current_monomial_degree, config=config), (random_lambda_input_data))
-
-            error = None
-            if inet_loss == 'mae':
-                error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
-            elif inet_loss == 'r2':
-                error = r2_keras_loss(lambda_fv, poly_optimize_fv_list)  
-            else:
-                raise SystemExit('Unknown I-Net Metric: ' + inet_loss)                
-
-            error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
-
-            return error 
-
-    
-            
-        opt = optimizer(learning_rate=lr)
-        
-        poly_optimize_input = tf.Variable(tf.random.uniform([1, interpretation_net_output_shape]))
-        
-        stop_counter = 0
-        best_result_iteration = np.inf
-
-        for current_step in range(max_steps):
-            if stop_counter>=early_stopping:
-                break
-            
-            opt.minimize(function_to_optimize, var_list=[poly_optimize_input])
-            current_result = function_to_optimize()
-            if printing:
-                clear_output(wait=True)
-                print("Current best: {} \n Curr_res: {} \n Iteration {}, Step {}".format(best_result_iteration,current_result, current_iteration, current_step))
- 
-            stop_counter += 1
-            if current_result < best_result_iteration:
-                best_result_iteration = current_result
-                stop_counter = 0
-                best_poly_optimize_iteration = tf.identity(poly_optimize_input)
-                
-        if best_result_iteration < best_result:
-            best_result = best_result_iteration
-            best_poly_optimize = tf.identity(best_poly_optimize_iteration)
-            
-
-    per_network_poly = best_poly_optimize[0].numpy()
-    
-    if printing:
-        print("Optimization terminated at {}".format(best_result))
-        
-    if return_error:
-        return best_result, per_network_poly
-    
-    return per_network_poly
-
-
-
-def per_network_poly_optimization_scipy(per_network_dataset_size, 
-                                          lambda_network_weights, 
-                                          list_of_monomial_identifiers_numbers, 
-                                          config, 
-                                          optimizer = 'Nelder-Mead',
-                                          jac = None,
-                                          max_steps = 1000, 
-                                          restarts=5, 
-                                          printing=True,
-                                          return_error=False):
-
-    from utilities.metrics import calculate_poly_fv_tf_wrapper
-
-    def copy( self ):
-        return tf.identity(self)
-    tf.Tensor.copy = copy
-
-
-    ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
-
-    globals().update(config)
-
-    random.seed(RANDOM_SEED)
-    np.random.seed(RANDOM_SEED)    
-    if int(tf.__version__[0]) >= 2:
-        tf.random.set_seed(RANDOM_SEED)
-    else:
-        tf.set_random_seed(RANDOM_SEED)       
-
-
-    base_model = Sequential()
-
-    base_model.add(Dense(lambda_network_layers[0], activation='relu', input_dim=n))
-
-    for neurons in lambda_network_layers[1:]:
-        base_model.add(Dense(neurons, activation='relu'))
-
-    base_model.add(Dense(1))
-
-    weights_structure = base_model.get_weights()
-
-
-    random_lambda_input_data = np.random.uniform(low=x_min, high=x_max, size=(per_network_dataset_size, max(1, n)))
-    random_lambda_input_data = tf.dtypes.cast(tf.convert_to_tensor(random_lambda_input_data), tf.float32)
-    list_of_monomial_identifiers_numbers = tf.dtypes.cast(tf.convert_to_tensor(list_of_monomial_identifiers_numbers), tf.float32)
-
-    model_lambda_placeholder = tf.keras.models.clone_model(base_model)  
-
-    dims = [np_arrays.shape for np_arrays in weights_structure]
-
-
-    lambda_network_weights = tf.dtypes.cast(tf.convert_to_tensor(lambda_network_weights), tf.float32)
-
-    #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
-    # build models
-    start = 0
-    layers = []
-    for i in range(len(dims)//2):
-
-        # set weights of layer
-        index = i*2
-        size = np.product(dims[index])
-        weights_tf_true = tf.reshape(lambda_network_weights[start:start+size], dims[index])
-        model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
-        start += size
-
-        # set biases of layer
-        index += 1
-        size = np.product(dims[index])
-        biases_tf_true = tf.reshape(lambda_network_weights[start:start+size], dims[index])
-        model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-        start += size
-
-
-    lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_lambda_input_data))    
-
-
-
-    ########################################### OPTIMIZATION ########################################################
-
-    current_monomial_degree = tf.Variable(0, dtype=tf.int64)
-    best_result = np.inf
-
-    for current_iteration in range(restarts):
-
-        def function_to_optimize_scipy_wrapper(current_monomial_degree):
-            @tf.function(jit_compile=True) 
-            def function_to_optimize_scipy(poly_optimize_input):   
-
-                #poly_optimize = tf.cast(tf.constant(poly_optimize_input), tf.float32)
-                poly_optimize = tf.cast(poly_optimize_input, tf.float32)
-
-                if interpretation_net_output_monomials != None:
-                    poly_optimize_coeffs = poly_optimize[:interpretation_net_output_monomials]
-                    poly_optimize_identifiers_list = []
-                    if sparse_poly_representation_version == 1:
-                        for i in range(interpretation_net_output_monomials):
-                            poly_optimize_identifiers = tf.math.softmax(poly_optimize[sparsity*i+interpretation_net_output_monomials:sparsity*(i+1)+interpretation_net_output_monomials])
-                            poly_optimize_identifiers_list.append(poly_optimize_identifiers)
-                        poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)
-                    else:
-                        for i in range(interpretation_net_output_monomials):
-                            for j in range(n):
-                                poly_optimize_identifiers = tf.math.softmax(poly_optimize[i*n*j*(d+1)+interpretation_net_output_monomials:(i+1)*n*j*(d+1)+interpretation_net_output_monomials])
-                                poly_optimize_identifiers_list.append(poly_optimize_identifiers)
-                        poly_optimize_identifiers_list = tf.keras.backend.flatten(poly_optimize_identifiers_list)                
-                    poly_optimize = tf.concat([poly_optimize_coeffs, poly_optimize_identifiers_list], axis=0)
-
-                poly_optimize_fv_list = tf.vectorized_map(calculate_poly_fv_tf_wrapper(list_of_monomial_identifiers_numbers, poly_optimize, current_monomial_degree, config=config), (random_lambda_input_data))
-
-                error = None
-                if inet_loss == 'mae':
-                    error = tf.keras.losses.MAE(lambda_fv, poly_optimize_fv_list)
-                elif inet_loss == 'r2':
-                    error = r2_keras_loss(lambda_fv, poly_optimize_fv_list)  
-                else:
-                    raise SystemExit('Unknown I-Net Metric: ' + inet_loss)                
-
-                error = tf.where(tf.math.is_nan(error), tf.fill(tf.shape(error), np.inf), error)   
-
-                return error
-            return function_to_optimize_scipy
-
-
-        poly_optimize_input = tf.random.uniform([1, interpretation_net_output_shape])    
-
-        def function_to_optimize_scipy_grad_wrapper(current_monomial_degree):
-            def function_to_optimize_scipy_grad(poly_optimize_input):
-
-                error = function_to_optimize_scipy_wrapper(current_monomial_degree)(poly_optimize_input)
-                error = error.numpy()
-                return error
-            return function_to_optimize_scipy_grad
-
-        stop_counter = 0
-
-
-        if jac=='fprime':
-            jac = lambda x: optimize.approx_fprime(x, function_to_optimize_scipy_grad_wrapper(current_monomial_degree), 0.01)
-
-        #tf.print(interpretation_net_output_monomials)
-        #tf.print(config)        
-        opt_res = minimize(function_to_optimize_scipy_wrapper(current_monomial_degree), poly_optimize_input, method=optimizer, jac=jac, options={'maxfun': None, 'maxiter': max_steps})
-        print(opt_res)
-        #opt_res = minimize(function_to_optimize_scipy_wrapper(current_monomial_degree), poly_optimize_input, method=optimizer, options={'maxfun': None, 'maxiter': max_steps})
-
-        best_result_iteration = opt_res.fun
-        best_poly_optimize_iteration = opt_res.x
-
-        if best_result_iteration < best_result:
-            best_result = best_result_iteration
-            best_poly_optimize = best_poly_optimize_iteration
-
-    per_network_poly = best_poly_optimize
-
-    if printing:
-        print("Optimization terminated at {}".format(best_result))
-
-    if return_error:
-        return best_result, per_network_poly
-    
-    return per_network_poly
-
+    print('GO')
+    """ Extract decision areas.
+
+    tree_classifier: Instance of a sklearn.tree.DecisionTreeClassifier
+    maxrange: values to insert for [left, right, top, bottom] if the interval is open (+/-inf) 
+    x: index of the feature that goes on the x axis
+    y: index of the feature that goes on the y axis
+    n_features: override autodetection of number of features
+    """
+    tree = tree_classifier.tree_
+    aabbs = tree_bounds(tree, n_features)
+
+    rectangles = []
+    for i in range(len(aabbs)):
+        if tree.children_left[i] != ctree.TREE_LEAF:
+            continue
+        l = aabbs[i].limits
+        r = [l[x, 0], l[x, 1], l[y, 0], l[y, 1], np.argmax(tree.value[i])]
+        rectangles.append(r)
+    rectangles = np.array(rectangles)
+    rectangles[:, [0, 2]] = np.maximum(rectangles[:, [0, 2]], maxrange[0::2])
+    rectangles[:, [1, 3]] = np.minimum(rectangles[:, [1, 3]], maxrange[1::2])
+    return rectangles
+
+def plot_areas(rectangles):
+    for rect in rectangles:
+        color = ['b', 'r'][int(rect[4])]
+        print(rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1])
+        rp = Rectangle([rect[0], rect[2]], 
+                       rect[1] - rect[0], 
+                       rect[3] - rect[2], color=color, alpha=0.3)
+        plt.gca().add_artist(rp)

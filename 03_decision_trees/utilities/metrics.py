@@ -90,12 +90,71 @@ def initialize_metrics_config_from_curent_notebook(config):
 ######################Manual TF Loss function for comparison with lambda-net prediction based (predictions made in loss function)######################
 #######################################################################################################################################################
 
+def inet_decision_function_fv_loss_wrapper_parameters(config):   
+            
+    def inet_decision_function_fv_loss_parameters(function_true_with_network_parameters, function_pred):      
+
+        internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+        leaf_node_num_ = 2 ** config['function_family']['maximum_depth'] 
+
+        config['function_family']['basic_function_representation_length'] = internal_node_num_ * config['data']['number_of_variables'] * 2 + leaf_node_num_ * config['data']['num_classes']
+
+        tf.print(function_true_with_network_parameters.shape)
+        tf.print(function_pred.shape)
+        
+        decision_tree_parameters = function_true_with_network_parameters[:, : config['function_family']['basic_function_representation_length']]   
+           
+        decision_tree_parameters = tf.dtypes.cast(tf.convert_to_tensor(decision_tree_parameters), tf.float32)
+            
+        
+        splits_features_true = decision_tree_parameters[:,:internal_node_num_ * config['data']['number_of_variables']].reshape(internal_node_num_, -1)
+        splits_values_true = decision_tree_parameters[:,internal_node_num_:internal_node_num_ * config['data']['number_of_variables'] * 2].reshape(internal_node_num_, -1)
+        leaf_probabilities_true = decision_tree_parameters[:,internal_node_num_ * config['data']['number_of_variables'] * 2:].reshape(leaf_node_num_, -1)[:,:1]
+        
+        splits_features_pred = function_pred[:,:internal_node_num_ * config['data']['number_of_variables']].reshape(internal_node_num_, -1)
+        splits_values_pred = function_pred[:,internal_node_num_:internal_node_num_ * config['data']['number_of_variables'] * 2].reshape(internal_node_num_, -1)
+        leaf_probabilities_pred = function_pred[:,internal_node_num_ * config['data']['number_of_variables'] * 2:].reshape(leaf_node_num_, -1)[:,:1]
+        
+        loss_internal_complete = 0
+                
+        for internal_node_true, internal_node_pred in zip(tf.split(splits_features_true, internal_node_num_), tf.split(splits_features_pred, internal_node_num_)):
+            loss_internal = tf.reduce_sum(tf.keras.metrics.mean_absolute_error(internal_node_true, internal_node_pred))#tf.keras.losses.CategoricalCrossentropy(internal_node_true, internal_node_pred)
+            loss_internal_complete += loss_internal
+        ##tf.print(loss_internal_complete)
+        
+        loss_leaf_complete = 0
+            
+        for leaf_node_true, leaf_node_pred in zip(tf.split(leaf_probabilities_true, leaf_node_num_), tf.split(leaf_probabilities_pred, leaf_node_num_)):
+            loss_leaf = tf.keras.losses.CategoricalCrossentropy(leaf_node_true, leaf_node_pred)  
+            loss_leaf_complete += loss_leaf
+        #function_pred 
+        ##tf.print(loss_leaf_complete)
+        
+        ##tf.print(loss_complete)
+        loss_complete = loss_internal_complete + loss_leaf_complete
+        
+
+        return loss_complete#tf.reduce_mean(function_true_with_network_parameters)*tf.random.uniform(0,1)#loss_complete
+    
+    inet_decision_function_fv_loss_parameters.__name__ = config['i_net']['loss'] + '_' + inet_decision_function_fv_loss_parameters.__name__        
+
+
+    return inet_decision_function_fv_loss_parameters
+
+
+
 
 def inet_decision_function_fv_loss_wrapper(model_lambda_placeholder, network_parameters_structure, config, use_distribution_list):   
             
     def inet_decision_function_fv_loss(function_true_with_network_parameters, function_pred):      
 
-        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']: config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']]
+        if not config['i_net']['function_value_loss']:
+            internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+            leaf_node_num_ = 2 ** config['function_family']['maximum_depth'] 
+            
+            config['function_family']['basic_function_representation_length'] = internal_node_num_ * config['data']['number_of_variables'] * 2 + leaf_node_num_ * config['data']['num_classes']
+        
+        network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']: config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']]    
         function_true = function_true_with_network_parameters[:,:config['function_family']['basic_function_representation_length']]
         distribution_line_array = function_true_with_network_parameters[:, config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']:]
         
@@ -461,6 +520,11 @@ def inet_decision_function_fv_metric_wrapper(model_lambda_placeholder, network_p
         #random_evaluation_dataset = generate_random_data_points_custom(config['data']['x_min'], config['data']['x_max'], config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'], categorical_indices=None, distrib=config['evaluation']['random_evaluation_dataset_distribution'])            
         #random_evaluation_dataset =  np.random.uniform(low=config['data']['x_min'], high=config['data']['x_max'], size=(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables']))
         #random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)
+        if not config['i_net']['function_value_loss']:
+            internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
+            leaf_node_num_ = 2 ** config['function_family']['maximum_depth'] 
+            
+            config['function_family']['basic_function_representation_length'] = internal_node_num_ * config['data']['number_of_variables'] * 2 + leaf_node_num_ * config['data']['num_classes']            
             
         
         network_parameters = function_true_with_network_parameters[:,config['function_family']['basic_function_representation_length']: config['function_family']['basic_function_representation_length'] + config['lambda_net']['number_of_lambda_weights']]
