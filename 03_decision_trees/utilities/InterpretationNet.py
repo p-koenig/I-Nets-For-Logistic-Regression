@@ -321,6 +321,36 @@ def load_inet(loss_function, metrics, config):
 
  
     
+def generate_inet_labels_learned(lambda_net, config, config_adjusted):
+    
+    from utilities.utility_functions import network_parameters_to_network, get_shaped_parameters_for_decision_tree, get_parameters_from_sklearn_decision_tree
+    
+    network = network_parameters_to_network(lambda_net.network_parameters, config)       
+    X_train_lambda = lambda_net.X_train_lambda
+    y_train_lambda = lambda_net.y_train_lambda
+
+    y_train_lambda_pred_network = np.round(network.predict(X_train_lambda)).astype(np.int64)
+
+    tree = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+    tree.fit(X_train_lambda, y_train_lambda_pred_network)
+
+    splits, leaf_probabilities_single = get_shaped_parameters_for_decision_tree(get_parameters_from_sklearn_decision_tree(tree, config), config_adjusted)
+    splits = splits.numpy()
+    leaf_probabilities_single = leaf_probabilities_single.numpy()
+    #print(splits, leaf_probabilities)
+    splits_features = tfa.seq2seq.hardmax(splits).numpy()#np.argmax(splits[0], axis=)
+    #print(splits_features)
+    splits_values = splits
+    #print(splits)
+    leaf_probabilities = np.vstack([leaf_probabilities_single, 1-leaf_probabilities_single]).T
+    #print(leaf_probabilities)
+
+    parameters_decision_tree = np.hstack([splits_values.ravel(), splits_features.ravel(), leaf_probabilities.ravel()]) # np.hstack([splits_values.ravel(), leaf_probabilities.ravel()])#
+    #print(parameters_decision_tree)     
+    
+    return parameters_decision_tree
+    
+    
         
 def generate_inet_train_data(lambda_net_dataset, config, encoder_model=None):
     #X_data = None
@@ -337,39 +367,49 @@ def generate_inet_train_data(lambda_net_dataset, config, encoder_model=None):
         y_data = lambda_net_dataset.target_function_parameters_array
     else:
         if not config['i_net']['function_value_loss']:
-            y_train_learned = []
 
-            #for network_parameters in tqdm(X_train_flat):
-            for lambda_net in lambda_net_dataset.lambda_net_list:
-                network = network_parameters_to_network(lambda_net.network_parameters, config)       
-                X_train_lambda = lambda_net.X_train_lambda
-                y_train_lambda = lambda_net.y_train_lambda
-                
-                y_train_lambda_pred_network = np.round(network.predict(X_train_lambda)).astype(np.int64)
-                
-                tree = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
-                tree.fit(X_train_lambda, y_train_lambda_pred_network)
-                
+            
+            if False:
+                y_train_learned = []
+                #for network_parameters in tqdm(X_train_flat):
+                for lambda_net in tqdm(lambda_net_dataset.lambda_net_list):
+                    network = network_parameters_to_network(lambda_net.network_parameters, config)       
+                    X_train_lambda = lambda_net.X_train_lambda
+                    y_train_lambda = lambda_net.y_train_lambda
+
+                    y_train_lambda_pred_network = np.round(network.predict(X_train_lambda)).astype(np.int64)
+
+                    tree = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+                    tree.fit(X_train_lambda, y_train_lambda_pred_network)
+
+                    config_adjusted = deepcopy(config)
+                    config_adjusted['i_net']['function_representation_type'] = 1
+                    config_adjusted['function_family']['dt_type'] = 'vanilla'
+                    config_adjusted['function_family']['decision_sparsity'] = 1                    
+                    splits, leaf_probabilities_single = get_shaped_parameters_for_decision_tree(get_parameters_from_sklearn_decision_tree(tree, config), config_adjusted)
+                    splits = splits.numpy()
+                    leaf_probabilities_single = leaf_probabilities_single.numpy()
+                    #print(splits, leaf_probabilities)
+                    splits_features = tfa.seq2seq.hardmax(splits).numpy()#np.argmax(splits[0], axis=)
+                    #print(splits_features)
+                    splits_values = splits
+                    #print(splits)
+                    leaf_probabilities = np.vstack([leaf_probabilities_single, 1-leaf_probabilities_single]).T
+                    #print(leaf_probabilities)
+
+                    parameters_decision_tree = np.hstack([splits_values.ravel(), splits_features.ravel(), leaf_probabilities.ravel()]) # np.hstack([splits_values.ravel(), leaf_probabilities.ravel()])#
+                    #print(parameters_decision_tree)                
+                    y_train_learned.append(parameters_decision_tree)
+            else:
                 config_adjusted = deepcopy(config)
                 config_adjusted['i_net']['function_representation_type'] = 1
                 config_adjusted['function_family']['dt_type'] = 'vanilla'
                 config_adjusted['function_family']['decision_sparsity'] = 1
-                splits, leaf_probabilities_single = get_shaped_parameters_for_decision_tree(get_parameters_from_sklearn_decision_tree(tree, config), config_adjusted)
-                splits = splits.numpy()
-                leaf_probabilities_single = leaf_probabilities_single.numpy()
-                #print(splits, leaf_probabilities)
-                splits_features = tfa.seq2seq.hardmax(splits).numpy()#np.argmax(splits[0], axis=)
-                #print(splits_features)
-                splits_values = splits
-                #print(splits)
-                leaf_probabilities = np.vstack([leaf_probabilities_single, 1-leaf_probabilities_single]).T
-                #print(leaf_probabilities)
+                    
+                parallel_data_generation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=3, backend='loky') #loky #sequential multiprocessing
+                y_train_learned = parallel_data_generation(delayed(generate_inet_labels_learned)(lambda_net, config, config_adjusted) for lambda_net in lambda_net_dataset.lambda_net_list)                
 
-                parameters_decision_tree = np.hstack([splits_features.ravel(), splits_values.ravel(), leaf_probabilities.ravel()]) # np.hstack([splits_values.ravel(), leaf_probabilities.ravel()])#
-                #print(parameters_decision_tree)                
-                y_train_learned.append(parameters_decision_tree)
-                
-            y_data = np.vstack(y_train_learned)
+            y_data = np.vstack(y_train_learned).astype(np.float64)
             print('DTs Trained')
             print('Example:', y_data[0])
         else:        
@@ -452,16 +492,12 @@ def train_inet(lambda_net_train_dataset,
     else:
         if config['i_net']['function_representation_type'] == 3:
             if config['i_net']['optimize_decision_function']:
-                loss = inet_decision_function_fv_loss_wrapper_parameters(config)
                 
-                print('LOSS CORRECT')
-                print(y_train.shape)
-                print(y_train[0])
-                                
-                loss_value = inet_decision_function_fv_loss_wrapper_parameters(config)(y_train[0], y_train[1])  
-                print('y_train[0]', y_train[0])
-                print('y_train[1]', y_train[1])
-                print('loss_value', loss_value)        
+                loss_function = inet_decision_function_fv_loss_wrapper_parameters(config)
+                
+                metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list))
+                for metric in config['i_net']['metrics']:
+                    metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, use_distribution_list=use_distribution_list))    
 
                 if False:
                     metrics.append(inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list))
@@ -483,7 +519,10 @@ def train_inet(lambda_net_train_dataset,
                 else:
                     raise SystemExit('Coefficient Loss not implemented for selected function representation')
     
-                
+    #loss_function = inet_decision_function_fv_loss_wrapper_parameters(config)
+    #loss_function = inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list)
+    #metrics = [inet_decision_function_fv_loss_wrapper(random_model, network_parameters_structure, config, use_distribution_list=use_distribution_list)]
+        
     distribution_dict_index_train = np.array([[i] for i in range(y_train.shape[0])])
     distribution_dict_index_valid = np.array([[len(distribution_dict_index_train) + i] for i in range(y_valid.shape[0])])
     
@@ -571,6 +610,8 @@ def train_inet(lambda_net_train_dataset,
         else:
             print('y_train.shape, X_train.shape, random_evaluation_dataset_flat_array_train.shape', y_train.shape, X_train.shape, random_evaluation_dataset_flat_array_train.shape)
             print('y_valid.shape, X_valid.shape, random_evaluation_dataset_flat_array_valid.shape', y_valid.shape, X_valid.shape, random_evaluation_dataset_flat_array_valid.shape)
+            
+            print("X_train[0]", X_train[0])
             
             y_train_model = np.hstack((y_train, X_train, random_evaluation_dataset_flat_array_train))   
             valid_data = (X_valid, np.hstack((y_valid, X_valid, random_evaluation_dataset_flat_array_valid)))             
@@ -1075,7 +1116,7 @@ def train_inet(lambda_net_train_dataset,
                     
 
             model = Model(inputs=inputs, outputs=outputs)
-            
+                        
             if config['i_net']['early_stopping']:
                 callback_names.append('early_stopping')
             
@@ -1084,14 +1125,13 @@ def train_inet(lambda_net_train_dataset,
             optimizer = tf.keras.optimizers.get(config['i_net']['optimizer'])
             optimizer.learning_rate = config['i_net']['learning_rate']
 
-
             model.compile(optimizer=optimizer,
                           loss=loss_function,
                           metrics=metrics
                          )
 
             verbosity = 2 #if n_jobs ==1 else 0
-
+            
             ############################## PREDICTION ###############################
             history = model.fit(X_train,
                       y_train_model,

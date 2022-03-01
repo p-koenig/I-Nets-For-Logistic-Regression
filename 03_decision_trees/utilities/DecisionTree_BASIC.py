@@ -25,6 +25,8 @@ import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
 tf.autograph.set_verbosity(3)
 
+from copy import deepcopy
+
 #################################################################################################################################################################################################################################
 #################################################################################################################################################################################################################################
 ###################This is the pytorch implementation on Soft Decision Tree (SDT), appearing in the paper "Distilling a Neural Network Into a Soft Decision Tree". 2017 (https://arxiv.org/abs/1711.09784).######################
@@ -134,14 +136,14 @@ class SDT(nn.Module):
                                     self.output_dim,
                                     bias=False)
         
-        
-        if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
-            vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+        if False:
+            if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
+                vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
 
-            weights = torch.zeros_like(self.inner_nodes[0].weight)
-            for i, idx in enumerate(idx_list):
-                weights[i][idx] = self.inner_nodes[0].weight[i][idx]
-            self.inner_nodes[0].weight = torch.nn.Parameter(weights)    
+                weights = torch.zeros_like(self.inner_nodes[0].weight)
+                for i, idx in enumerate(idx_list):
+                    weights[i][idx] = self.inner_nodes[0].weight[i][idx]
+                self.inner_nodes[0].weight = torch.nn.Parameter(weights)    
             
                     
         self.criterion = criterion
@@ -183,7 +185,18 @@ class SDT(nn.Module):
         #X = self._data_augment(X)
         if self.verbosity>= 3:
             print('X', X)
-        path_prob = nn.Sigmoid()(self.beta*self.inner_nodes(X))
+            
+        if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
+            inner_nodes = deepcopy(self.inner_nodes)
+            vals_list, idx_list = torch.topk(torch.abs(inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+            weights = torch.zeros_like(inner_nodes[0].weight)
+            for i, idx in enumerate(idx_list):
+                weights[i][idx] = inner_nodes[0].weight[i][idx]
+            inner_nodes[0].weight = torch.nn.Parameter(weights) 
+            path_prob = nn.Sigmoid()(self.beta*inner_nodes(X))
+        else:   
+            path_prob = nn.Sigmoid()(self.beta*self.inner_nodes(X))
+            
         if self.verbosity>= 3:
             print('path_prob', path_prob)
         path_prob = torch.unsqueeze(path_prob, dim=2)
@@ -310,13 +323,13 @@ class SDT(nn.Module):
 
                     #print('loss',loss)
 
-                    if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
-                        vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
-
-                        weights = torch.zeros_like(self.inner_nodes[0].weight)
-                        for i, idx in enumerate(idx_list):
-                            weights[i][idx] = self.inner_nodes[0].weight[i][idx]
-                        self.inner_nodes[0].weight = torch.nn.Parameter(weights)                          
+                    if False:
+                        if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
+                            vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+                            weights = torch.zeros_like(self.inner_nodes[0].weight)
+                            for i, idx in enumerate(idx_list):
+                                weights[i][idx] = self.inner_nodes[0].weight[i][idx]
+                            self.inner_nodes[0].weight = torch.nn.Parameter(weights) 
 
                     #print(self.inner_nodes[0].weight)
                     pred = output.data.max(1)[1]
@@ -365,7 +378,14 @@ class SDT(nn.Module):
             else:
                 break
             
-                
+            
+        if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
+            vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+            weights = torch.zeros_like(self.inner_nodes[0].weight)
+            for i, idx in enumerate(idx_list):
+                weights[i][idx] = self.inner_nodes[0].weight[i][idx]
+            self.inner_nodes[0].weight = torch.nn.Parameter(weights) 
+            
     def evaluate(self, X, y):
         self.eval()
         
@@ -581,6 +601,8 @@ class parameterDT():
         self.shaped_parameters = self.get_shaped_parameters(self.parameters)
         
     def predict(self, X_data):
+        from utilities.metrics import calculate_function_value_from_vanilla_decision_tree_parameters_wrapper
+        
         y_data_predicted, _  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_data, self.config)(self.parameters)
         return y_data_predicted.numpy()
 
@@ -608,7 +630,7 @@ class parameterDT():
             splits = np.array(transpose_normalized).transpose()
 
         splits_by_layer = []
-        for i in range(config['function_family']['maximum_depth']+1):
+        for i in range(self.config['function_family']['maximum_depth']+1):
             start = 2**i - 1
             end = 2**(i+1) -1
             splits_by_layer.append(splits[start:end])
@@ -642,7 +664,7 @@ class parameterDT():
                     #tree.create_node(tag=split_description, identifier=name, parent=parent_name, data=None)
 
         for j, leaf_class in enumerate(leaf_classes):
-            i = config['function_family']['maximum_depth']
+            i = self.config['function_family']['maximum_depth']
             current_node_id = int(2**i - 1 + j)
             name = 'n' + str(current_node_id)#'l' + str(i) + 'n' + str(j)
             parent_node_id = int(np.floor((current_node_id-1)/2))
