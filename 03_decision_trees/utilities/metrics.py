@@ -99,35 +99,49 @@ def compute_loss_single_tree_wrapper(config):
 
         (splits_features_true, splits_values_true, leaf_probabilities_true, splits_features_pred, splits_values_pred, leaf_probabilities_pred) = input_list
 
-        loss_internal_feature = []
-        true_features = []
-        for internal_node_true, internal_node_pred in zip(tf.split(splits_features_true, internal_node_num_), tf.split(splits_features_pred, internal_node_num_)):
-            loss_internal_feature.append(tf.cast(tf.equal(tf.argmax(tf.squeeze(internal_node_true)), tf.argmax(tf.squeeze(internal_node_pred))), tf.int64))
+        if True:
+            loss_internal_feature = []
+            true_features = []
+            for internal_node_true, internal_node_pred in zip(tf.split(splits_features_true, internal_node_num_), tf.split(splits_features_pred, internal_node_num_)):
+                loss_internal_feature.append(tf.cast(tf.equal(tf.argmax(tf.squeeze(internal_node_true)), tf.argmax(tf.squeeze(internal_node_pred))), tf.int64))
 
-            true_features.append(tf.argmax(tf.squeeze(internal_node_true)))
+                true_features.append(tf.argmax(tf.squeeze(internal_node_true)))
 
-        #loss_internal_complete = 0
-        loss_internal_complete_list = []
-        for internal_node_true, internal_node_pred, correct_feature_identifier, true_feature_index in zip(tf.split(splits_values_true, internal_node_num_), tf.split(splits_values_pred, internal_node_num_), loss_internal_feature, true_features):                    
-            split_value_true = tf.gather(tf.squeeze(internal_node_true), true_feature_index)
-            split_value_pred = tf.gather(tf.squeeze(internal_node_pred), true_feature_index)
+            #loss_internal_complete = 0
+            loss_internal_complete_list = []
+            for internal_node_true, internal_node_pred, correct_feature_identifier, true_feature_index in zip(tf.split(splits_values_true, internal_node_num_), tf.split(splits_values_pred, internal_node_num_), loss_internal_feature, true_features):                    
+                split_value_true = tf.gather(tf.squeeze(internal_node_true), true_feature_index)
+                split_value_pred = tf.gather(tf.squeeze(internal_node_pred), true_feature_index)
 
-            loss_internal = tf.reduce_max([(1.0-tf.cast(correct_feature_identifier, tf.float32)), tf.keras.metrics.mean_absolute_error([split_value_true], [split_value_pred])]) #loss = 1 if wrong feature, else split_distance
-            loss_internal_complete_list.append(loss_internal)
-            #loss_internal_complete += loss_internal        
+                loss_internal = tf.reduce_max([(1.0-tf.cast(correct_feature_identifier, tf.float32)), tf.keras.metrics.mean_absolute_error([split_value_true], [split_value_pred])]) #loss = 1 if wrong feature, else split_distance
+                loss_internal_complete_list.append(loss_internal)
+                #loss_internal_complete += loss_internal        
 
 
-        #loss_leaf_complete = 0   
-        loss_leaf_complete_list = []
-        for leaf_node_true, leaf_node_pred in zip(tf.split(leaf_probabilities_true, leaf_node_num_), tf.split(leaf_probabilities_pred, leaf_node_num_)):
-            loss_leaf = tf.keras.metrics.binary_crossentropy(leaf_node_true, leaf_node_pred)
-            loss_leaf_complete_list.append(loss_leaf)
-            #loss_leaf_complete += loss_leaf
+            #loss_leaf_complete = 0   
+            loss_leaf_complete_list = []
+            for leaf_node_true, leaf_node_pred in zip(tf.split(leaf_probabilities_true, leaf_node_num_), tf.split(leaf_probabilities_pred, leaf_node_num_)):
+                loss_leaf = tf.keras.metrics.binary_crossentropy(leaf_node_true, leaf_node_pred)
+                loss_leaf_complete_list.append(loss_leaf)
+                #loss_leaf_complete += loss_leaf
 
-        loss_internal_complete = tf.reduce_mean(loss_internal_complete_list)
-        loss_leaf_complete = tf.reduce_mean(loss_leaf_complete_list)
+            loss_internal_complete = tf.reduce_mean(loss_internal_complete_list)
+            loss_leaf_complete = tf.reduce_mean(loss_leaf_complete_list)
+
+            loss_complete = loss_internal_complete + loss_leaf_complete * 0.5
+        else:
+            #pass
+            splits_true = splits_features_true #* splits_values_true
+            splits_pred = splits_features_pred #* tfa.seq2seq.hardmax(splits_values_pred)
+
+            error_splits = tf.reduce_mean(tf.keras.metrics.mean_squared_error(splits_true, splits_pred))
+            error_leaf = tf.keras.metrics.mean_squared_error(leaf_probabilities_true, leaf_probabilities_pred)
+            #tf.print('splits_true', splits_true.shape, splits_true)
+            #tf.print('splits_pred', splits_pred.shape, splits_pred)
+            #tf.print('error_splits', error_splits.shape, error_splits)
+            #tf.print('error_leaf', error_leaf.shape, error_leaf)        
+            loss_complete = tf.reduce_mean([error_splits, error_leaf])
             
-        loss_complete = loss_internal_complete + loss_leaf_complete * 0.5
 
         return loss_complete 
 
