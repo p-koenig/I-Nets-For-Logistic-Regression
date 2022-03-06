@@ -93,7 +93,10 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.tree import _tree as ctree
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+import xgboost as xgb
 
+from mlxtend.plotting import plot_decision_regions
+import matplotlib.gridspec as gridspec
                                     
 #######################################################################################################################################################
 #############################################################General Utility Functions#################################################################
@@ -3578,22 +3581,8 @@ def get_complete_distribution_evaluation_results_dataframe(inet_evaluation_resul
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['runtime'], 3),
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['runtime'], 3)
                         ] for identifier in identifier_list]       
-                    ])#.T
+                    ])
     
-    if False:
-        data_new = []
-        index = 0
-
-        for _ in range(data.T.shape[1]//4):
-            new_row_1 = np.insert(data[index+3], np.arange(len(data[index])), data[index+1])
-            new_row_2 = np.insert(data[index+2], np.arange(len(data[index])), data[index])
-            new_row = np.insert(new_row_1, np.arange(len(new_row_1)), new_row_2)
-
-            data_new.append(new_row)
-            #data_new.append(flatten_list([, data[index+1]]))
-            index=index+4
-
-        data = np.array(data_new)
 
     data = np.hstack(data)
     #dataframe = pd.DataFrame(data=data, columns=columns, index=index)
@@ -4680,3 +4669,101 @@ def plot_areas(rectangles):
                        rect[1] - rect[0], 
                        rect[3] - rect[2], color=color, alpha=0.3)
         plt.gca().add_artist(rp)
+        
+        
+        
+        
+        
+def plot_decision_area_evaluation(X_train, 
+                                    y_train, 
+                                    X_test, 
+                                    y_test,
+                                    network,
+                                    tree_train_data,
+                                    tree_random_data,
+                                    inet_dt_params,
+                                    column_names,
+                                    config):
+
+    if False:
+        tree_feature_importance = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])#dt_distilled_list_test[0][index][1]
+        tree_feature_importance.fit(X_train, y_train)
+
+        feature_index = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][:2]))
+        filler_features = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][2:]))
+    else:
+        tree_feature_importance = xgb.XGBClassifier(learning_rate=0.1)#RandomForestClassifier()#dt_distilled_list_test[0][index][1]
+        tree_feature_importance.fit(X_train, y_train)
+        print('Fidelity Feature Importance Model:', accuracy_score(np.round(network.predict(X_test)), np.round(tree_feature_importance.predict(X_test)))) 
+        print('Feature Importances: ', tree_feature_importance.feature_importances_)
+
+        feature_index = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][:2]))
+        filler_features = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][2:]))        
+
+
+
+    filler_feature_values = {}
+    filler_feature_ranges = {}
+    for feature in filler_features:
+        filler_feature_values[feature] = np.median(X_train[:,feature])#value
+        filler_feature_ranges[feature] = np.max([np.abs(np.max(X_train[:,feature]) - filler_feature_values[feature]), np.abs(np.min(X_train[:,feature]) - filler_feature_values[feature])])+0.01
+
+        
+    if config['function_family']['dt_type'] == 'vanilla':
+        tree_inet = parameterDT(inet_dt_params, config)
+    else:
+        tree_inet = SDT(input_dim=config['data']['number_of_variables'],
+                           output_dim=config['data']['num_classes'],
+                           depth=config['function_family']['maximum_depth'],
+                           beta=config['function_family']['beta'],
+                           decision_sparsity=config['function_family']['decision_sparsity'],
+                           use_cuda=False,
+                           verbosity=0)
+        tree_inet.initialize_from_parameter_array(inet_dt_params)
+
+
+    preds_network = np.round(network.predict(X_test))
+    acc_network = accuracy_score(y_test, preds_network)
+
+    preds_tree_sklearn_train_data = np.round(tree_train_data.predict(X_test))
+    acc_inet_sklearn_train_data = accuracy_score(preds_network, preds_tree_sklearn_train_data)
+
+    preds_tree_sklearn_random = np.round(tree_random_data.predict(X_test))
+    acc_inet_sklearn_random = accuracy_score(preds_network, preds_tree_sklearn_random)
+
+    preds_tree_inet = np.round(tree_inet.predict(X_test))
+    acc_inet_tree = accuracy_score(preds_network, preds_tree_inet)
+
+    print('Considered Columns: ', '   '.join(list(column_names[feature_index])))
+    print('Performance Network: ', acc_network)
+    print('Fidelity DT Sklearn Train Data: ', acc_inet_sklearn_train_data)
+    print('Fidelity DT Sklearn Random: ', acc_inet_sklearn_random)
+    print('Fidelity DT I-Net: ', acc_inet_tree)
+
+
+    #gs = gridspec.GridSpec(2, 2)
+    gs = gridspec.GridSpec(1, 4)
+
+    fig = plt.figure(figsize=(40,10))
+
+    labels = ['Neual Network', 'Distilled DT (Train Data)', 'Distilled DT (Random Data)', 'Distilled DT (I-Net)'] 
+    for i, (clf, lab) in enumerate(zip([network, tree_train_data, tree_random_data, tree_inet],
+                             labels)):
+
+        #ax = plt.subplot(gs[i//2, i%2])
+        ax = plt.subplot(gs[i])
+        fig = plot_decision_regions(X=X_train,
+                          y=y_train.astype(np.int64), 
+                          clf=clf,
+                          feature_index=feature_index, #these one will be plotted  
+                          filler_feature_values=filler_feature_values,  #these will be ignored (value used for prediction)
+                          filler_feature_ranges=filler_feature_ranges, #these will be ignored (value +- feature range used for plotting data)
+                          legend=2)
+        plt.title(lab)
+        ax.set_xlabel(feature_index[0])
+        ax.set_ylabel(feature_index[1])
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+
+
+    plt.show()
