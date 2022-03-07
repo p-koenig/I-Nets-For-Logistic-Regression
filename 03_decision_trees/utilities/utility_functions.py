@@ -2073,35 +2073,68 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
             random.seed(seed)
             np.random.seed(seed)
         else:        
-            parameter_by_distribution = {
-                'normal': {
-                    'loc': 1.5,#distrib_param_max/2,
-                    'scale': 1.5,#distrib_param_max/2,
-                },
-                'uniform': {
-                    'low': 0,
-                    'high': 1,#distrib_param_max/2,
-                },
-                'gamma': {
-                    'shape': 0.75,#distrib_param_max/2,#2,
-                    'scale': 1.5,#distrib_param_max/2,#2,
-                },        
-                'exponential': {
-                    'scale': distrib_param_max/2,
-                },        
-                'beta': {
-                    'a': 0.75,#distrib_param_max/2,#2,
-                    'b': 5,#distrib_param_max/2,#5,
-                },
-                'binomial': {
-                    'n': 100,
-                    'p': 0.5,
-                },
-                'poisson': {
-                    'lam': distrib_param_max/2,#1,
-                },        
+            
+            if class_identifier is None:
+                parameter_by_distribution = {
+                    'normal': {
+                        'loc': distrib_param_max/2,
+                        'scale': distrib_param_max/2,
+                    },
+                    'uniform': {
+                        'low': 0,
+                        'high': distrib_param_max/2,
+                    },
+                    'gamma': {
+                        'shape': distrib_param_max/2,#2,
+                        'scale': distrib_param_max/2,#2,
+                    },        
+                    'exponential': {
+                        'scale': distrib_param_max/2,
+                    },        
+                    'beta': {
+                        'a': distrib_param_max/2,#2,
+                        'b': distrib_param_max/2,#5,
+                    },
+                    'binomial': {
+                        'n': 100,
+                        'p': 0.5,
+                    },
+                    'poisson': {
+                        'lam': distrib_param_max/2,#1,
+                    },        
 
-            }           
+                }              
+            
+            else:
+                parameter_by_distribution = {
+                    'normal': {
+                        'loc': 1.5,#distrib_param_max/2,
+                        'scale': 1.5,#distrib_param_max/2,
+                    },
+                    'uniform': {
+                        'low': 0,
+                        'high': 1,#distrib_param_max/2,
+                    },
+                    'gamma': {
+                        'shape': 0.75,#distrib_param_max/2,#2,
+                        'scale': 1.5,#distrib_param_max/2,#2,
+                    },        
+                    'exponential': {
+                        'scale': distrib_param_max/2,
+                    },        
+                    'beta': {
+                        'a': 0.75,#distrib_param_max/2,#2,
+                        'b': 5,#distrib_param_max/2,#5,
+                    },
+                    'binomial': {
+                        'n': 100,
+                        'p': 0.5,
+                    },
+                    'poisson': {
+                        'lam': distrib_param_max/2,#1,
+                    },        
+
+                }           
         
         
     else:
@@ -2350,10 +2383,7 @@ def generate_dataset_from_distributions(distribution_list,
         #feature_weight_list = np.zeros(number_of_variables)
             
         for i in range(number_of_variables):
-            if tf.is_tensor(distribution_dict_list):
-                distribution_name = distribution_list[i]
-            else:
-                distribution_name = list(distribution_dict_list[i].keys())[0]
+            distribution_name = list(distribution_dict_list[i].keys())[0]
             try:
                 distributions_per_class = len(list(distribution_dict_list[i][distribution_name]['class_0'].values())[0])
             except:
@@ -2408,12 +2438,14 @@ def generate_dataset_from_distributions(distribution_list,
                     
                 else:
                     #print('distribution_parameter_0', distribution_parameter_0)
+                    
                     class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)                    
                     #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
                     class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_1, random_parameters=False, distrib_param_max=distrib_param_max)                    
 
             if distributions_per_class_original != 0:
-                seed = distribution_dict_list[i][distribution_name]['seed_shuffeling']
+                if distribution_dict_list[i][distribution_name]['seed_shuffeling'] is not None:
+                    seed = distribution_dict_list[i][distribution_name]['seed_shuffeling']
                 
                 class_0_data = np.hstack(class_0_data_list)
                 class_1_data = np.hstack(class_1_data_list)
@@ -2620,14 +2652,14 @@ def generate_dataset_from_distributions(distribution_list,
                     #print('samples_class_1_distrib_list', samples_class_1_distrib_list)                    
                     for j in range(distributions_per_class):
                         
-                        condition = False 
-                        if condition or config['data']['number_of_generated_datasets'] == 11111:
+                        #condition = False 
+                        if True:#condition or config['data']['number_of_generated_datasets'] == 11111:
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)                        
-                        elif True:
+                        elif False:#True:
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=0)
                             class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=1)
-                        else:
+                        elif False:#else
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             distribution_parameter_new = {}                 
                             
@@ -2862,7 +2894,9 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
         
 
     X_train, y_train, X_valid, y_valid, X_test, y_test = split_train_test_valid(X_data, y_data, valid_frac=0.25, test_frac=0.1, seed=config['computation']['RANDOM_SEED'])
+    
     test_network, model_history = train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=verbose)  
+    
     distances_dict_list = []
     evaluation_result_dict_list = [] 
     results_list_list = []
@@ -3093,8 +3127,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
         
         #ALWAYS PASS TRAIN DATA FOR EVALUATION
         
-        if train_data is None:
-            
+        if train_data is None:    
             try:
                 distrib_param_max = config['data']['distrib_param_max']
             except:
@@ -3107,7 +3140,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                                                                config['data']['categorical_indices'],
                                                                distrib=distribution,
                                                                random_parameters=config['data']['random_parameters_distribution'],
-                                                              distrib_param_max=distrib_param_max)
+                                                               distrib_param_max=config['data']['distrib_param_max'])
         else:
             X_data_random = train_data
         
@@ -4685,21 +4718,24 @@ def plot_decision_area_evaluation(X_train,
                                     column_names,
                                     config):
 
-    if False:
-        tree_feature_importance = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])#dt_distilled_list_test[0][index][1]
-        tree_feature_importance.fit(X_train, y_train)
+    if X_train.shape[1] > 2:
+        if False:
+            tree_feature_importance = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])#dt_distilled_list_test[0][index][1]
+            tree_feature_importance.fit(X_train, y_train)
 
-        feature_index = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][:2]))
-        filler_features = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][2:]))
+            feature_index = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][:2]))
+            filler_features = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][2:]))
+        else:
+            tree_feature_importance = xgb.XGBClassifier(learning_rate=0.1)#RandomForestClassifier()#dt_distilled_list_test[0][index][1]
+            tree_feature_importance.fit(X_train, y_train)
+            print('Fidelity Feature Importance Model:', accuracy_score(np.round(network.predict(X_test)), np.round(tree_feature_importance.predict(X_test)))) 
+            print('Feature Importances: ', tree_feature_importance.feature_importances_)
+
+            feature_index = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][:2]))
+            filler_features = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][2:]))        
     else:
-        tree_feature_importance = xgb.XGBClassifier(learning_rate=0.1)#RandomForestClassifier()#dt_distilled_list_test[0][index][1]
-        tree_feature_importance.fit(X_train, y_train)
-        print('Fidelity Feature Importance Model:', accuracy_score(np.round(network.predict(X_test)), np.round(tree_feature_importance.predict(X_test)))) 
-        print('Feature Importances: ', tree_feature_importance.feature_importances_)
-
-        feature_index = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][:2]))
-        filler_features = list(np.sort(np.argsort(tree_feature_importance.feature_importances_)[::-1][2:]))        
-
+        feature_index = [0, 1]
+        filler_features = []
 
 
     filler_feature_values = {}
@@ -4767,3 +4803,292 @@ def plot_decision_area_evaluation(X_train,
 
 
     plt.show()
+    
+    
+    
+    
+def get_distribution_dict_from_parameters(distribution_name, 
+                                          distribution_parameters_0_param_1, 
+                                          distribution_parameters_0_param_2, 
+                                          distribution_parameters_1_param_1, 
+                                          distribution_parameters_1_param_2,
+                                          samples_class_0 = None,
+                                          feature_weight_0 = 1,
+                                          seed_shuffeling = None):
+    
+        if distribution_name == 'normal':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'loc': distribution_parameters_0_param_1,
+                    'scale': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'loc': distribution_parameters_1_param_1,
+                    'scale': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,       
+            }}
+        elif distribution_name == 'uniform':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'low': distribution_parameters_0_param_1,
+                    'high': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'low': distribution_parameters_1_param_1,
+                    'high': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,       
+            }}
+
+        elif distribution_name == 'gamma':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'shape': distribution_parameters_0_param_1,
+                    'scale': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'shape': distribution_parameters_1_param_1,
+                    'scale': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,         
+            }}
+        elif distribution_name == 'exponential':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'scale': distribution_parameters_0_param_1,
+                },
+                'class_1': {
+                    'scale': distribution_parameters_1_param_1,
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,          
+            }}        
+        elif distribution_name == 'beta':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'a': distribution_parameters_0_param_1,
+                    'b': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'a': distribution_parameters_1_param_1,
+                    'b': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,         
+            }}    
+        elif distribution_name == 'binomial':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'n': distribution_parameters_0_param_1,
+                    'p': distribution_parameters_0_param_2,
+                },
+                'class_1': {
+                    'n': distribution_parameters_1_param_1,
+                    'p': distribution_parameters_1_param_2,            
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,         
+            }}    
+        elif distribution_name == 'poisson':
+            distribution_dict = {distribution_name: {
+                'class_0': {
+                    'lam': distribution_parameters_0_param_1,
+                },
+                'class_1': {
+                    'lam': distribution_parameters_1_param_1,
+                },
+                'samples_class_0': samples_class_0,
+                'feature_weight_0': feature_weight_0,
+                'seed_shuffeling': seed_shuffeling,         
+            }}  
+            
+        return distribution_dict  
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+def evaluate_network_on_distribution_custom_parameters(distribution_name_feature_0,
+                                                       distribution_name_feature_1,
+                                                       distribution_parameters_0_param_1_feature_0,
+                                                       distribution_parameters_0_param_2_feature_0,
+                                                       distribution_parameters_1_param_1_feature_0,
+                                                       distribution_parameters_1_param_2_feature_0,
+                                                       distribution_parameters_0_param_1_feature_1,
+                                                       distribution_parameters_0_param_2_feature_1,
+                                                       distribution_parameters_1_param_1_feature_1,
+                                                       distribution_parameters_1_param_2_feature_1,
+                                                       config):
+    
+
+    distribution_1_dict  = get_distribution_dict_from_parameters(distribution_name = distribution_name_feature_0, 
+                                                                  distribution_parameters_0_param_1 = distribution_parameters_0_param_1_feature_0, 
+                                                                  distribution_parameters_0_param_2 = distribution_parameters_0_param_2_feature_0, 
+                                                                  distribution_parameters_1_param_1 = distribution_parameters_1_param_1_feature_0, 
+                                                                  distribution_parameters_1_param_2 = distribution_parameters_1_param_2_feature_0)
+    
+    distribution_2_dict  = get_distribution_dict_from_parameters(distribution_name = distribution_name_feature_1, 
+                                                                  distribution_parameters_0_param_1 = distribution_parameters_0_param_1_feature_1, 
+                                                                  distribution_parameters_0_param_2 = distribution_parameters_0_param_2_feature_1, 
+                                                                  distribution_parameters_1_param_1 = distribution_parameters_1_param_1_feature_1, 
+                                                                  distribution_parameters_1_param_2 = distribution_parameters_1_param_2_feature_1)    
+
+    distribution_dict_list = [distribution_1_dict, distribution_2_dict]
+
+    X_data, y_data, distribution_parameter_list, normalizer_list = generate_dataset_from_distributions(distribution_list = None, 
+                                                                                                    number_of_variables = config['data']['number_of_variables'], 
+                                                                                                    number_of_samples = config['data']['lambda_dataset_size'], 
+                                                                                                    distributions_per_class = config['data']['max_distributions_per_class'], 
+                                                                                                    seed = config['computation']['RANDOM_SEED'], 
+                                                                                                    flip_percentage = config['data']['noise_injected_level'],  
+                                                                                                    data_noise = config['data']['data_noise'],  
+                                                                                                    random_parameters = config['data']['random_parameters_distribution'], 
+                                                                                                    distribution_dict_list = distribution_dict_list,
+                                                                                                    config=config)
+
+
+    X_train, y_train, X_valid, y_valid, X_test, y_test = split_train_test_valid(X_data, y_data, valid_frac=0.25, test_frac=0.1, seed=config['computation']['RANDOM_SEED'])
+
+    test_network, model_history = train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, verbose=0) 
+
+    if config['function_family']['dt_type'] == 'vanilla':
+
+        tree_train_data = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+
+        y_train_network = np.round(test_network.predict(X_train)).astype(np.int64)
+        tree_train_data.fit(X_train, y_train_network)
+
+        y_test_pred_tree_train_data = tree_train_data.predict(X_test)
+        y_test_pred_network = np.round(test_network.predict(X_test)).astype(np.int64)  
+
+        print('Accuracy  NN: ', accuracy_score(y_test, y_test_pred_network))
+        print('Fidelity Train Data DT: ', accuracy_score(y_test_pred_network, y_test_pred_tree_train_data))
+
+        tree_random_data_dict = {}
+        accuracy_tree_random_data_dict = {}
+
+        for distribution in ['normal', 'gamma', 'beta', 'uniform', 'poisson']:
+
+            random_data = generate_random_data_points_custom(config['data']['x_min'], 
+                                                             config['data']['x_max'],
+                                                             config['evaluation']['per_network_optimization_dataset_size'], 
+                                                             config['data']['number_of_variables'], 
+                                                             config['data']['categorical_indices'],
+                                                             distrib=distribution,
+                                                             random_parameters=config['data']['random_parameters_distribution'],
+                                                             distrib_param_max=config['data']['distrib_param_max'])
+
+            for i, column in enumerate(random_data.T):
+                scaler = MinMaxScaler()
+                scaler.fit(column.reshape(-1, 1))
+                random_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+
+            tree_random_data = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])
+            random_data_labels = np.round(test_network.predict(random_data)).astype(np.int64)
+            tree_random_data.fit(random_data, random_data_labels)
+
+            y_test_pred_tree_random_data = tree_random_data.predict(X_test)
+            y_test_pred_network = np.round(test_network.predict(X_test)).astype(np.int64)
+            accuracy_tree_random_data = accuracy_score(y_test_pred_network, y_test_pred_tree_random_data)
+
+            print('Fidelity Random Data DT (' + distribution + '): ', accuracy_tree_random_data)
+
+            accuracy_tree_random_data_dict[distribution] = accuracy_tree_random_data 
+            tree_random_data_dict[distribution] = tree_random_data
+
+    elif config['function_family']['dt_type'] == 'SDT':
+        
+        tree_train_data = SDT(input_dim=X_train.shape[1],#X_train.shape[1], 
+                               output_dim=2,#int(max(y_train))+1, 
+                               depth=config['function_family']['maximum_depth'],
+                               #beta=0,
+                               decision_sparsity=config['function_family']['decision_sparsity'],#-1,
+                               random_seed=config['computation']['RANDOM_SEED'],
+                               use_cuda=False,
+                               verbosity=0)
+
+        y_train_network = np.round(test_network.predict(X_train)).astype(np.int64)
+        tree_train_data.fit(X_train, y_train_network, epochs=50)         
+
+        y_test_pred_tree_train_data = tree_train_data.predict(X_test)
+        y_test_pred_network = np.round(test_network.predict(X_test)).astype(np.int64)  
+
+        print('Accuracy  NN: ', accuracy_score(y_test, y_test_pred_network))
+        print('Fidelity Train Data DT: ', accuracy_score(y_test_pred_network, y_test_pred_tree_train_data))
+
+        tree_random_data_dict = {}
+        accuracy_tree_random_data_dict = {}
+
+        for distribution in ['normal', 'gamma', 'beta', 'uniform', 'poisson']:
+
+            random_data = generate_random_data_points_custom(config['data']['x_min'], 
+                                                             config['data']['x_max'],
+                                                             config['evaluation']['per_network_optimization_dataset_size'], 
+                                                             config['data']['number_of_variables'], 
+                                                             config['data']['categorical_indices'],
+                                                             distrib=distribution,
+                                                             random_parameters=config['data']['random_parameters_distribution'],
+                                                             distrib_param_max=config['data']['distrib_param_max'])
+
+            for i, column in enumerate(random_data.T):
+                scaler = MinMaxScaler()
+                scaler.fit(column.reshape(-1, 1))
+                random_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
+
+            tree_train_data = SDT(input_dim=random_data.shape[1],#X_train.shape[1], 
+                                   output_dim=2,#int(max(y_train))+1, 
+                                   depth=config['function_family']['maximum_depth'],
+                                   #beta=0,
+                                   decision_sparsity=config['function_family']['decision_sparsity'],#-1,
+                                   random_seed=config['computation']['RANDOM_SEED'],
+                                   use_cuda=False,
+                                   verbosity=0)            
+            
+            random_data_labels = np.round(test_network.predict(random_data)).astype(np.int64)
+            tree_random_data.fit(random_data, random_data_labels, epochs=50)
+
+            y_test_pred_tree_random_data = tree_random_data.predict(X_test)
+            y_test_pred_network = np.round(test_network.predict(X_test)).astype(np.int64)
+            accuracy_tree_random_data = accuracy_score(y_test_pred_network, y_test_pred_tree_random_data)
+
+            print('Fidelity Random Data DT (' + distribution + '): ', accuracy_tree_random_data)
+
+            accuracy_tree_random_data_dict[distribution] = accuracy_tree_random_data 
+            tree_random_data_dict[distribution] = tree_random_data
+    
+    key_best_distribution = list(tree_random_data_dict.keys())[np.argmax(tree_random_data_dict.values())]
+    print('Best Distribution', key_best_distribution)
+    
+    test_network_parameters_flat = shaped_network_parameters_to_array(test_network.get_weights(), config)
+    
+    dt_inet = model.predict(np.array([test_network_parameters_flat]))[0]
+    
+    plot_decision_area_evaluation(X_train, 
+                                y_train,
+                                X_test, 
+                                y_test, 
+                                test_network,
+                                tree_train_data,
+                                tree_random_data_dict[key_best_distribution],
+                                dt_inet,
+                                np.array([str(i) for i in range(data_dict_list_test[index]['X_train'].shape[1])]),
+                                config
+                               )
