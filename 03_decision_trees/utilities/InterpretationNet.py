@@ -182,22 +182,25 @@ class DeepDenseLayerBlock(ak.Block):
         # Get the input_node from inputs.
         input_node = tf.nest.flatten(inputs)[0]
         
-        num_layers = hp.Int("num_layers", min_value=1, max_value=5, step=1, default=2)
-        activation = hp.Choice("activation", values=['relu', 'sigmoid', 'tanh'], default='relu')
+        num_layers = hp.Int("num_layers", min_value=1, max_value=5, step=1, default=3)
+        #activation = hp.Choice("activation", values=['relu', 'sigmoid', 'tanh'], default='sigmoid')
         
         num_units_list = []
         dropout_list = []
+        activation_list = []
         for i in range(5):
             num_units = hp.Int("num_units_" + str(i), min_value=64, max_value=2048, step=64, default=512)
             dropout = hp.Choice("dropout_" + str(i), [0.0, 0.1, 0.3, 0.5], default=0.0)
+            activation = hp.Choice("activation_" + str(i), values=['relu', 'sigmoid', 'tanh'], default='sigmoid')
             num_units_list.append(num_units)
             dropout_list.append(dropout)
+            activation_list.append(activation)
         
         for i in range(num_layers):
             if i == 0:
                 hidden_node = tf.keras.layers.Dense(
                     units = num_units_list[i],
-                    activation = activation
+                    activation = activation_list[i]
                 )(input_node)
                 hidden_node = tf.keras.layers.Dropout(
                     rate = dropout_list[i]
@@ -205,7 +208,7 @@ class DeepDenseLayerBlock(ak.Block):
             else:
                 hidden_node = tf.keras.layers.Dense(
                     units = num_units_list[i],
-                    activation = activation
+                    activation =  activation_list[i]
                 )(hidden_node)
                 hidden_node = tf.keras.layers.Dropout(
                     rate = dropout_list[i]
@@ -457,6 +460,10 @@ def train_inet(lambda_net_train_dataset,
     (X_valid, X_valid_flat, y_valid, _) = generate_inet_train_data(lambda_net_valid_dataset, config, encoder_model)
     if lambda_net_test_dataset is not None:
         (X_test, X_test_flat, y_test, _) = generate_inet_train_data(lambda_net_test_dataset, config, encoder_model)
+    else:
+        X_test = None
+        X_test_flat = None
+        y_test = None
     
     
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
