@@ -583,7 +583,6 @@ def train_inet(lambda_net_train_dataset,
                                             random_parameters_distribution=config['data']['random_parameters_distribution'],
                                             flip_percentage=config['data']['noise_injected_level'],
                                             data_noise=config['data']['data_noise'],
-                                            #distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                             seed_function=seed_function) for distribution_dict_row, seed_function in zip(lambda_net_train_dataset.distribution_dict_row_array, lambda_net_train_dataset.seed_list))
 
 
@@ -602,7 +601,6 @@ def train_inet(lambda_net_train_dataset,
                                             random_parameters_distribution=config['data']['random_parameters_distribution'],
                                             flip_percentage=config['data']['noise_injected_level'],
                                             data_noise=config['data']['data_noise'],
-                                            #distribution_list=['uniform', 'gamma', 'beta', 'poisson', 'normal'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'],
                                             seed_function=seed_function) for distribution_dict_row, seed_function in zip(lambda_net_valid_dataset.distribution_dict_row_array, lambda_net_valid_dataset.seed_list))
 
 
@@ -896,13 +894,17 @@ def train_inet(lambda_net_train_dataset,
                 model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string , save_format='tf')         
                 
         else: 
+            
+            if not isinstance(config['i_net']['hidden_activation'], list):
+                config['i_net']['hidden_activation'] = [config['i_net']['hidden_activation'] for _ in range(len(config['i_net']['dense_layers']))]
+            
             inputs = Input(shape=X_train.shape[1], 
                            name='input')
 
             hidden = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
                                            name='hidden1_' + str(config['i_net']['dense_layers'][0]))(inputs)
-            hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'],  
-                                                name='activation1_' + config['i_net']['hidden_activation'])(hidden)
+            hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
+                                                name='activation1_' + config['i_net']['hidden_activation'][0])(hidden)
 
             if config['i_net']['dropout'][0] > 0:
                 hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
@@ -911,8 +913,8 @@ def train_inet(lambda_net_train_dataset,
             for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
                 hidden = tf.keras.layers.Dense(neurons, 
                                                name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
-                hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'], 
-                                                    name='activation'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'])(hidden)
+                hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
+                                                    name='activation'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden)
                 
                 if config['i_net']['dropout'][layer_index+1] > 0:
                     hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 

@@ -570,7 +570,7 @@ class LambdaNet():
 
 
 
-                    self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                    self.X_test_lambda, _, _, _ = generate_dataset_from_distributions(distribution_list=config['data']['distribution_list'], 
                                                                              number_of_variables=config['data']['number_of_variables'], 
                                                                              number_of_samples=int(np.round(config['data']['lambda_dataset_size']*0.25)), 
                                                                              distributions_per_class = distributions_per_class, 
