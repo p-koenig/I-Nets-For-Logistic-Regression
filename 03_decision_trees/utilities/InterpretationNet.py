@@ -477,9 +477,7 @@ def train_inet(lambda_net_train_dataset,
         use_distribution_list = config['data']['use_distribution_list'] if config['data']['max_distributions_per_class'] is not None else False
     except:
         use_distribution_list = False if config['data']['max_distributions_per_class'] is None else True
-    
-    print('use_distribution_list', use_distribution_list)
-    
+        
     if config['i_net']['function_value_loss']:
         if config['i_net']['function_representation_type'] == 1:
             pass
@@ -543,9 +541,6 @@ def train_inet(lambda_net_train_dataset,
             random_evaluation_dataset_array_train = lambda_net_train_dataset.X_train_lambda_array
             random_evaluation_dataset_array_valid = lambda_net_valid_dataset.X_train_lambda_array
             
-            print('random_evaluation_dataset_array_train.shape', random_evaluation_dataset_array_train.shape)
-            print('random_evaluation_dataset_array_valid.shape', random_evaluation_dataset_array_valid.shape)
-            
             random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, random_evaluation_dataset_array_train.shape[1]*config['data']['number_of_variables']))                        
             random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, random_evaluation_dataset_array_valid.shape[1]*config['data']['number_of_variables']))
         
@@ -557,17 +552,11 @@ def train_inet(lambda_net_train_dataset,
             random_evaluation_dataset_array_valid = lambda_net_valid_dataset.X_test_lambda_array#[:, np.random.choice(lambda_net_valid_dataset.shape[1], config['evaluation']['random_evaluation_dataset_size'], replace=False), :]#[:,:config['evaluation']['random_evaluation_dataset_size'],:]         
             random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, config['evaluation']['random_evaluation_dataset_size']*config['data']['number_of_variables']))   
             
-            
-            print(config['evaluation']['random_evaluation_dataset_size'], config['data']['number_of_variables'])
-            print(random_evaluation_dataset_array_valid.shape, random_evaluation_dataset_flat_array_valid.shape)
-            print(random_evaluation_dataset_array_train.shape, random_evaluation_dataset_flat_array_train.shape)
                         
             random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, random_evaluation_dataset_array_train.shape[1]*config['data']['number_of_variables']))
             
             random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, random_evaluation_dataset_array_valid.shape[1]*config['data']['number_of_variables']))
             
-            print(random_evaluation_dataset_array_valid.shape, random_evaluation_dataset_flat_array_valid.shape)
-            print(random_evaluation_dataset_array_train.shape, random_evaluation_dataset_flat_array_train.shape)
             
         else:        
 
@@ -613,10 +602,6 @@ def train_inet(lambda_net_train_dataset,
             y_train_model = np.hstack((y_train, X_train_flat, random_evaluation_dataset_flat_array_train))   
             valid_data = (X_valid, np.hstack((y_valid, X_valid_flat, random_evaluation_dataset_flat_array_valid)))   
         else:
-            print('y_train.shape, X_train.shape, random_evaluation_dataset_flat_array_train.shape', y_train.shape, X_train.shape, random_evaluation_dataset_flat_array_train.shape)
-            print('y_valid.shape, X_valid.shape, random_evaluation_dataset_flat_array_valid.shape', y_valid.shape, X_valid.shape, random_evaluation_dataset_flat_array_valid.shape)
-            
-            print("X_train[0]", X_train[0])
             
             y_train_model = np.hstack((y_train, X_train, random_evaluation_dataset_flat_array_train))   
             valid_data = (X_valid, np.hstack((y_valid, X_valid, random_evaluation_dataset_flat_array_valid)))             

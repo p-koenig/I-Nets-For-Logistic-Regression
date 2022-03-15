@@ -14,6 +14,7 @@ from functools import reduce
 from more_itertools import random_product
 import operator
 
+
 import math
 
 from joblib import Parallel, delayed
@@ -34,7 +35,7 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
@@ -283,6 +284,18 @@ def generate_paths(config, path_type='interpretation_net'):
     except:
         pass    
         
+    data_generation_shift_str = ''
+    try:
+        data_generation_shift_str = '_shifted' if not config['data']['shift_distrib'] else ''
+    except:
+        pass   
+    
+    data_generation_distrib_str = ''
+    try:
+        data_generation_shift_str = '_shifted' if 'distribution' in config['data']['function_generation_type'] else ''
+    except:
+        pass    
+    
     dt_str = (
               '_depth' + str(maximum_depth) +
               '_beta' + str(config['function_family']['beta']) +
@@ -306,6 +319,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   distrib_param_max_str +
                                   fixed_class_probability_str +
                                   data_generation_filtering_str +
+                                  data_generation_shift_str + 
                                   dt_str
                                  )
 
@@ -2178,17 +2192,6 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                #encoder_model=encoder_model,
                                                                backend='loky'):
 
-    #print(loss_function)
-    #print(metrics)
-    
-    
-    #distances_dict_list_unstructured= []
-    ##inet_evaluation_result_dict = []
-    #inet_evaluation_results = []
-    #dt_inet_list = []
-    #dt_distilled_list_list = []
-    #data_dict_list = []
-    #normalizer_list_list = []
         
     inet_evaluation_result_dict_complete_by_distribution = {}
     inet_evaluation_result_dict_mean_by_distribution = {}
@@ -2227,13 +2230,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
     dt_inet_list = np.array([[None] * config['i_net']['test_size']] * len(distribution_list_evaluation))
     dt_distilled_list_list = np.array([[None] * config['i_net']['test_size']] * len(distribution_list_evaluation))
 
-    #print(distances_dict_list_unstructured.shape)
-    #print(inet_evaluation_results.shape)
-    #print(dt_inet_list.shape)
-    #print(dt_distilled_list_list.shape)
     for i, evaluation_result_by_dataset in enumerate(evaluation_results_by_dataset):
-        #print(len(evaluation_result_by_dataset))
-        #for (distances_dict_list, evaluation_result_dict_list, results_list_list, dt_inet_list, dt_distilled_list_list, data_dict, normalizer_list, test_network, model_history) in evaluation_result_by_dataset:
         (distances_dict_by_dataset, _, results_list_by_dataset, dt_inet_by_dataset, dt_distilled_list_by_dataset, data_dict_by_dataset, normalizer_list_by_dataset, test_network_by_dataset, model_history_by_dataset, _) = evaluation_result_by_dataset
         test_network_list.append(test_network_by_dataset)
         model_history_list.append(model_history_by_dataset)
@@ -2246,21 +2243,14 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
             dt_inet_list[j][i] = dt_inet_by_distribution#[0]
             dt_distilled_list_list[j][i] = dt_distilled_list_by_distribution#[0]
 
-    #print(inet_evaluation_results)
     
     for distribution, distances_dict_list_unstructured_by_distribution, inet_evaluation_results_by_distribution, dt_inet_list_by_distribution, dt_distilled_list_list_by_distribution in zip(distribution_list_evaluation, distances_dict_list_unstructured, inet_evaluation_results, dt_inet_list, dt_distilled_list_list):      
-        
-        #print(inet_evaluation_results_by_distribution)
-        
         inet_evaluation_result_dict_by_distribution= None
         for some_dict in inet_evaluation_results_by_distribution:
             if inet_evaluation_result_dict_by_distribution == None:
                 inet_evaluation_result_dict_by_distribution = some_dict
             else:
                 inet_evaluation_result_dict_by_distribution = mergeDict(inet_evaluation_result_dict_by_distribution, some_dict)
-
-        #inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/config['i_net']['test_size'] for _ in range(config['i_net']['test_size'])]
-
 
         inet_evaluation_result_dict_mean_by_distribution[distribution] = {}
 
@@ -2274,23 +2264,13 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
 
         inet_evaluation_result_dict_complete_by_distribution[distribution] = inet_evaluation_result_dict_by_distribution        
         
-
-    #distances_dict_list_unstructured = distances_dict_list_unstructured.reshape(-1,2)
-    #inet_evaluation_results = inet_evaluation_results.reshape(-1,2)
-    
-    #dt_inet_list = dt_inet_list.reshape(-1,2)
-    #dt_distilled_list_list = dt_distilled_list_list.reshape(-1,2)
         
     inet_evaluation_result_dict = None    
-    for some_dict in inet_evaluation_results.ravel():#.reshape(-1,2):
-        #print(inet_evaluation_result_dict)
+    for some_dict in inet_evaluation_results.ravel():
         if inet_evaluation_result_dict == None:
             inet_evaluation_result_dict = some_dict
         else:
             inet_evaluation_result_dict = mergeDict(inet_evaluation_result_dict, some_dict)
-
-    #inet_evaluation_result_dict['inet_scores']['runtime'] = [inet_runtime/config['i_net']['test_size'] for _ in range(config['i_net']['test_size'])]
-
 
     inet_evaluation_result_dict_mean = {}
 
@@ -2303,7 +2283,7 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                     inet_evaluation_result_dict_mean[key_l1][key_l2 + '_median'] = np.median(values_l2)                                                     
 
     distances_dict_list = None                                              
-    for distances_dict_single in distances_dict_list_unstructured.ravel():#.reshape(-1,2):
+    for distances_dict_single in distances_dict_list_unstructured.ravel():
         if distances_dict_list == None:
             distances_dict_list = distances_dict_single
         else:
@@ -2353,27 +2333,17 @@ def generate_dataset_from_distributions(distribution_list,
     samples_class_0 = int(np.floor(number_of_samples/2))
     samples_class_1 = number_of_samples - samples_class_0     
     
-    #print('samples_class_0', samples_class_0)
-    #print('samples_class_1', samples_class_1)
-    
     try:
         distrib_param_max = config['data']['distrib_param_max']
     except:
         distrib_param_max = 1       
     if distribution_dict_list is not None:
         
-        #samples_class_0 = int(np.floor(number_of_samples/2))
-        #samples_class_1 = number_of_samples - samples_class_0    
-        
-        #max_distributions_per_class = max(1, config['data']['max_distributions_per_class'])
-        
         if config is not None:
-            distributions_per_class_original = config['data']['max_distributions_per_class']#distributions_per_class
+            distributions_per_class_original = config['data']['max_distributions_per_class']
         else:
             distributions_per_class_original = distributions_per_class
-            
-        #feature_weight_list = np.zeros(number_of_variables)
-            
+                        
         for i in range(number_of_variables):
             distribution_name = list(distribution_dict_list[i].keys())[0]
             try:
@@ -2385,14 +2355,9 @@ def generate_dataset_from_distributions(distribution_list,
                 samples_class_0_distrib = samples_class_0
                 samples_class_1_distrib = samples_class_1                 
             else:
-                #print('lambda_dataset_size', config['data']['lambda_dataset_size'])
-                #print('samples_class_0', distribution_dict_list[i][distribution_name]['samples_class_0'])
                 class_0_distrib_ratio = distribution_dict_list[i][distribution_name]['samples_class_0']/config['data']['lambda_dataset_size']
-                #print('class_0_distrib_ratio', class_0_distrib_ratio)
                 samples_class_0_distrib = np.round(number_of_samples * class_0_distrib_ratio).astype(np.int64)
-                samples_class_1_distrib = number_of_samples - samples_class_0_distrib 
-                #print('samples_class_0_distrib, samples_class_1_distrib', samples_class_0_distrib, samples_class_1_distrib)
-                
+                samples_class_1_distrib = number_of_samples - samples_class_0_distrib                 
                 
             if distributions_per_class_original == 0:
                 pass
@@ -2405,7 +2370,6 @@ def generate_dataset_from_distributions(distribution_list,
                 samples_class_0_distrib_list = split_into(samples_class_0_distrib , distributions_per_class)
                 samples_class_1_distrib_list = split_into(samples_class_1_distrib , distributions_per_class)
                 
-            #print(distribution_dict_list[i])
             feature_weight = distribution_dict_list[i][distribution_name]['feature_weight_0']#np.random.uniform(0, 1)
 
             for j in range(distributions_per_class):
@@ -2428,11 +2392,8 @@ def generate_dataset_from_distributions(distribution_list,
                     feature_data, distribution_parameters = get_distribution_data_from_string(distribution_name, number_of_samples, seed=((seed+1)*(i+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)  
 
                     
-                else:
-                    #print('distribution_parameter_0', distribution_parameter_0)
-                    
+                else:                    
                     class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_0, random_parameters=False, distrib_param_max=distrib_param_max)                    
-                    #print('distribution_parameter_0_list[j]', distribution_parameter_0_list[j])
                     class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), parameters=distribution_parameter_1, random_parameters=False, distrib_param_max=distrib_param_max)                    
 
             if distributions_per_class_original != 0:
@@ -2441,20 +2402,13 @@ def generate_dataset_from_distributions(distribution_list,
                 
                 class_0_data = np.hstack(class_0_data_list)
                 class_1_data = np.hstack(class_1_data_list)
-                #print('class_0_data', class_0_data)
-                #print('feature_weight', feature_weight)
-                #print("np.full_like(a=class_0_data, fill_value=feature_weight)", np.full_like(a=class_0_data, fill_value=feature_weight))
+
                 feature_0_weights = np.full_like(a=class_0_data, fill_value=feature_weight, dtype=np.float32)
-                #print('feature_weight', feature_weight)
                 feature_1_weights = np.full_like(a=class_1_data, fill_value=-feature_weight, dtype=np.float32)  
-                
-                #print(feature_0_weights)
-                #print(feature_1_weights)
                 
                 feature_data = np.hstack([class_0_data, class_1_data])
                 
                 feature_weights = np.hstack([feature_0_weights, feature_1_weights])
-                #print(feature_weights)
                 
                 def make_batch(iterable, n=1):
                     l = len(iterable)
@@ -2646,13 +2600,14 @@ def generate_dataset_from_distributions(distribution_list,
                     for j in range(distributions_per_class):
                         
                         #condition = False 
-                        if True:#condition or config['data']['number_of_generated_datasets'] == 11111:
-                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
-                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)                        
-                        elif False:#True:
-                            class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=0)
-                            class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=1)
-                        elif False:#else
+                        if not config['data']['shift_distrib']:#condition or config['data']['number_of_generated_datasets'] == 11111:
+                            if True:
+                                class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
+                                class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)                        
+                            elif False:#True:
+                                class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=0)
+                                class_1_data_list[j], distribution_parameter_1_list[j] = get_distribution_data_from_string(distribution_name, samples_class_1_distrib_list[j], seed=(1_000_000_000+(seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max, class_identifier=1)
+                        else:#else
                             class_0_data_list[j], distribution_parameter_0_list[j] = get_distribution_data_from_string(distribution_name, samples_class_0_distrib_list[j], seed=((seed+1)*(i+1)*(j+1)) % (2**32 - 1), random_parameters=random_parameters, distrib_param_max=distrib_param_max)
                             distribution_parameter_new = {}                 
                             
@@ -2661,19 +2616,22 @@ def generate_dataset_from_distributions(distribution_list,
                                 no_parameters = len(list(distribution_parameter_0_list[j].keys()))
                                 no_parameters_to_change = np.random.randint(0, no_parameters)
                                 parameters_to_change = np.random.choice([num for num in range(no_parameters)], no_parameters_to_change, replace=False)
-                            elif True:
+                            elif False:
                                 no_parameters = len(list(distribution_parameter_0_list[j].keys()))
                                 #no_parameters_to_change = np.random.randint(0, no_parameters)
                                 parameters_to_change = np.random.choice([num for num in range(no_parameters)], no_parameters, replace=False)
-                            else:
+                            elif False:
                                 no_parameters = len(list(distribution_parameter_0_list[j].keys()))
                                 #no_parameters_to_change = np.random.randint(0, no_parameters)
-                                parameters_to_change = np.random.choice([num for num in range(no_parameters)], 1, replace=False)                                
+                                parameters_to_change = np.random.choice([num for num in range(no_parameters)], 1, replace=False)    
+                            else:
+                                parameters_to_change = [0,1]
+                            
                             #print(parameters_to_change)
                             for index, (key, value) in enumerate(distribution_parameter_0_list[j].items()):
                                 if index in parameters_to_change:
-                                    multiplier = np.random.choice([-0.5, 0.5])
-                                    #multiplier = np.random.uniform(-0.5, 0.5)
+                                    #multiplier = np.random.choice([-0.5, 0.5])
+                                    multiplier = np.random.uniform(-0.5, 0.5)
 
                                     new_value = value + value*multiplier
                                     new_value_clipped = np.clip(new_value, 0, config['data']['distrib_param_max'])
@@ -2788,31 +2746,24 @@ def generate_dataset_from_distributions(distribution_list,
                 y_data[idx] = (y_data[idx] + 1) % 2  
             
             if config['data']['data_generation_filtering']:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
-                single_split_model.fit(X_data, y_data)
-                max_split_model.fit(X_data, y_data)
-                #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
-                single_split_model_preds = single_split_model.predict(X_data)
-                accuracy_single_split = accuracy_score(y_data, single_split_model_preds)
-
-                max_split_model_preds = max_split_model.predict(X_data)
-                accuracy_max_split = accuracy_score(y_data, max_split_model_preds)
-                rand_int = np.random.randint(1, 10_000_000)
-                seed = (seed + rand_int) % (2**32 - 1)
-
-                #print('accuracy_max_split', accuracy_max_split, accuracy_max_split_threshold)
-                #print('accuracy_single_split', accuracy_single_split, accuracy_single_split_threshold)
+                if True:
+                    from sklearn.linear_model import Perceptron
+                    perceptron = Perceptron(random_state = 0)
+                    perceptron.fit(X_data, y_data)
+                    y_data_perceptron = np.round(perceptron.predict(X_data)).astype(int) 
                 
-                condition_single_split = accuracy_single_split > accuracy_single_split_threshold
-                condition_split_diff = (accuracy_max_split-accuracy_single_split) < accuracy_diff_threshold
-                condition_max_split = accuracy_max_split < accuracy_max_split_threshold
-                
-                condition_max_split_perfect = accuracy_max_split > 0.99
-                
-                condition = condition_single_split or condition_split_diff or condition_max_split or condition_max_split_perfect
+                    accuracy_perceptron = accuracy_score(y_data, y_data_perceptron)
+                    #print(accuracy_perceptron)
+                    condition_perceptron_perfect = accuracy_perceptron == 1
 
-            else:
-                if False:
-                    condition = False
+                    condition = condition_perceptron_perfect                    
+                    #print(condition)
+                    
+                    if condition:
+                        rand_int = np.random.randint(1, 10_000_000)
+                        seed = (seed + rand_int) % (2**32 - 1)
+                    else:
+                        seed = config['computation']['RANDOM_SEED']                
                 else:
                     single_split_model.fit(X_data, y_data)
                     max_split_model.fit(X_data, y_data)
@@ -2834,7 +2785,10 @@ def generate_dataset_from_distributions(distribution_list,
 
                     condition_max_split_perfect = accuracy_max_split > 0.99
 
-                    condition = condition_max_split_perfect                    
+                    condition = condition_single_split or condition_split_diff or condition_max_split or condition_max_split_perfect
+
+            else:
+                condition = False
                     
                 #accuracy_single_split = 0
                 #accuracy_max_split = 1
@@ -4509,6 +4463,8 @@ def generate_base_model(config): #without dropout
         
     #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
     model.add(Dense(config['lambda_net']['lambda_network_layers'][0], activation='relu', input_dim=config['data']['number_of_variables'], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), bias_initializer='zeros'))
+    if config['lambda_net']['use_batchnorm_lambda']:
+        model.add(BatchNormalization())
    
     if config['lambda_net']['dropout_lambda'] > 0:
         model.add(Dropout(config['lambda_net']['dropout_lambda']))
@@ -4518,6 +4474,8 @@ def generate_base_model(config): #without dropout
                         activation='relu', 
                         kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                         bias_initializer='zeros'))
+        if config['lambda_net']['use_batchnorm_lambda']:
+            model.add(BatchNormalization())
         
         if config['lambda_net']['dropout_lambda'] > 0:
             model.add(Dropout(config['lambda_net']['dropout_lambda']))   

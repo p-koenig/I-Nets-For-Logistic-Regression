@@ -341,11 +341,12 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             function_values_pred, penalty = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config)(function_array)
         #tf.print('function_values_pred', function_values_pred[:50], summarize=50)
             
+        
             
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
         
-        #tf.print('function_values_true_ones_rounded', function_values_true_ones_rounded, len(function_values_true)-function_values_true_ones_rounded, 'function_values_pred_ones_rounded', function_values_pred_ones_rounded, len(function_values_pred)-function_values_pred_ones_rounded)
+        ## tf.print('function_values_true_ones_rounded', function_values_true_ones_rounded, len(function_values_true)-function_values_true_ones_rounded, 'function_values_pred_ones_rounded', function_values_pred_ones_rounded, len(function_values_pred)-function_values_pred_ones_rounded)
         threshold = 5
         penalty_value = 2.0
         
@@ -367,7 +368,6 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         return function_values_true, function_values_pred, penalty
     
     return calculate_function_values_loss_decision
-
 
 
 
