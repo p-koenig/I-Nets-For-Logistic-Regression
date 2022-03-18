@@ -331,7 +331,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)             
 
         
-        function_values_true = calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder)(network_parameters)
+        function_values_true = calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder, config)(network_parameters)
         #tf.print('function_values_true', function_values_true[:50], summarize=50)
         
         function_values_pred = tf.zeros_like(function_values_true)
@@ -371,30 +371,91 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
 
 
 
-def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder):
+def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder, config):
     
     random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)    
             
     #@tf.function(jit_compile=True)
     def calculate_function_value_from_lambda_net_parameters(network_parameters):
+        i = 0
+        index = 0
+        if config['lambda_net']['use_batchnorm_lambda']:
+            start = 0
+            for i in range((len(network_parameters_structure)-2)//6):
+                # set weights of layer
+                index = i*6
+                size = np.product(network_parameters_structure[index])
+                weights_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i*2].weights[0].assign(weights_tf_true)
+                start += size
+
+                # set biases of layer
+                index += 1
+                size = np.product(network_parameters_structure[index])
+                biases_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i*2].weights[1].assign(biases_tf_true)
+                start += size    
+                
+                # set batchnorm of layer
+                index += 1
+                size = np.product(network_parameters_structure[index])
+                batchnorm_1_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i*2+1].weights[0].assign(batchnorm_1_tf_true)
+                start += size       
+                
+                # set batchnorm of layer
+                index += 1
+                size = np.product(network_parameters_structure[index])
+                batchnorm_2_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i*2+1].weights[1].assign(batchnorm_2_tf_true)
+                start += size   
+                
+                # set batchnorm of layer
+                index += 1
+                size = np.product(network_parameters_structure[index])
+                batchnorm_3_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i*2+1].weights[2].assign(batchnorm_3_tf_true)
+                start += size    
+                
+                # set batchnorm of layer
+                index += 1
+                size = np.product(network_parameters_structure[index])
+                batchnorm_4_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i*2+1].weights[3].assign(batchnorm_4_tf_true)
+                start += size    
+                
         
-        #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
-        # build models
-        start = 0
-        for i in range(len(network_parameters_structure)//2):
-            # set weights of layer
-            index = i*2
+            index += 1
             size = np.product(network_parameters_structure[index])
             weights_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
-            model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+            model_lambda_placeholder.layers[i*2+1+1].weights[0].assign(weights_tf_true)
             start += size
 
             # set biases of layer
             index += 1
             size = np.product(network_parameters_structure[index])
             biases_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
-            model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
-            start += size
+            model_lambda_placeholder.layers[i*2+1+1].weights[1].assign(biases_tf_true)
+            start += size        
+
+        else:
+            #CALCULATE LAMBDA FV HERE FOR EVALUATION DATASET
+            # build models
+            start = 0
+            for i in range(len(network_parameters_structure)//2):
+                # set weights of layer
+                index = i*2
+                size = np.product(network_parameters_structure[index])
+                weights_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i].weights[0].assign(weights_tf_true)
+                start += size
+
+                # set biases of layer
+                index += 1
+                size = np.product(network_parameters_structure[index])
+                biases_tf_true = tf.reshape(network_parameters[start:start+size], network_parameters_structure[index])
+                model_lambda_placeholder.layers[i].weights[1].assign(biases_tf_true)
+                start += size
 
         lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_evaluation_dataset))
         #tf.print('lambda_fv ones', tf.math.count_nonzero(tf.math.round(lambda_fv)), 'lambda_fv zeros', len(lambda_fv)-tf.math.count_nonzero(tf.math.round(lambda_fv)))

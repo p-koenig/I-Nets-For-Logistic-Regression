@@ -286,7 +286,8 @@ class LambdaNet():
         
         self.function_parameter_size = get_number_of_function_parameters(config['function_family']['dt_type'], config['function_family']['maximum_depth'], self.number_of_variables, self.number_of_classes)#(2 ** config['function_family']['maximum_depth'] - 1) * (self.number_of_variables + 1) + (2 ** config['function_family']['maximum_depth']) * self.number_of_classes
         
-        self.network_parameter_size = get_number_of_lambda_net_parameters(config['lambda_net']['lambda_network_layers'], self.number_of_variables, self.number_of_classes)
+        #self.network_parameter_size = get_number_of_lambda_net_parameters(config['lambda_net']['lambda_network_layers'], self.number_of_variables, self.number_of_classes)
+        self.network_parameter_size = get_number_of_lambda_net_parameters(config)
         
         self.index = int(line_weights[0])
         self.seed = int(line_weights[1])
@@ -667,34 +668,13 @@ class LambdaNet():
 
 def generate_lambda_net_from_config(config, seed=None):
 
-    if seed is None:
-        seed = config['computation']['RANDOM_SEED']
-
-    output_neurons = 1 if config['data']['num_classes']==2 else config['data']['num_classes']
-    output_activation = 'sigmoid' if config['data']['num_classes']==2 else 'softmax'
-
-    model = Sequential()
-
-    #kerase defaults: kernel_initializer='glorot_uniform', bias_initializer='zeros'               
-    model.add(Dense(config['lambda_net']['lambda_network_layers'][0], activation='relu', input_dim=config['data']['number_of_variables'], kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), bias_initializer='zeros'))
-
-    if config['lambda_net']['dropout_lambda'] > 0:
-        model.add(Dropout(config['lambda_net']['dropout_lambda']))
-
-    for neurons in config['lambda_net']['lambda_network_layers'][1:]:
-        model.add(Dense(neurons, 
-                        activation='relu', 
-                        kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), 
-                        bias_initializer='zeros'))
-
-        if config['lambda_net']['dropout_lambda'] > 0:
-            model.add(Dropout(config['lambda_net']['dropout_lambda']))   
-
-    model.add(Dense(output_neurons, 
-                    activation=output_activation, 
-                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=seed), 
-                    bias_initializer='zeros'))
-
+    from utilities.utility_functions import generate_base_model
+    
+    if seed is not None:
+        config = deepcopy(config)
+        config['computation']['RANDOM_SEED'] = seed
+        
+    model =  generate_base_model(config)
     
     optimizer = tf.keras.optimizers.get(config['lambda_net']['optimizer_lambda'])
         
@@ -723,6 +703,7 @@ def train_lambda_net(config,
     
     
     from utilities.utility_functions import generate_paths, pairwise
+    from utilities.LambdaNet import generate_lambda_net_from_config
     
     assert (X_data_with_function[0].values == y_data_with_function[0].values).all()
     
@@ -969,10 +950,20 @@ def evaluate_lambda_net(y_data_real_lambda,
     
         
 
-def get_number_of_lambda_net_parameters(lambda_network_layer_list, number_of_variables, num_classes):
-    layers_with_input_output = flatten_list([number_of_variables, lambda_network_layer_list, [1 if num_classes == 2 else num_classes]])
-    number_of_lambda_parameters = 0
-    for i in range(len(layers_with_input_output)-1):
-        number_of_lambda_parameters += (layers_with_input_output[i]+1)*layers_with_input_output[i+1]  
+
+#def get_number_of_lambda_net_parameters(lambda_network_layer_list, number_of_variables, num_classes):
+def get_number_of_lambda_net_parameters(config):
+    
+    from utilities.utility_functions import generate_base_model
+  
+    random_model = generate_base_model(config)
+    random_model_parameters = shaped_network_parameters_to_array(random_model.get_weights(), config)
+    number_of_lambda_parameters = random_model_parameters.shape[0]
+    
+    if False:
+        layers_with_input_output = flatten_list([number_of_variables, lambda_network_layer_list, [1 if num_classes == 2 else num_classes]])
+        number_of_lambda_parameters = 0
+        for i in range(len(layers_with_input_output)-1):
+            number_of_lambda_parameters += (layers_with_input_output[i]+1)*layers_with_input_output[i+1]  
         
     return number_of_lambda_parameters

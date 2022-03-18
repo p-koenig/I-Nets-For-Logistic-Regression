@@ -42,7 +42,7 @@ from tensorflow.python.util import nest
 import random 
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import Dense, Dropout, Lambda
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
@@ -215,6 +215,23 @@ class DeepDenseLayerBlock(ak.Block):
                 )(hidden_node)               
         return hidden_node  
 
+def crop(dimension, start, end):
+    # Crops (or slices) a Tensor on a given dimension from start to end
+    # example : to crop tensor x[:, :, 5:10]
+    # call slice(2, 5, 10) as you want to crop on the second dimension
+    def func(x):
+        if dimension == 0:
+            return x[start: end]
+        if dimension == 1:
+            return x[:, start: end]
+        if dimension == 2:
+            return x[:, :, start: end]
+        if dimension == 3:
+            return x[:, :, :, start: end]
+        if dimension == 4:
+            return x[:, :, :, :, start: end]
+    return Lambda(func)
+    
 #######################################################################################################################################################
 #################################################################I-NET RESULT CALCULATION##############################################################
 #######################################################################################################################################################
@@ -450,11 +467,13 @@ def train_inet(lambda_net_train_dataset,
     
     ############################## DATA PREPARATION ###############################
     
-    random_model = generate_base_model(config)
+    random_model = generate_base_model(config)#generate_base_model(config, disable_batchnorm=True)
     np.random.seed(config['computation']['RANDOM_SEED'])
         
     random_network_parameters = random_model.get_weights()
-    network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]         
+    network_parameters_structure = [network_parameter.shape for network_parameter in random_network_parameters]     
+    
+    print('network_parameters_structure', network_parameters_structure)
 
     (X_train, X_train_flat, y_train, encoder_model) = generate_inet_train_data(lambda_net_train_dataset, config)
     (X_valid, X_valid_flat, y_valid, _) = generate_inet_train_data(lambda_net_valid_dataset, config, encoder_model)
@@ -466,6 +485,44 @@ def train_inet(lambda_net_train_dataset,
         y_test = None
     
     
+    if config['i_net']['separate_weight_bias']:
+        print('separate_weight_bias')
+        lambda_network_layers_complete = flatten_list([config['data']['number_of_variables'], config['lambda_net']['lambda_network_layers']])
+        
+        bias_list = []
+        weight_list = []
+        
+        
+        if lambda_net_test_dataset is not None:
+            data_list = [X_train, X_train_flat, X_valid, X_valid_flat, X_test, X_test_flat]
+        else:
+            data_list = [X_train, X_train_flat, X_valid, X_valid_flat]
+            
+        bias_count = 0
+        weight_count = 0
+        print('X_train.shape', X_train.shape)
+        for X_data in data_list:
+            if X_data is None:
+                continue
+            start_index = 0
+            print('X_data.shape', X_data.shape)
+            for i in range(1, len(lambda_network_layers_complete)):
+                weight_number = lambda_network_layers_complete[i-1]*lambda_network_layers_complete[i]
+                print('weight_number', weight_number)
+                weight_list.append(X_data[:,start_index:weight_number])
+                print('start_index', i, start_index)
+                start_index += weight_number
+                weight_count += weight_number
+                bias_number = lambda_network_layers_complete[i]
+                bias_list.append(X_data[:,start_index:bias_number])
+                print('bias_number', bias_number)
+                start_index += bias_number
+                bias_count += bias_number
+                print('start_index', i, start_index)
+            X_data = np.hstack(flatten_list([weight_list, bias_list]))
+            print(X_data.shape)
+            print(bias_count, weight_count)
+        print('X_train.shape', X_train.shape)
     ############################## OBJECTIVE SPECIFICATION AND LOSS FUNCTION ADJUSTMENTS ###############################
     metrics = []
     loss_function = None
@@ -882,28 +939,88 @@ def train_inet(lambda_net_train_dataset,
             
             if not isinstance(config['i_net']['hidden_activation'], list):
                 config['i_net']['hidden_activation'] = [config['i_net']['hidden_activation'] for _ in range(len(config['i_net']['dense_layers']))]
-            
-            inputs = Input(shape=X_train.shape[1], 
-                           name='input')
 
-            hidden = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
-                                           name='hidden1_' + str(config['i_net']['dense_layers'][0]))(inputs)
-            hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
-                                                name='activation1_' + config['i_net']['hidden_activation'][0])(hidden)
+            if config['i_net']['separate_weight_bias']:
+                print('separate_weight_bias')
+                if False:
+                    inputs_weight = Input(shape=weight_count, 
+                               name='input_weight')
+                    inputs_bias = Input(shape=bias_count, 
+                               name='input_bias')
 
-            if config['i_net']['dropout'][0] > 0:
-                hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
-                                                 name='dropout1_' + str(config['i_net']['dropout'][0]))(hidden)
 
-            for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
-                hidden = tf.keras.layers.Dense(neurons, 
-                                               name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
-                hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
-                                                    name='activation'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden)
+                    inputs = [inputs_bias, inputs_weight]
+                else:
+                    inputs = Input(shape=X_train.shape[1], 
+                               name='input')                    
+                    
+                inputs_bias = crop(1, 0, bias_count)(inputs)
+                inputs_weight = crop(1, 0, bias_count)(inputs)#crop(1, bias_count, bias_count+weight_count)(inputs)
                 
-                if config['i_net']['dropout'][layer_index+1] > 0:
-                    hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
-                                                     name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
+                hidden_weight = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
+                                               name='hidden1_weight_' + str(config['i_net']['dense_layers'][0]))(inputs_weight)
+                hidden_weight = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
+                                                    name='activation1_weight_' + config['i_net']['hidden_activation'][0])(hidden_weight)
+
+                hidden_bias = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
+                                               name='hidden1_bias_' + str(config['i_net']['dense_layers'][0]))(inputs_bias)
+                hidden_bias = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
+                                                    name='activation1_bias_' + config['i_net']['hidden_activation'][0])(hidden_bias)
+                
+                
+                if config['i_net']['dropout'][0] > 0:
+                    hidden_weight = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
+                                                     name='dropout1_weight_' + str(config['i_net']['dropout'][0]))(hidden_weight)
+                    
+                    hidden_bias = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
+                                                     name='dropout1_bias_' + str(config['i_net']['dropout'][0]))(hidden_bias)
+                    
+                for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
+                    hidden_weight = tf.keras.layers.Dense(neurons, 
+                                                   name='hidden_weight' + str(layer_index+2) + '_' + str(neurons))(hidden_weight)
+                    hidden_weight = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
+                                                        name='activation_weight'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden_weight)
+
+                    if config['i_net']['dropout'][layer_index+1] > 0:
+                        hidden_weight = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
+                                                         name='dropout_weight' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden_weight)
+
+                        
+                    hidden_bias = tf.keras.layers.Dense(neurons, 
+                                                   name='hidden_bias' + str(layer_index+2) + '_' + str(neurons))(hidden_bias)
+                    hidden_bias = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
+                                                        name='activation_bias'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden_bias)
+
+                    if config['i_net']['dropout'][layer_index+1] > 0:
+                        hidden_bias = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
+                                                         name='dropout_bias' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden_bias)
+
+                        
+
+                hidden = concatenate([hidden_bias, hidden_weight], name='hidden_combined')  
+            else:
+                print('NO separate_weight_bias')
+                inputs = Input(shape=X_train.shape[1], 
+                           name='input')
+            
+                hidden = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
+                                               name='hidden1_' + str(config['i_net']['dense_layers'][0]))(inputs)
+                hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
+                                                    name='activation1_' + config['i_net']['hidden_activation'][0])(hidden)
+
+                if config['i_net']['dropout'][0] > 0:
+                    hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
+                                                     name='dropout1_' + str(config['i_net']['dropout'][0]))(hidden)
+
+                for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
+                    hidden = tf.keras.layers.Dense(neurons, 
+                                                   name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
+                    hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
+                                                        name='activation'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden)
+
+                    if config['i_net']['dropout'][layer_index+1] > 0:
+                        hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
+                                                         name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
 
             internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
             leaf_node_num_ = 2 ** config['function_family']['maximum_depth']                    
