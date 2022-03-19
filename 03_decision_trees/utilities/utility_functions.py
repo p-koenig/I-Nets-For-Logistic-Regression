@@ -854,9 +854,7 @@ def generate_random_data_points_custom(low, high, size, variables, categorical_i
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
-        
-    print('generate_random_data_points_custom', 'seed', seed)
-        
+                
     if parameters == None:
         value_1 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2)
         value_2 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2) 
@@ -897,7 +895,6 @@ def generate_random_data_points_custom(low, high, size, variables, categorical_i
     
     list_of_data_points = None 
     
-    print('parameter_by_distribution', parameter_by_distribution)
     
     if random_parameters == True and parameters is None:
         list_of_data_points, _ = get_distribution_data_from_string(distribution_name=distrib, size=(size, variables), seed=seed, random_parameters=random_parameters, distrib_param_max=distrib_param_max)        
@@ -1998,7 +1995,6 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
 
     random.seed(seed)
     np.random.seed(seed)
-    print('get_distribution_data_from_string', 'seed', seed)
         
     if parameters == None:
         value_1 = np.random.uniform(0, distrib_param_max)#np.random.uniform(-0.2, 1.2)
@@ -2172,9 +2168,7 @@ def get_distribution_data_from_string(distribution_name, size, seed=None, parame
             parameter_by_distribution = {
                 distribution_name: parameters
             }        
-    
-    print('parameter_by_distribution', parameter_by_distribution)
-    
+        
     if distribution_name == 'normal':
         return np.random.normal(parameter_by_distribution['normal']['loc'], parameter_by_distribution['normal']['scale'], size=size), parameter_by_distribution['normal']
     elif distribution_name == 'uniform':
@@ -3364,7 +3358,6 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                 distrib_param_max = config['data']['distrib_param_max']
             except:
                 distrib_param_max = 1     
-            print("config['computation']['RANDOM_SEED']", 'LEVEL 2', config['computation']['RANDOM_SEED'])
             X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
                                                                config['data']['x_max'],
                                                                config['evaluation']['per_network_optimization_dataset_size'], 
@@ -4451,7 +4444,6 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
             config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + i
-            print("config_test['computation']['RANDOM_SEED']", config_test['computation']['RANDOM_SEED'], 'i', i)
             
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
