@@ -215,6 +215,7 @@ class DeepDenseLayerBlock(ak.Block):
                 )(hidden_node)               
         return hidden_node  
 
+
 def crop(dimension, start, end):
     # Crops (or slices) a Tensor on a given dimension from start to end
     # example : to crop tensor x[:, :, 5:10]
@@ -888,7 +889,7 @@ def train_inet(lambda_net_train_dataset,
                         ["adam", "rmsprop", "adadelta", "adagrad"],
                         default="adam",
                     )
-                    # TODO: add adadelta optimizer when it can optimize embedding layer on GPU.
+
                     learning_rate = hp.Choice(
                         "learning_rate", [1e-1, 1e-2, 1e-3, 1e-4, 2e-5, 1e-5], default=1e-3
                     )
@@ -999,7 +1000,6 @@ def train_inet(lambda_net_train_dataset,
 
                 hidden = concatenate([hidden_bias, hidden_weight], name='hidden_combined')  
             else:
-                print('NO separate_weight_bias')
                 inputs = Input(shape=X_train.shape[1], 
                            name='input')
             

@@ -169,7 +169,7 @@ def inet_decision_function_fv_loss_wrapper_parameters(config):
         splits_features_pred = tf.reshape(function_pred[:,:internal_node_num_ * config['data']['number_of_variables']], shape=(-1, internal_node_num_, config['data']['number_of_variables']))
         splits_values_pred = tf.reshape(function_pred[:,internal_node_num_* config['data']['number_of_variables']:internal_node_num_ * config['data']['number_of_variables'] * 2], shape=(-1, internal_node_num_, config['data']['number_of_variables']))
 
-        leaf_probabilities_pred = tf.reshape(function_pred[:,internal_node_num_ * config['data']['number_of_variables'] * 2:], shape=(-1, leaf_node_num_))
+        leaf_probabilities_pred = tf.reshape(function_pred[:,internal_node_num_ * config['data']['number_of_variables'] * 2:internal_node_num_ * config['data']['number_of_variables'] * 2 + leaf_node_num_], shape=(-1, leaf_node_num_))
         
         if True:
             loss_complete_list = tf.vectorized_map(compute_loss_single_tree_wrapper(config), (splits_features_true, 
@@ -341,8 +341,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
             function_values_pred, penalty = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(random_evaluation_dataset, config)(function_array)
         #tf.print('function_values_pred', function_values_pred[:50], summarize=50)
             
-        
-            
+      
         function_values_true_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_true), 1), tf.float32))
         function_values_pred_ones_rounded = tf.math.reduce_sum(tf.cast(tf.equal(tf.round(function_values_pred), 1), tf.float32))
         

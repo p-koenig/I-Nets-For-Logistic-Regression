@@ -1024,7 +1024,7 @@ def generate_random_data_points(config, seed, parameters=None):
     return list_of_data_points 
 
 
-def generate_random_decision_tree(config, seed=42):
+def generate_random_decision_tree(config, seed=42, verbosity=0):
     
     from utilities.DecisionTree_BASIC import SDT   
     from sklearn.tree import DecisionTreeClassifier
@@ -1040,7 +1040,7 @@ def generate_random_decision_tree(config, seed=42):
                        decision_sparsity=config['function_family']['decision_sparsity'],
                        random_seed=seed,
                        use_cuda=False,
-                       verbosity=0)#
+                       verbosity=verbosity)#
             
             return tree
 
@@ -2843,7 +2843,6 @@ def generate_dataset_from_distributions(distribution_list,
     return X_data, y_data, distribution_parameter_list, normalizer_list
 
 
-
 def distribution_evaluation_single_model_synthetic_data(loss_function, 
                                                         metrics,
                                                         #model,
@@ -3180,16 +3179,43 @@ def evaluate_real_world_dataset(model,
     runtime_list = []
     #print('WORKING??')    
     
-    for distribution_training in distribution_list_evaluation:
+    
 
-        evaluation_result_dict_distrib, results_list_distrib, test_network_parameters, dt_inet, dt_distilled_list_distrib = evaluate_network_real_world_data(model,
-                                                                                                    test_network, 
+    parallel_distrib_evaluation = Parallel(n_jobs=config['computation']['n_jobs'], verbose=0, backend='loky') #loky #sequential multiprocessing
+
+    test_network_parameters_array = shaped_network_parameters_to_array(test_network.get_weights(), config)
+    
+    parallel_results = parallel_distrib_evaluation(delayed(evaluate_network_real_world_data_parallel)(dill.dumps(model.loss),
+                                                                                                    dill.dumps([metric._fn for metric in model.metrics[1:]]),
+                                                                                                    test_network_parameters_array, 
                                                                                                     X_train, 
                                                                                                     X_test, 
                                                                                                     dataset_size_list,
                                                                                                     config,
-                                                                                                    distribution=distribution_training)
+                                                                                                    distribution=distribution_training,
+                                                                                                    verbosity=1) for distribution_training in distribution_list_evaluation)      
+
+    del parallel_distrib_evaluation    
+    
+    
+    for i, distribution_training in enumerate(distribution_list_evaluation):
+
         
+        #evaluation_result_dict_distrib, results_list_distrib, test_network_parameters, dt_inet, dt_distilled_list_distrib = evaluate_network_real_world_data(model,
+        #                                                                                            test_network, 
+        #                                                                                            X_train, 
+        #                                                                                            X_test, 
+        #                                                                                            dataset_size_list,
+        #                                                                                            config,
+        #                                                                                            distribution=distribution_training,
+        #                                                                                            verbosity=1)
+        
+        
+        evaluation_result_dict_distrib = parallel_results[i][0]
+        results_list_distrib = parallel_results[i][1] 
+        test_network_parameters = parallel_results[i][2]
+        dt_inet = parallel_results[i][3] 
+        dt_distilled_list_distrib = parallel_results[i][4]
         
         for result, results_distrib in zip(results_list, results_list_distrib):
             result['dt_scores']['soft_binary_crossentropy_' + distribution_training] = results_distrib['dt_scores']['soft_binary_crossentropy']
@@ -3342,7 +3368,8 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                                                          #y_test_lambda,
                                                          config,
                                                          train_data=None,
-                                                         distribution=None):
+                                                         distribution=None,
+                                                         verbosity=0):
 
     from utilities.metrics import calculate_function_value_from_decision_tree_parameters_wrapper, calculate_function_value_from_vanilla_decision_tree_parameters_wrapper
     
@@ -3437,7 +3464,7 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         start_dt_distilled = time.time() 
 
-        dt_distilled = generate_random_decision_tree(config, config['computation']['RANDOM_SEED'])
+        dt_distilled = generate_random_decision_tree(config, config['computation']['RANDOM_SEED'], verbosity=verbosity)
         if config['function_family']['dt_type'] == 'SDT':
             dt_distilled.fit(X_data_random, np.round(y_data_random_lambda_pred).astype(np.int64), epochs=50)
 
@@ -3585,7 +3612,7 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         print(tab)       
     
     with tf.device('/CPU:0'):
-        number = min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1))
+        number = min(min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1)), 50)
 
         start_inet = time.time() 
         network_parameters = np.array(network_parameters_array[:number])
@@ -4415,6 +4442,88 @@ def plot_decision_tree_from_model(dt_model, config):
     
     return image
 
+def evaluate_network_real_world_data_parallel(loss_function, metrics, test_network_parameter_array, X_train, X_test, dataset_size_list, config, verbosity=0, distribution=None):
+        
+    model = load_inet(loss_function, metrics, config)
+    
+    test_network = network_parameters_to_network(test_network_parameter_array, config)
+        
+    dt_inet, test_network_parameters, inet_runtime = make_inet_prediction(model, test_network, config)
+
+    results_list = []
+    dt_distilled_list = []
+    for i, dataset_size in enumerate(dataset_size_list):
+
+        if dataset_size == 'TRAIN_DATA': 
+            if isinstance(X_train, pd.DataFrame):
+                X_train = X_train.values
+            if isinstance(X_test, pd.DataFrame):
+                X_test = X_test.values            
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test, 
+                                                                               #y_test_lambda,
+                                                                               config,
+                                                                               distribution=distribution,
+                                                                               train_data=X_train,
+                                                                               verbosity=verbosity)
+
+        else:
+            config_test = deepcopy(config)
+            config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + i
+            
+            if isinstance(X_test, pd.DataFrame):
+                X_test = X_test.values            
+                
+            results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
+                                                                               dt_inet,
+                                                                               X_test, 
+                                                                               #y_test_lambda,
+                                                                               config_test,
+                                                                               distribution=distribution,
+                                                                               verbosity=verbosity)
+
+
+        results['inet_scores']['runtime'] = inet_runtime
+        results_list.append(results)
+        dt_distilled_list.append(dt_distilled)
+
+        if verbosity > 1:
+            print('Dataset Size:\t\t', dataset_size)
+            tab = PrettyTable()
+            tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
+            
+            max_width = {}   
+            for field in tab.field_names:
+                if field == 'Metric':
+                    max_width[field] = 25
+                else:
+                    max_width[field] = 10
+            tab._max_width = max_width
+    
+            tab.add_rows(
+                [
+                    ['Soft Binary Crossentropy', np.round(results['dt_scores']['soft_binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['soft_binary_crossentropy'], 3), np.round(results['inet_scores']['soft_binary_crossentropy'], 3)],
+                    ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
+                    ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
+                    ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
+                    ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
+                ]    
+            )
+            print(tab)
+            print('-------------------------------------------------------------------------------------------------------------------------------------------------------------------------')             
+
+    evaluation_result_dict = None
+    for some_dict in results_list:
+        if evaluation_result_dict == None:
+            evaluation_result_dict = some_dict
+        else:
+            evaluation_result_dict = mergeDict(evaluation_result_dict, some_dict)
+            
+    return evaluation_result_dict, results_list, test_network_parameters, dt_inet, dt_distilled_list
+
+
 
     
 
@@ -4438,7 +4547,8 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                #y_test_lambda,
                                                                                config,
                                                                                distribution=distribution,
-                                                                               train_data=X_train)
+                                                                               train_data=X_train,
+                                                                               verbosity=verbosity)
 
         else:
             config_test = deepcopy(config)
@@ -4453,14 +4563,15 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                X_test, 
                                                                                #y_test_lambda,
                                                                                config_test,
-                                                                               distribution=distribution)
+                                                                               distribution=distribution,
+                                                                               verbosity=verbosity)
 
 
         results['inet_scores']['runtime'] = inet_runtime
         results_list.append(results)
         dt_distilled_list.append(dt_distilled)
 
-        if verbosity > 0:
+        if verbosity > 1:
             print('Dataset Size:\t\t', dataset_size)
             tab = PrettyTable()
             tab.field_names = ['Metric', 'Distilled DT (Train/Random Data)', 'Distilled DT (Test Data)', 'I-Net DT (Test Data)']
@@ -5570,7 +5681,7 @@ def evaluate_network_on_distribution_custom_parameters(distribution_name_feature
             tree_random_data_dict = {}
             accuracy_tree_random_data_dict = {}
 
-            for distribution in distribution_list:
+            for distribution in distribution_list_evaluation:
 
                 random_data = generate_random_data_points_custom(config['data']['x_min'], 
                                                                  config['data']['x_max'],
@@ -5587,7 +5698,7 @@ def evaluate_network_on_distribution_custom_parameters(distribution_name_feature
                     scaler.fit(column.reshape(-1, 1))
                     random_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
 
-                tree_train_data = SDT(input_dim=random_data.shape[1],#X_train.shape[1], 
+                tree_random_data = SDT(input_dim=random_data.shape[1],#X_train.shape[1], 
                                        output_dim=2,#int(max(y_train))+1, 
                                        depth=config['function_family']['maximum_depth'],
                                        #beta=0,
@@ -5635,17 +5746,17 @@ def evaluate_network_on_distribution_custom_parameters(distribution_name_feature
             test_network_parameters_flat = shaped_network_parameters_to_array(test_network.get_weights(), config)
 
             dt_inet = inet.predict(np.array([test_network_parameters_flat]))[0]
-            
+
             plot_decision_area_evaluation_all_distrib(X_train, 
                                                         y_train,
                                                         X_test, 
                                                         y_test, 
                                                         test_network,
                                                         tree_train_data,
-                                                        [tree_random_data_dict[distribution] for distribution in distribution_list],
+                                                        [tree_random_data_dict[distribution] for distribution in distribution_list_evaluation],
                                                         dt_inet,
                                                         np.array([str(i) for i in range(X_train.shape[1])]),
-                                                        distribution_list,
+                                                        distribution_list_evaluation,
                                                         config
                                                        )
             

@@ -158,18 +158,18 @@ class SDT(nn.Module):
         
         #maximum_path_probability
         
-        if self.verbosity >= 3:
+        if self.verbosity > 3:
             print('_mu, _penalty', _mu, _penalty)
             
         if self.maximum_path_probability:
             cond = torch.eq(_mu, torch.max(_mu, axis=1).values.reshape(-1,1))
             _mu = torch.where(cond, _mu, torch.zeros_like(_mu))
-            if self.verbosity >= 3:
+            if self.verbosity > 3:
                 print('_mu', _mu)
             
         y_pred = self.leaf_nodes(_mu)
         
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('y_pred', y_pred)
         # When `X` is the training data, the model also returns the penalty
         # to compute the training loss.
@@ -183,7 +183,7 @@ class SDT(nn.Module):
 
         batch_size = X.size()[0]
         #X = self._data_augment(X)
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('X', X)
             
         if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
@@ -197,20 +197,20 @@ class SDT(nn.Module):
         else:   
             path_prob = nn.Sigmoid()(self.beta*self.inner_nodes(X))
             
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('path_prob', path_prob)
         path_prob = torch.unsqueeze(path_prob, dim=2)
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('path_prob', path_prob)
         path_prob = torch.cat((path_prob, 1 - path_prob), dim=2)
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('path_prob', path_prob)
         
             
         
         _mu = X.data.new(batch_size, 1, 1).fill_(1.0)
         _penalty = torch.tensor(0.0).to(self.device)
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('_mu', _mu)
             print('_penalty', _penalty)
         # Iterate through internal odes in each layer to compute the final path
@@ -226,23 +226,23 @@ class SDT(nn.Module):
             _penalty = _penalty + self._cal_penalty(layer_idx, _mu, _path_prob)
             _mu = _mu.view(batch_size, -1, 1).repeat(1, 1, 2)
 
-            if self.verbosity>= 3:
+            if self.verbosity > 3:
                 #print('_penalty loop', _penalty)    
                 print('_mu updated loop', _mu) 
                 
             _mu = _mu * _path_prob  # update path probabilities
 
-            if self.verbosity>= 3:
+            if self.verbosity > 3:
                 #print('_penalty loop', _penalty)    
                 print('_mu updated loop', _mu)      
                 
             begin_idx = end_idx
             end_idx = begin_idx + 2 ** (layer_idx + 1)
 
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('_mu updated', _mu)
         mu = _mu.view(batch_size, self.leaf_node_num_)
-        if self.verbosity >= 3:
+        if self.verbosity > 3:
             print('mu', mu)
         return mu, _penalty
 
@@ -300,83 +300,166 @@ class SDT(nn.Module):
         minimum_loss = np.inf
         epochs_without_improvement = 0
         
-        for epoch in tqdm(range(epochs)):
-        
-            if epochs_without_improvement < early_stopping_epochs:
-                correct_counter = 0
-                loss_list = []
-                for index, (data, target) in enumerate(zip(batch(X, batch_size), batch(y, batch_size))):
+        if self.verbosity > 0:
 
-                    #data = torch.stack(data).to(self.device)
-                    #target =  torch.stack(target).to(self.device)    
+            for epoch in tqdm(range(epochs)):
 
-                    output, penalty = self.forward(data, is_training_data=True)
-                    loss = self.criterion(output, target.view(-1))
+                if epochs_without_improvement < early_stopping_epochs:
+                    correct_counter = 0
+                    loss_list = []
+                    for index, (data, target) in enumerate(zip(batch(X, batch_size), batch(y, batch_size))):
 
-                    loss += penalty
+                        #data = torch.stack(data).to(self.device)
+                        #target =  torch.stack(target).to(self.device)    
 
-                    #print(self.inner_nodes[0].weight)
+                        output, penalty = self.forward(data, is_training_data=True)
+                        loss = self.criterion(output, target.view(-1))
 
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()     
+                        loss += penalty
 
-                    #print('loss',loss)
+                        #print(self.inner_nodes[0].weight)
 
-                    if False:
-                        if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
-                            vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
-                            weights = torch.zeros_like(self.inner_nodes[0].weight)
-                            for i, idx in enumerate(idx_list):
-                                weights[i][idx] = self.inner_nodes[0].weight[i][idx]
-                            self.inner_nodes[0].weight = torch.nn.Parameter(weights) 
+                        self.optimizer.zero_grad()
+                        loss.backward()
+                        self.optimizer.step()     
 
-                    #print(self.inner_nodes[0].weight)
+                        #print('loss',loss)
+
+                        if False:
+                            if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
+                                vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+                                weights = torch.zeros_like(self.inner_nodes[0].weight)
+                                for i, idx in enumerate(idx_list):
+                                    weights[i][idx] = self.inner_nodes[0].weight[i][idx]
+                                self.inner_nodes[0].weight = torch.nn.Parameter(weights) 
+
+                        #print(self.inner_nodes[0].weight)
+                        pred = output.data.max(1)[1]
+                        correct = pred.eq(target.view(-1).data).sum()
+                        batch_idx = (index+1)*batch_size
+
+                        loss_list.append(float(loss))
+                        #loss_list.append(float(loss))
+                        #print('loss_list', loss_list)
+
+                        correct_counter += correct
+                        if self.verbosity > 2:
+                            msg = (
+                                "Epoch: {:02d} | Batch: {:03d} | Loss: {:.5f} |"
+                                " Correct: {:03d}/{:03d}"
+                            )
+                            print(msg.format(epoch, batch_idx, loss, int(correct), int(data.shape[0])))
+
+
                     pred = output.data.max(1)[1]
-                    correct = pred.eq(target.view(-1).data).sum()
-                    batch_idx = (index+1)*batch_size
-                    
-                    loss_list.append(float(loss))
-                    #loss_list.append(float(loss))
-                    #print('loss_list', loss_list)
+                    correct = pred.eq(target.view(-1).data).sum()                    
+                    if self.verbosity > 1:
 
-                    correct_counter += correct
-                    if self.verbosity >= 2:
+                        #batch_idx = (index+1)*batch_size
+
+                        #print('loss_list', loss_list)
+                        #print('torch.FloatTensor(loss_list)', torch.FloatTensor(loss_list))
+                        #print('torch.mean(loss_list)', torch.mean(torch.FloatTensor(loss_list)))
+                        #print('float(torch.mean(loss_list))', float(torch.mean(torch.FloatTensor(loss_list))))
+                        #print('correct_counter', correct_counter)
+                        #print('X.shape[0]', X.shape[0])
+
                         msg = (
-                            "Epoch: {:02d} | Batch: {:03d} | Loss: {:.5f} |"
+                            "Epoch: {:02d} | Loss: {:.5f} |"
                             " Correct: {:03d}/{:03d}"
                         )
-                        print(msg.format(epoch, batch_idx, loss, int(correct), int(data.shape[0])))
+                        print(msg.format(epoch, np.mean(loss_list), int(correct_counter), int(X.shape[0])))   
 
-                        
-                pred = output.data.max(1)[1]
-                correct = pred.eq(target.view(-1).data).sum()                    
-                if self.verbosity >= 1:
+                    current_loss = np.mean(loss_list)#torch.mean(torch.FloatTensor(loss_list))
 
-                    #batch_idx = (index+1)*batch_size
-                    
-                    #print('loss_list', loss_list)
-                    #print('torch.FloatTensor(loss_list)', torch.FloatTensor(loss_list))
-                    #print('torch.mean(loss_list)', torch.mean(torch.FloatTensor(loss_list)))
-                    #print('float(torch.mean(loss_list))', float(torch.mean(torch.FloatTensor(loss_list))))
-                    #print('correct_counter', correct_counter)
-                    #print('X.shape[0]', X.shape[0])
-                    
-                    msg = (
-                        "Epoch: {:02d} | Loss: {:.5f} |"
-                        " Correct: {:03d}/{:03d}"
-                    )
-                    print(msg.format(epoch, np.mean(loss_list), int(correct_counter), int(X.shape[0])))   
-                    
-                current_loss = np.mean(loss_list)#torch.mean(torch.FloatTensor(loss_list))
-
-                if current_loss < minimum_loss:
-                    minimum_loss = current_loss
-                    epochs_without_improvement = 0
+                    if current_loss < minimum_loss:
+                        minimum_loss = current_loss
+                        epochs_without_improvement = 0
+                    else:
+                        epochs_without_improvement += 1
                 else:
-                    epochs_without_improvement += 1
-            else:
-                break
+                    break
+
+        else:
+            
+
+            for epoch in range(epochs):
+
+                if epochs_without_improvement < early_stopping_epochs:
+                    correct_counter = 0
+                    loss_list = []
+                    for index, (data, target) in enumerate(zip(batch(X, batch_size), batch(y, batch_size))):
+
+                        #data = torch.stack(data).to(self.device)
+                        #target =  torch.stack(target).to(self.device)    
+
+                        output, penalty = self.forward(data, is_training_data=True)
+                        loss = self.criterion(output, target.view(-1))
+
+                        loss += penalty
+
+                        #print(self.inner_nodes[0].weight)
+
+                        self.optimizer.zero_grad()
+                        loss.backward()
+                        self.optimizer.step()     
+
+                        #print('loss',loss)
+
+                        if False:
+                            if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
+                                vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+                                weights = torch.zeros_like(self.inner_nodes[0].weight)
+                                for i, idx in enumerate(idx_list):
+                                    weights[i][idx] = self.inner_nodes[0].weight[i][idx]
+                                self.inner_nodes[0].weight = torch.nn.Parameter(weights) 
+
+                        #print(self.inner_nodes[0].weight)
+                        pred = output.data.max(1)[1]
+                        correct = pred.eq(target.view(-1).data).sum()
+                        batch_idx = (index+1)*batch_size
+
+                        loss_list.append(float(loss))
+                        #loss_list.append(float(loss))
+                        #print('loss_list', loss_list)
+
+                        correct_counter += correct
+                        if self.verbosity > 2:
+                            msg = (
+                                "Epoch: {:02d} | Batch: {:03d} | Loss: {:.5f} |"
+                                " Correct: {:03d}/{:03d}"
+                            )
+                            print(msg.format(epoch, batch_idx, loss, int(correct), int(data.shape[0])))
+
+
+                    pred = output.data.max(1)[1]
+                    correct = pred.eq(target.view(-1).data).sum()                    
+                    if self.verbosity > 1:
+
+                        #batch_idx = (index+1)*batch_size
+
+                        #print('loss_list', loss_list)
+                        #print('torch.FloatTensor(loss_list)', torch.FloatTensor(loss_list))
+                        #print('torch.mean(loss_list)', torch.mean(torch.FloatTensor(loss_list)))
+                        #print('float(torch.mean(loss_list))', float(torch.mean(torch.FloatTensor(loss_list))))
+                        #print('correct_counter', correct_counter)
+                        #print('X.shape[0]', X.shape[0])
+
+                        msg = (
+                            "Epoch: {:02d} | Loss: {:.5f} |"
+                            " Correct: {:03d}/{:03d}"
+                        )
+                        print(msg.format(epoch, np.mean(loss_list), int(correct_counter), int(X.shape[0])))   
+
+                    current_loss = np.mean(loss_list)#torch.mean(torch.FloatTensor(loss_list))
+
+                    if current_loss < minimum_loss:
+                        minimum_loss = current_loss
+                        epochs_without_improvement = 0
+                    else:
+                        epochs_without_improvement += 1
+                else:
+                    break
             
             
         if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
@@ -400,7 +483,7 @@ class SDT(nn.Module):
 
         accuracy = float(correct) / target.shape[0]
         
-        if self.verbosity >= 1:
+        if self.verbosity > 1:
             msg = (
                 "\nTesting Accuracy: {}/{} ({:.3f}%)\n"
             )
@@ -422,11 +505,11 @@ class SDT(nn.Module):
             output = F.softmax(self.forward(data), dim=1)
             #print(output[:,1:].data)
             #print(output[:,1:].data.reshape(1,-1))
-            if self.verbosity>= 3:
+            if self.verbosity > 3:
                 print('output', output)
 
             pred = output[:,1:].data#output.data.max(1)[1]
-            if self.verbosity>= 3:
+            if self.verbosity > 3:
                 print('pred', pred)        
 
             predictions = pred.numpy()
@@ -444,11 +527,11 @@ class SDT(nn.Module):
         
         data = torch.FloatTensor(X).to(self.device)
         output = F.softmax(self.forward(data), dim=1)
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('output', output)
         
         pred = output.data.max(1)[1]
-        if self.verbosity>= 3:
+        if self.verbosity > 3:
             print('pred', pred)        
         
         predictions = pred
@@ -460,11 +543,11 @@ class SDT(nn.Module):
                 data_point = torch.FloatTensor([data_point]).to(self.device)
 
                 output = F.softmax(self.forward(data_point), dim=1)
-                if self.verbosity>= 3:
+                if self.verbosity > 3:
                     print('output', output)
 
                 pred = output.data.max(1)[1]
-                if self.verbosity>= 3:
+                if self.verbosity > 3:
                     print('pred', pred)
                 predictions[index] = pred
             
