@@ -279,15 +279,21 @@ def generate_paths(config, path_type='interpretation_net'):
     except:
         pass
         
+    weighted_data_generation_str = ''
+    try:
+        weighted_data_generation_str = '_weightedFeatures' if config['data']['weighted_data_generation'] else ''
+    except:
+        pass
+
     data_generation_filtering_str = ''
     try:
-        data_generation_filtering_str = '_filterGen' if not config['data']['data_generation_filtering'] else ''
+        data_generation_filtering_str = '_filterGen' if config['data']['data_generation_filtering'] else ''
     except:
         pass    
         
     data_generation_shift_str = ''
     try:
-        data_generation_shift_str = '_shifted' if not config['data']['shift_distrib'] else ''
+        data_generation_shift_str = '_shifted' if config['data']['shift_distrib'] else ''
     except:
         pass   
     
@@ -319,6 +325,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   max_distributions_per_class_string +       
                                   distrib_param_max_str +
                                   fixed_class_probability_str +
+                                  weighted_data_generation_str +
                                   data_generation_filtering_str +
                                   data_generation_shift_str + 
                                   data_generation_distrib_str + 
