@@ -291,6 +291,13 @@ def generate_paths(config, path_type='interpretation_net'):
     except:
         pass    
         
+    data_generation_linearly_separable_str = ''
+    if not config['data']['data_generation_filtering']:
+        try:
+            data_generation_linearly_separable_str = '_exLinSep' if config['data']['exclude_linearly_seperable'] else ''
+        except:
+            pass            
+        
     data_generation_shift_str = ''
     try:
         data_generation_shift_str = '_shifted' if config['data']['shift_distrib'] else ''
@@ -299,7 +306,7 @@ def generate_paths(config, path_type='interpretation_net'):
     
     data_generation_distrib_str = ''
     try:
-        data_generation_shift_str = '-'.join([string[:2] for string in config['data']['distribution_list']]) if 'distribution' in config['data']['function_generation_type'] else ''
+        data_generation_distrib_str = '-'.join([string[:2] for string in config['data']['distribution_list']]) if 'distribution' in config['data']['function_generation_type'] else ''
     except:
         pass    
     
@@ -327,6 +334,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   fixed_class_probability_str +
                                   weighted_data_generation_str +
                                   data_generation_filtering_str +
+                                  data_generation_linearly_separable_str +
                                   data_generation_shift_str + 
                                   data_generation_distrib_str + 
                                   dt_str
@@ -394,9 +402,9 @@ def generate_paths(config, path_type='interpretation_net'):
             
         function_representation_type_string = '_funcRep' + str(config['i_net']['function_representation_type'])
         
-        data_reshape_version_strin = '_reshape'+ str(config['i_net']['data_reshape_version'])
-
-        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer'] + function_representation_type_string + data_reshape_version_strin
+        data_reshape_version_string = '_reshape'+ str(config['i_net']['data_reshape_version'])
+        
+        interpretation_net_identifier = '_' + interpretation_network_layers_string + '_drop' + '-'.join([str(dropout) for dropout in config['i_net']['dropout']]) + 'e' + str(config['i_net']['epochs']) + 'b' + str(config['i_net']['batch_size']) + '_' + config['i_net']['optimizer'] + function_representation_type_string + data_reshape_version_string
         
         path_identifier_interpretation_net = ('lNetSize' + str(config['data']['lambda_dataset_size']) +
                                                    '_numLNets' + str(config['lambda_net']['number_of_trained_lambda_nets']) +
@@ -2542,10 +2550,6 @@ def generate_dataset_from_distributions(distribution_list,
         #while accuracy_single_split > accuracy_single_split_threshold or (accuracy_max_split-accuracy_single_split) < accuracy_diff_threshold or accuracy_max_split < accuracy_max_split_threshold and accuracy_max_split > 0.95: 
         while condition:
             
-            single_split_model = DecisionTreeClassifier(max_depth=1)   
-            max_split_model = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])   
-            
-            
             X_data_list = []
             distribution_parameter_list = []   
                 
@@ -2765,38 +2769,45 @@ def generate_dataset_from_distributions(distribution_list,
                 idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
                 y_data[idx] = (y_data[idx] + 1) % 2  
             
-            if config['data']['data_generation_filtering']:#distrib_param_max == 2.1 or distrib_param_max == 2.2 and distrib_param_max == 2.3:
-                if True:
-                    if True:
-                        from sklearn.linear_model import Perceptron
-                        perceptron = Perceptron(random_state = 0)
-                        perceptron.fit(X_data, y_data)
-                        y_data_perceptron = np.round(perceptron.predict(X_data)).astype(int) 
+            
+            if config['data']['exclude_linearly_seperable'] or config['data']['data_generation_filtering']:
+                threshold = 0.9
+                
+                perceptron_test = True
+                linear_discriminant_test = False
+                dt_test = False
+                
+                if perceptron_test:
+                    from sklearn.linear_model import Perceptron
+                    perceptron = Perceptron(random_state = 0)
+                    perceptron.fit(X_data, y_data)
+                    y_data_perceptron = np.round(perceptron.predict(X_data)).astype(int) 
 
-                        accuracy_perceptron = accuracy_score(y_data, y_data_perceptron)
-                        #print(accuracy_perceptron)
-                        condition_perceptron_perfect = accuracy_perceptron == 1
+                    accuracy_perceptron = accuracy_score(y_data, y_data_perceptron)
+                    
 
-                        condition = condition_perceptron_perfect                    
-                        #print(condition)
-
-                        if condition:
-                            rand_int = np.random.randint(100_000, 1_000_000)
-                            seed = (seed + rand_int) % (2**32 - 1)
-                        else:
-                            seed = config['computation']['RANDOM_SEED']      
-                    else:
-                        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-                        linear_discriminant =  LinearDiscriminantAnalysis(solver='eigen', tol=0, shrinkage=0)
-                        linear_discriminant.fit(X_data, y_data)
-                        y_data_linear_discriminant = np.round(linear_discriminant.predict(X_data)).astype(int) 
-
-                        accuracy_linear_discriminant = accuracy_score(y_data, y_data_linear_discriminant)
-                        condition_linear_discriminant_perfect = accuracy_linear_discriminant == 1
-
-                        condition = condition_linear_discriminant_perfect                    
-                        #print(condition)
+                    if config['data']['data_generation_filtering']:
+                        condition = accuracy_perceptron > threshold
+                    elif config['data']['exclude_linearly_seperable'] and not config['data']['exclude_linearly_seperable']:
+                        condition = accuracy_perceptron == 1
                         
+                    #print(condition, accuracy_perceptron)
+
+                    if condition:
+                        rand_int = np.random.randint(100_000, 1_000_000)
+                        seed = (seed + rand_int) % (2**32 - 1)
+                    else:
+                        seed = config['computation']['RANDOM_SEED']                    
+                elif linear_discriminant_test:
+                    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+                    linear_discriminant =  LinearDiscriminantAnalysis(solver='eigen', tol=0, shrinkage=0)
+                    linear_discriminant.fit(X_data, y_data)
+                    y_data_linear_discriminant = np.round(linear_discriminant.predict(X_data)).astype(int) 
+
+                    accuracy_linear_discriminant = accuracy_score(y_data, y_data_linear_discriminant)
+                    condition = accuracy_linear_discriminant == 1
+
+                    if False:
                         from sklearn.linear_model import Perceptron
                         perceptron = Perceptron(random_state = 0)
                         perceptron.fit(X_data, y_data)
@@ -2804,39 +2815,29 @@ def generate_dataset_from_distributions(distribution_list,
 
                         accuracy_perceptron = accuracy_score(y_data, y_data_perceptron)                        
                         print(accuracy_perceptron, accuracy_linear_discriminant)
-                        if condition:
-                            rand_int = np.random.randint(100_000, 1_000_000)
-                            seed = (seed + rand_int) % (2**32 - 1)
-                        else:
-                            seed = config['computation']['RANDOM_SEED']  
-                else:
-                    single_split_model.fit(X_data, y_data)
-                    max_split_model.fit(X_data, y_data)
-                    #single_split_model_preds_proba = single_split_model.predict_proba(X_data)
-                    single_split_model_preds = single_split_model.predict(X_data)
-                    accuracy_single_split = accuracy_score(y_data, single_split_model_preds)
-
-                    max_split_model_preds = max_split_model.predict(X_data)
-                    accuracy_max_split = accuracy_score(y_data, max_split_model_preds)
-                    rand_int = np.random.randint(100_000, 1_000_000)
-                    seed = (seed + rand_int) % (2**32 - 1)
-
-                    #print('accuracy_max_split', accuracy_max_split, accuracy_max_split_threshold)
-                    #print('accuracy_single_split', accuracy_single_split, accuracy_single_split_threshold)
-
-                    condition_single_split = accuracy_single_split > accuracy_single_split_threshold
-                    condition_split_diff = (accuracy_max_split-accuracy_single_split) < accuracy_diff_threshold
-                    condition_max_split = accuracy_max_split < accuracy_max_split_threshold
-
-                    condition_max_split_perfect = accuracy_max_split > 0.99
-
-                    condition = condition_single_split or condition_split_diff or condition_max_split or condition_max_split_perfect
-
+                    if condition:
+                        rand_int = np.random.randint(100_000, 1_000_000)
+                        seed = (seed + rand_int) % (2**32 - 1)
+                    else:
+                        seed = config['computation']['RANDOM_SEED']                      
+                        
+                elif dt_test:
+                    dt_model = DecisionTreeClassifier(max_depth = 2)
+                    dt_model.fit(X_data, y_data)
+                    
+                    dt_model_preds = dt_model.predict(X_data)
+                    accuracy_dt_model = accuracy_score(y_data, dt_model_preds)
+                    
+                    condition = accuracy_dt_model > threshold     
+                    
+                    if condition:
+                        rand_int = np.random.randint(100_000, 1_000_000)
+                        seed = (seed + rand_int) % (2**32 - 1)
+                    else:
+                        seed = config['computation']['RANDOM_SEED']          
             else:
                 condition = False
-                    
-                #accuracy_single_split = 0
-                #accuracy_max_split = 1
+
                 
                 
                 
