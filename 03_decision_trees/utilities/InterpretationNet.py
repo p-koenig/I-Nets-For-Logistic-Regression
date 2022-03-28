@@ -232,7 +232,19 @@ def crop(dimension, start, end):
         if dimension == 4:
             return x[:, :, :, :, start: end]
     return Lambda(func)
+  
     
+    
+class CustomStopper(keras.callbacks.EarlyStopping):
+    def __init__(self, monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto', restore_best_weights=True, start_epoch = 50): 
+        super(CustomStopper, self).__init__(monitor=monitor, min_delta=min_delta, patience=patience, verbose=0, mode=mode,  restore_best_weights=True)
+        self.start_epoch = start_epoch
+
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch > self.start_epoch:
+            super().on_epoch_end(epoch, logs)
+            
+            
 #######################################################################################################################################################
 #################################################################I-NET RESULT CALCULATION##############################################################
 #######################################################################################################################################################
@@ -596,9 +608,12 @@ def train_inet(lambda_net_train_dataset,
     if use_distribution_list and config['data']['max_distributions_per_class'] is not None:
         
         if True:
-            random_evaluation_dataset_array_train = lambda_net_train_dataset.X_train_lambda_array
-            random_evaluation_dataset_array_valid = lambda_net_valid_dataset.X_train_lambda_array
-            
+            idx_train = np.random.randint(lambda_net_train_dataset.X_train_lambda_array.shape[1], size=config['evaluation']['random_evaluation_dataset_size'])
+            idx_valid = np.random.randint(lambda_net_valid_dataset.X_train_lambda_array.shape[1], size=config['evaluation']['random_evaluation_dataset_size'])
+
+            random_evaluation_dataset_array_train = lambda_net_train_dataset.X_train_lambda_array[:,idx_train]
+            random_evaluation_dataset_array_valid = lambda_net_valid_dataset.X_train_lambda_array[:,idx_valid]
+                        
             random_evaluation_dataset_flat_array_train = random_evaluation_dataset_array_train.reshape((-1, random_evaluation_dataset_array_train.shape[1]*config['data']['number_of_variables']))                        
             random_evaluation_dataset_flat_array_valid = random_evaluation_dataset_array_valid.reshape((-1, random_evaluation_dataset_array_valid.shape[1]*config['data']['number_of_variables']))
         
@@ -898,7 +913,7 @@ def train_inet(lambda_net_train_dataset,
                     optimizer.learning_rate = learning_rate
                     
                     model.compile(
-                        optimizer=optimizer, metrics=self._get_metrics(), loss=self._get_loss()
+                        optimizer=optimizer, metrics=self._get_metrics(), loss=self._get_loss(), jit_compile=True
                     )
 
                     return model
@@ -919,7 +934,8 @@ def train_inet(lambda_net_train_dataset,
                 ############################## PREDICTION ###############################
                 print('TRAIN DATAS SHAPE: ', X_train.shape)
 
-                earlyStopping = EarlyStopping(monitor='val_loss', patience=20, min_delta=0.01, verbose=0, mode='min', restore_best_weights=True)
+                #earlyStopping = EarlyStopping(monitor='val_loss', patience=20, min_delta=0.01, verbose=0, mode='min', restore_best_weights=True)
+                earlyStopping = CustomStopper(monitor='val_loss', patience=20, min_delta=0.01, verbose=0, mode='min', restore_best_weights=True, start_epoch = 25)
                 
                 auto_model.fit(
                     x=X_train,
@@ -929,6 +945,8 @@ def train_inet(lambda_net_train_dataset,
                     batch_size=config['i_net']['batch_size'],
                     callbacks=[earlyStopping],
                     verbose=2,
+                    workers=10,
+                    use_multiprocessing=True,
                     )         
 
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
@@ -1251,7 +1269,10 @@ def train_inet(lambda_net_train_dataset,
                       #shuffle=False,
                       validation_data=valid_data,
                       callbacks=callbacks,
-                      verbose=verbosity)
+                      verbose=verbosity,
+                      workers=1,
+                      use_multiprocessing=False,
+                    )
 
             history = history.history
             
@@ -1444,7 +1465,10 @@ def autoencode_data(X_data, config, encoder_model=None):
             batch_size=256, 
             validation_data=(X_data[:100], X_data[:100]),
             callbacks=return_callbacks_from_string('early_stopping'),
-            verbose=2)
+            verbose=2,
+            workers=1,
+            use_multiprocessing=False,
+                    )
     
     encoder_layer = encoder_model.encoder#auto_encoder.get_layer('sequential')
     X_data = encoder_layer.predict(X_data)    

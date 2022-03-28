@@ -97,10 +97,12 @@ class SDT(nn.Module):
             maximum_path_probability = True,
             random_seed=42,
             use_cuda=False,
+            #device_number = 0,
             verbosity=1): #0=no verbosity, 1= epoch lvl verbosity, 2=batch lvl verbosity, 3=additional prints
         super(SDT, self).__init__()
         
         torch.manual_seed(random_seed)
+        torch.set_num_threads(1)
         
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -111,7 +113,8 @@ class SDT(nn.Module):
         self.beta = beta
         self.decision_sparsity = decision_sparsity
         self.lamda = lamda
-        self.device = torch.device("cuda" if use_cuda else "cpu")
+        
+        #self.device = torch.device("cuda" if use_cuda else "cpu")
         
         self.verbosity = verbosity
 
@@ -147,6 +150,7 @@ class SDT(nn.Module):
             
                     
         self.criterion = criterion
+        #self.device = torch.device("cuda" if use_cuda else "cpu", 0)
         self.device = torch.device("cuda" if use_cuda else "cpu")
     
         self.optimizer = torch.optim.Adam(self.parameters(),

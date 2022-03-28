@@ -72,8 +72,8 @@ class LambdaNetDataset():
     X_test_lambda_array = None
     y_test_lambda_array = None
     
-    X_data_lambda_array = None
-    y_data_lambda_array = None
+    #X_data_lambda_array = None
+    #y_data_lambda_array = None
     
     distribution_dict_list_list = None
     distribution_dict_row_array = None
@@ -95,8 +95,8 @@ class LambdaNetDataset():
         self.target_function_parameters_array = np.array([lambda_net.target_function_parameters for lambda_net in lambda_net_list])
         self.target_function_list = [lambda_net.target_function for lambda_net in lambda_net_list]
       
-        self.X_data_lambda_array = np.array([lambda_net.X_data_lambda for lambda_net in lambda_net_list])
-        self.y_data_lambda_array = np.array([lambda_net.y_data_lambda for lambda_net in lambda_net_list])    
+        #self.X_data_lambda_array = np.array([lambda_net.X_data_lambda for lambda_net in lambda_net_list])
+        #self.y_data_lambda_array = np.array([lambda_net.y_data_lambda for lambda_net in lambda_net_list])    
         
         self.X_train_lambda_array = np.array([lambda_net.X_train_lambda for lambda_net in lambda_net_list])
         self.y_train_lambda_array = np.array([lambda_net.y_train_lambda for lambda_net in lambda_net_list])    
@@ -262,8 +262,8 @@ class LambdaNet():
     X_test_lambda = None
     y_test_lambda = None
     
-    X_data_lambda = None
-    y_data_lambda = None
+    #X_data_lambda = None
+    #y_data_lambda = None
     
     config = None
     
@@ -277,7 +277,7 @@ class LambdaNet():
     #def __init__(self, line_weights, line_X_data, line_y_data, config):
     #def __init__(self, line_weights, line_distribution_parameters, config):
     def __init__(self, line_weights, line_distribution_parameters, X_data, y_data, config):
-        from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array
+        from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array, get_number_of_function_parameters, shaped_network_parameters_to_array
         
         assert isinstance(line_weights, np.ndarray), 'line is no array: ' + str(line_weights) 
         
@@ -323,8 +323,8 @@ class LambdaNet():
         #print('HERE')
         #print(line_distribution_parameters)
         if True:
-            self.X_data_lambda = X_data
-            self.y_data_lambda = y_data
+            #self.X_data_lambda = X_data
+            #self.y_data_lambda = y_data
             
             X_train_with_valid, X_test, y_train_with_valid, y_test = train_test_split(X_data, y_data, test_size=0.25, random_state=config['computation']['RANDOM_SEED'])           
             X_train, X_valid, y_train, y_valid = train_test_split(X_train_with_valid, y_train_with_valid, test_size=0.1, random_state=config['computation']['RANDOM_SEED'])
@@ -702,7 +702,7 @@ def train_lambda_net(config,
     
     
     
-    from utilities.utility_functions import generate_paths, pairwise
+    from utilities.utility_functions import generate_paths, pairwise, shaped_network_parameters_to_array
     from utilities.LambdaNet import generate_lambda_net_from_config
     
     assert (X_data_with_function[0].values == y_data_with_function[0].values).all()
@@ -954,7 +954,7 @@ def evaluate_lambda_net(y_data_real_lambda,
 #def get_number_of_lambda_net_parameters(lambda_network_layer_list, number_of_variables, num_classes):
 def get_number_of_lambda_net_parameters(config):
     
-    from utilities.utility_functions import generate_base_model
+    from utilities.utility_functions import generate_base_model, shaped_network_parameters_to_array
   
     random_model = generate_base_model(config)
     random_model_parameters = shaped_network_parameters_to_array(random_model.get_weights(), config)
