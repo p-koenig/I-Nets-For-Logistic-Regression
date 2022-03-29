@@ -131,9 +131,32 @@ def run_evaluation(enumerator, timestr, parameter_setting):
         parameter_setting['hidden_activation'] = 'relu'
         parameter_setting['optimizer'] = 'rmsprop'      
         parameter_setting['learning_rate'] = 0.001 
-    elif parameter_setting['inet_setting'] == 3:
+    elif parameter_setting['inet_setting'] == 3: ##SDT, n=32
+        parameter_setting['dense_layers'] = [512, 512, 512]
+        parameter_setting['dropout'] = [0, 0, 0]     
+        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh', 'sigmoid']
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001             
+    elif parameter_setting['inet_setting'] == 4: ##SDT, n=15
+        parameter_setting['dense_layers'] = [512, 512]
+        parameter_setting['dropout'] = [0, 0.1]     
+        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh']
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001  
+    elif parameter_setting['inet_setting'] == 5: ##vanilla, n=15
+        parameter_setting['dense_layers'] = [512, 512]
+        parameter_setting['dropout'] = [0.3, 0]     
+        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh']
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001      
+    elif parameter_setting['inet_setting'] == 6: ##vanilla, n=32
+        parameter_setting['dense_layers'] = [512, 512, 512]
+        parameter_setting['dropout'] = [0.5, 0, 0]     
+        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh', 'sigmoid']
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001      
+    elif parameter_setting['inet_setting'] == 7:
         pass
-    
                 #'dense_layers': [1024, 1024, 256, 2048, 2048],
                 #'dense_layers': [1792, 512, 512],
                 #'dense_layers': [704], #SDT-1 n=15

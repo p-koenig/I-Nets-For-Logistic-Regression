@@ -50,12 +50,16 @@ def sleep_minutes_function(minutes):
 def main(): 
     
     sleep_minutes = 0
-   
-    if sleep_minutes > 0:
-        sleep_minutes_function(sleep_minutes)
+
         
-    with open('./temp-' + socket.gethostname() + '.txt', 'a+') as f:
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+
+    with open('./temp-' + socket.gethostname() + '_' + timestr + '.txt', 'a+') as f:
         with redirect_stdout(f):  
+            
+            if sleep_minutes > 0:
+                sleep_minutes_function(sleep_minutes)
+        
             evaluation_grid = {
                 
                 'n_jobs': [5],   
