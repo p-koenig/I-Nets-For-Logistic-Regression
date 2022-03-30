@@ -1,0 +1,1543 @@
+{'data_generation_filtering': False, 'dataset_size': 10000, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'dt_setting': 1, 'fixed_class_probability': True, 'force_evaluate_real_world': True, 'function_generation_type': 'distribution', 'inet_setting': 6, 'maximum_depth': 3, 'n_jobs': 7, 'number_of_random_evaluations_per_distribution': 10, 'number_of_variables': 28, 'shift_distrib': False, 'weighted_data_generation': True, 'dt_type': 'vanilla', 'decision_sparsity': 1, 'function_representation_type': 3, 'dense_layers': [512, 512, 512], 'dropout': [0.5, 0, 0], 'hidden_activation': ['sigmoid', 'tanh', 'sigmoid'], 'optimizer': 'adam', 'learning_rate': 0.001}
+0it [00:00, ?it/s]
+lNetSize5000_numLNets10000_var28_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_weightedFeatures_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42/inet_dense512-512-512_drop0.5-0-0e500b256_adam_funcRep3_reshapeNone
+lNetSize5000_numLNets10000_var28_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_weightedFeatures_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42
+Num GPUs Available:  0
+Num XLA-GPUs Available:  0
+(9000, 3865)
+(1000, 3865)
+----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------
+network_parameters_structure [(28, 128), (128,), (128, 1), (1,)]
+Epoch 1/500
+36/36 - 16s - loss: 0.7016 - binary_accuracy_inet_decision_function_fv_metric: 0.5028 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5037 - 16s/epoch - 445ms/step
+Epoch 2/500
+36/36 - 6s - loss: 0.6925 - binary_accuracy_inet_decision_function_fv_metric: 0.5132 - val_loss: 0.6915 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5201 - 6s/epoch - 159ms/step
+Epoch 3/500
+36/36 - 6s - loss: 0.6908 - binary_accuracy_inet_decision_function_fv_metric: 0.5255 - val_loss: 0.6902 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5282 - 6s/epoch - 167ms/step
+Epoch 4/500
+36/36 - 6s - loss: 0.6897 - binary_accuracy_inet_decision_function_fv_metric: 0.5309 - val_loss: 0.6892 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5341 - 6s/epoch - 162ms/step
+Epoch 5/500
+36/36 - 6s - loss: 0.6886 - binary_accuracy_inet_decision_function_fv_metric: 0.5347 - val_loss: 0.6890 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5328 - 6s/epoch - 163ms/step
+Epoch 6/500
+36/36 - 6s - loss: 0.6880 - binary_accuracy_inet_decision_function_fv_metric: 0.5374 - val_loss: 0.6889 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5345 - 6s/epoch - 164ms/step
+Epoch 7/500
+36/36 - 6s - loss: 0.6874 - binary_accuracy_inet_decision_function_fv_metric: 0.5396 - val_loss: 0.6887 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 6s/epoch - 159ms/step
+Epoch 8/500
+36/36 - 6s - loss: 0.6869 - binary_accuracy_inet_decision_function_fv_metric: 0.5417 - val_loss: 0.6884 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5366 - 6s/epoch - 157ms/step
+Epoch 9/500
+36/36 - 5s - loss: 0.6862 - binary_accuracy_inet_decision_function_fv_metric: 0.5436 - val_loss: 0.6881 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5363 - 5s/epoch - 145ms/step
+Epoch 10/500
+36/36 - 6s - loss: 0.6857 - binary_accuracy_inet_decision_function_fv_metric: 0.5445 - val_loss: 0.6884 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5357 - 6s/epoch - 158ms/step
+Epoch 11/500
+36/36 - 6s - loss: 0.6854 - binary_accuracy_inet_decision_function_fv_metric: 0.5458 - val_loss: 0.6884 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5358 - 6s/epoch - 161ms/step
+Epoch 12/500
+36/36 - 6s - loss: 0.6851 - binary_accuracy_inet_decision_function_fv_metric: 0.5465 - val_loss: 0.6883 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5355 - 6s/epoch - 156ms/step
+Epoch 13/500
+36/36 - 6s - loss: 0.6846 - binary_accuracy_inet_decision_function_fv_metric: 0.5481 - val_loss: 0.6885 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5368 - 6s/epoch - 153ms/step
+Epoch 14/500
+36/36 - 5s - loss: 0.6843 - binary_accuracy_inet_decision_function_fv_metric: 0.5492 - val_loss: 0.6885 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5366 - 5s/epoch - 148ms/step
+Epoch 15/500
+36/36 - 5s - loss: 0.6841 - binary_accuracy_inet_decision_function_fv_metric: 0.5492 - val_loss: 0.6884 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5366 - 5s/epoch - 149ms/step
+Epoch 16/500
+36/36 - 6s - loss: 0.6839 - binary_accuracy_inet_decision_function_fv_metric: 0.5501 - val_loss: 0.6882 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5377 - 6s/epoch - 155ms/step
+Epoch 17/500
+36/36 - 6s - loss: 0.6835 - binary_accuracy_inet_decision_function_fv_metric: 0.5507 - val_loss: 0.6885 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5357 - 6s/epoch - 155ms/step
+Epoch 18/500
+36/36 - 6s - loss: 0.6835 - binary_accuracy_inet_decision_function_fv_metric: 0.5509 - val_loss: 0.6889 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5355 - 6s/epoch - 155ms/step
+Epoch 19/500
+36/36 - 5s - loss: 0.6833 - binary_accuracy_inet_decision_function_fv_metric: 0.5515 - val_loss: 0.6893 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 5s/epoch - 149ms/step
+Epoch 20/500
+36/36 - 6s - loss: 0.6830 - binary_accuracy_inet_decision_function_fv_metric: 0.5520 - val_loss: 0.6887 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5363 - 6s/epoch - 155ms/step
+Epoch 21/500
+36/36 - 5s - loss: 0.6826 - binary_accuracy_inet_decision_function_fv_metric: 0.5532 - val_loss: 0.6887 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5363 - 5s/epoch - 147ms/step
+Epoch 22/500
+36/36 - 5s - loss: 0.6824 - binary_accuracy_inet_decision_function_fv_metric: 0.5536 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 5s/epoch - 149ms/step
+Epoch 23/500
+36/36 - 5s - loss: 0.6822 - binary_accuracy_inet_decision_function_fv_metric: 0.5545 - val_loss: 0.6895 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5351 - 5s/epoch - 152ms/step
+Epoch 24/500
+36/36 - 5s - loss: 0.6821 - binary_accuracy_inet_decision_function_fv_metric: 0.5545 - val_loss: 0.6892 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5352 - 5s/epoch - 147ms/step
+Epoch 25/500
+36/36 - 6s - loss: 0.6818 - binary_accuracy_inet_decision_function_fv_metric: 0.5554 - val_loss: 0.6893 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5343 - 6s/epoch - 153ms/step
+Epoch 26/500
+36/36 - 5s - loss: 0.6817 - binary_accuracy_inet_decision_function_fv_metric: 0.5557 - val_loss: 0.6893 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5349 - 5s/epoch - 147ms/step
+Epoch 27/500
+36/36 - 5s - loss: 0.6815 - binary_accuracy_inet_decision_function_fv_metric: 0.5566 - val_loss: 0.6891 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 5s/epoch - 147ms/step
+Epoch 28/500
+36/36 - 5s - loss: 0.6812 - binary_accuracy_inet_decision_function_fv_metric: 0.5564 - val_loss: 0.6893 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5356 - 5s/epoch - 149ms/step
+Epoch 29/500
+36/36 - 5s - loss: 0.6813 - binary_accuracy_inet_decision_function_fv_metric: 0.5568 - val_loss: 0.6892 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5340 - 5s/epoch - 152ms/step
+Epoch 30/500
+36/36 - 5s - loss: 0.6812 - binary_accuracy_inet_decision_function_fv_metric: 0.5571 - val_loss: 0.6891 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5357 - 5s/epoch - 149ms/step
+Epoch 31/500
+36/36 - 5s - loss: 0.6809 - binary_accuracy_inet_decision_function_fv_metric: 0.5576 - val_loss: 0.6891 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5352 - 5s/epoch - 148ms/step
+Epoch 32/500
+36/36 - 5s - loss: 0.6808 - binary_accuracy_inet_decision_function_fv_metric: 0.5578 - val_loss: 0.6895 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5340 - 5s/epoch - 143ms/step
+Epoch 33/500
+36/36 - 5s - loss: 0.6807 - binary_accuracy_inet_decision_function_fv_metric: 0.5583 - val_loss: 0.6891 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5355 - 5s/epoch - 148ms/step
+Epoch 34/500
+36/36 - 6s - loss: 0.6807 - binary_accuracy_inet_decision_function_fv_metric: 0.5582 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 6s/epoch - 154ms/step
+Epoch 35/500
+36/36 - 5s - loss: 0.6806 - binary_accuracy_inet_decision_function_fv_metric: 0.5582 - val_loss: 0.6904 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5336 - 5s/epoch - 145ms/step
+Epoch 36/500
+36/36 - 5s - loss: 0.6805 - binary_accuracy_inet_decision_function_fv_metric: 0.5581 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5356 - 5s/epoch - 141ms/step
+Epoch 37/500
+36/36 - 6s - loss: 0.6803 - binary_accuracy_inet_decision_function_fv_metric: 0.5593 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5349 - 6s/epoch - 153ms/step
+Epoch 38/500
+36/36 - 5s - loss: 0.6803 - binary_accuracy_inet_decision_function_fv_metric: 0.5592 - val_loss: 0.6896 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5354 - 5s/epoch - 148ms/step
+Epoch 39/500
+36/36 - 5s - loss: 0.6802 - binary_accuracy_inet_decision_function_fv_metric: 0.5596 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5354 - 5s/epoch - 140ms/step
+Epoch 40/500
+36/36 - 5s - loss: 0.6800 - binary_accuracy_inet_decision_function_fv_metric: 0.5598 - val_loss: 0.6893 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5358 - 5s/epoch - 138ms/step
+Epoch 41/500
+36/36 - 5s - loss: 0.6800 - binary_accuracy_inet_decision_function_fv_metric: 0.5599 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5337 - 5s/epoch - 139ms/step
+Epoch 42/500
+36/36 - 5s - loss: 0.6799 - binary_accuracy_inet_decision_function_fv_metric: 0.5602 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5329 - 5s/epoch - 146ms/step
+Epoch 43/500
+36/36 - 5s - loss: 0.6798 - binary_accuracy_inet_decision_function_fv_metric: 0.5602 - val_loss: 0.6895 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5357 - 5s/epoch - 146ms/step
+Epoch 44/500
+36/36 - 5s - loss: 0.6796 - binary_accuracy_inet_decision_function_fv_metric: 0.5604 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5355 - 5s/epoch - 148ms/step
+Epoch 45/500
+36/36 - 5s - loss: 0.6797 - binary_accuracy_inet_decision_function_fv_metric: 0.5607 - val_loss: 0.6896 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5346 - 5s/epoch - 150ms/step
+Epoch 46/500
+36/36 - 8s - loss: 0.6796 - binary_accuracy_inet_decision_function_fv_metric: 0.5606 - val_loss: 0.6895 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5341 - 8s/epoch - 212ms/step
+Epoch 47/500
+36/36 - 8s - loss: 0.6795 - binary_accuracy_inet_decision_function_fv_metric: 0.5611 - val_loss: 0.6896 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5330 - 8s/epoch - 217ms/step
+Epoch 48/500
+36/36 - 7s - loss: 0.6797 - binary_accuracy_inet_decision_function_fv_metric: 0.5603 - val_loss: 0.6896 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5338 - 7s/epoch - 195ms/step
+Epoch 49/500
+36/36 - 7s - loss: 0.6794 - binary_accuracy_inet_decision_function_fv_metric: 0.5614 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5343 - 7s/epoch - 188ms/step
+Epoch 50/500
+36/36 - 7s - loss: 0.6794 - binary_accuracy_inet_decision_function_fv_metric: 0.5609 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5335 - 7s/epoch - 186ms/step
+Epoch 51/500
+36/36 - 6s - loss: 0.6793 - binary_accuracy_inet_decision_function_fv_metric: 0.5614 - val_loss: 0.6895 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5338 - 6s/epoch - 170ms/step
+Epoch 52/500
+36/36 - 6s - loss: 0.6792 - binary_accuracy_inet_decision_function_fv_metric: 0.5614 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5347 - 6s/epoch - 157ms/step
+Epoch 53/500
+36/36 - 5s - loss: 0.6793 - binary_accuracy_inet_decision_function_fv_metric: 0.5616 - val_loss: 0.6903 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5335 - 5s/epoch - 143ms/step
+Epoch 54/500
+36/36 - 5s - loss: 0.6795 - binary_accuracy_inet_decision_function_fv_metric: 0.5609 - val_loss: 0.6900 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5338 - 5s/epoch - 135ms/step
+Epoch 55/500
+36/36 - 4s - loss: 0.6793 - binary_accuracy_inet_decision_function_fv_metric: 0.5615 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 4s/epoch - 122ms/step
+Epoch 56/500
+36/36 - 6s - loss: 0.6791 - binary_accuracy_inet_decision_function_fv_metric: 0.5618 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5343 - 6s/epoch - 153ms/step
+Epoch 57/500
+36/36 - 6s - loss: 0.6790 - binary_accuracy_inet_decision_function_fv_metric: 0.5619 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5339 - 6s/epoch - 153ms/step
+Epoch 58/500
+36/36 - 6s - loss: 0.6790 - binary_accuracy_inet_decision_function_fv_metric: 0.5620 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5341 - 6s/epoch - 157ms/step
+Epoch 59/500
+36/36 - 5s - loss: 0.6791 - binary_accuracy_inet_decision_function_fv_metric: 0.5621 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5345 - 5s/epoch - 150ms/step
+Epoch 60/500
+36/36 - 5s - loss: 0.6790 - binary_accuracy_inet_decision_function_fv_metric: 0.5620 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5345 - 5s/epoch - 147ms/step
+Epoch 61/500
+36/36 - 5s - loss: 0.6788 - binary_accuracy_inet_decision_function_fv_metric: 0.5626 - val_loss: 0.6899 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5345 - 5s/epoch - 145ms/step
+Epoch 62/500
+36/36 - 6s - loss: 0.6788 - binary_accuracy_inet_decision_function_fv_metric: 0.5632 - val_loss: 0.6900 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5341 - 6s/epoch - 163ms/step
+Epoch 63/500
+36/36 - 5s - loss: 0.6788 - binary_accuracy_inet_decision_function_fv_metric: 0.5627 - val_loss: 0.6898 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5356 - 5s/epoch - 141ms/step
+Epoch 64/500
+36/36 - 5s - loss: 0.6787 - binary_accuracy_inet_decision_function_fv_metric: 0.5627 - val_loss: 0.6898 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5350 - 5s/epoch - 145ms/step
+Epoch 65/500
+36/36 - 6s - loss: 0.6787 - binary_accuracy_inet_decision_function_fv_metric: 0.5627 - val_loss: 0.6894 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5355 - 6s/epoch - 153ms/step
+Epoch 66/500
+36/36 - 5s - loss: 0.6787 - binary_accuracy_inet_decision_function_fv_metric: 0.5631 - val_loss: 0.6898 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5342 - 5s/epoch - 143ms/step
+Epoch 67/500
+36/36 - 5s - loss: 0.6787 - binary_accuracy_inet_decision_function_fv_metric: 0.5631 - val_loss: 0.6898 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5350 - 5s/epoch - 134ms/step
+Epoch 68/500
+36/36 - 4s - loss: 0.6789 - binary_accuracy_inet_decision_function_fv_metric: 0.5627 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5354 - 4s/epoch - 123ms/step
+Epoch 69/500
+36/36 - 5s - loss: 0.6787 - binary_accuracy_inet_decision_function_fv_metric: 0.5627 - val_loss: 0.6898 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5354 - 5s/epoch - 127ms/step
+Epoch 70/500
+36/36 - 4s - loss: 0.6786 - binary_accuracy_inet_decision_function_fv_metric: 0.5630 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5349 - 4s/epoch - 123ms/step
+Epoch 71/500
+36/36 - 4s - loss: 0.6786 - binary_accuracy_inet_decision_function_fv_metric: 0.5632 - val_loss: 0.6901 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5332 - 4s/epoch - 123ms/step
+Epoch 72/500
+36/36 - 5s - loss: 0.6788 - binary_accuracy_inet_decision_function_fv_metric: 0.5623 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5342 - 5s/epoch - 127ms/step
+Epoch 73/500
+36/36 - 5s - loss: 0.6787 - binary_accuracy_inet_decision_function_fv_metric: 0.5631 - val_loss: 0.6896 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5346 - 5s/epoch - 133ms/step
+Epoch 74/500
+36/36 - 5s - loss: 0.6785 - binary_accuracy_inet_decision_function_fv_metric: 0.5634 - val_loss: 0.6895 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5350 - 5s/epoch - 141ms/step
+Epoch 75/500
+36/36 - 4s - loss: 0.6784 - binary_accuracy_inet_decision_function_fv_metric: 0.5635 - val_loss: 0.6896 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5348 - 4s/epoch - 124ms/step
+Epoch 76/500
+36/36 - 5s - loss: 0.6784 - binary_accuracy_inet_decision_function_fv_metric: 0.5633 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5344 - 5s/epoch - 131ms/step
+Epoch 77/500
+36/36 - 5s - loss: 0.6786 - binary_accuracy_inet_decision_function_fv_metric: 0.5635 - val_loss: 0.6897 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5344 - 5s/epoch - 136ms/step
+Training Time: 0:07:11
+---------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------ LOADING MODELS -----------------------------------------------------
+Loading Time: 0:00:00
+Model: "model"
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input (InputLayer)             [(None, 3841)]       0           []                               
+                                                                                                  
+ hidden1_512 (Dense)            (None, 512)          1967104     ['input[0][0]']                  
+                                                                                                  
+ activation1_sigmoid (Activatio  (None, 512)         0           ['hidden1_512[0][0]']            
+ n)                                                                                               
+                                                                                                  
+ dropout1_0.5 (Dropout)         (None, 512)          0           ['activation1_sigmoid[0][0]']    
+                                                                                                  
+ hidden2_512 (Dense)            (None, 512)          262656      ['dropout1_0.5[0][0]']           
+                                                                                                  
+ activation2_tanh (Activation)  (None, 512)          0           ['hidden2_512[0][0]']            
+                                                                                                  
+ hidden3_512 (Dense)            (None, 512)          262656      ['activation2_tanh[0][0]']       
+                                                                                                  
+ activation3_sigmoid (Activatio  (None, 512)         0           ['hidden3_512[0][0]']            
+ n)                                                                                               
+                                                                                                  
+ output_coeff_196 (Dense)       (None, 196)          100548      ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_1 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_2 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_3 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_4 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_5 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_6 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_identifier_7 (Dense)    (None, 28)           14364       ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_leaf_node_8 (Dense)     (None, 8)            4104        ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_combined (Concatenate)  (None, 400)          0           ['output_coeff_196[0][0]',       
+                                                                  'output_identifier_1[0][0]',    
+                                                                  'output_identifier_2[0][0]',    
+                                                                  'output_identifier_3[0][0]',    
+                                                                  'output_identifier_4[0][0]',    
+                                                                  'output_identifier_5[0][0]',    
+                                                                  'output_identifier_6[0][0]',    
+                                                                  'output_identifier_7[0][0]',    
+                                                                  'output_leaf_node_8[0][0]']     
+                                                                                                  
+==================================================================================================
+Total params: 2,697,616
+Trainable params: 2,697,616
+Non-trainable params: 0
+__________________________________________________________________________________________________
+  0%|          | 0/10 [00:00<?, ?it/s]
+  0%|          | 0/10 [00:00<?, ?it/s]
+I-Net Performance by Network:  [0.586 0.52  0.568 0.63  0.48  0.572 0.516 0.542 0.5   0.566]
+Distilled Mean Performance by Network:  [0.5232 0.564  0.5504 0.6188 0.5676 0.5412 0.4892 0.5168 0.6008 0.5572]
+Distilled Max Performance by Network:  [0.57  0.634 0.652 0.696 0.642 0.606 0.578 0.546 0.656 0.602]
+Median I-Net: 0.554
+Median DT Distilled: 0.536
+         Acc Distilled Train Data  Acc Distilled Data Random  Acc Distilled  \
+uniform                     0.697                      0.745          0.579   
+normal                      0.697                      0.839          0.548   
+gamma                       0.690                      0.880          0.562   
+beta                        0.690                      0.811          0.531   
+poisson                     0.690                      0.913          0.545   
+
+         Acc I-Net  Soft BC Distilled Train Data  \
+uniform      0.548                         0.627   
+normal       0.548                         0.627   
+gamma        0.548                         0.628   
+beta         0.548                         0.628   
+poisson      0.548                         0.628   
+
+         Soft BC Distilled Data Random  Soft BC Distilled  Soft BC I-Net  \
+uniform                          0.593              0.681          0.688   
+normal                           0.541              0.712          0.688   
+gamma                            0.510              0.720          0.688   
+beta                             0.552              0.696          0.688   
+poisson                          0.485              0.713          0.688   
+
+         BC Distilled Train Data  BC Distilled Data Random  BC Distilled  \
+uniform                    0.579                     0.520         0.716   
+normal                     0.579                     0.353         1.674   
+gamma                      0.585                     0.276         2.916   
+beta                       0.585                     0.412         0.764   
+poisson                    0.585                     0.228         2.542   
+
+         BC I-Net  F1 Score Distilled Train Data  \
+uniform     0.686                          0.692   
+normal      0.686                          0.692   
+gamma       0.686                          0.686   
+beta        0.686                          0.686   
+poisson     0.686                          0.686   
+
+         F1 Score Distilled Data Random  F1 Score Distilled  F1 Score I-Net  \
+uniform                           0.722               0.546           0.523   
+normal                            0.718               0.571           0.523   
+gamma                             0.823               0.558           0.523   
+beta                              0.688               0.481           0.523   
+poisson                           0.780               0.504           0.523   
+
+         Runtime Distilled Train Data  Runtime Distilled Data Random  \
+uniform                         0.096                          0.096   
+normal                          0.097                          0.097   
+gamma                           0.094                          0.094   
+beta                            0.096                          0.096   
+poisson                         0.005                          0.005   
+
+         Runtime Distilled  Runtime I-Net  
+uniform              0.096          0.128  
+normal               0.097          0.066  
+gamma                0.094          0.065  
+beta                 0.096          0.065  
+poisson              0.005          0.066  
+       Average Z-Score (Sample to Train Data)  \
+train                                2588.970   
+valid                                2566.279   
+test                                 2827.093   
+
+       Average Distance to Initialization  \
+train                             532.269   
+valid                             525.850   
+test                              598.031   
+
+       Average Mean Distance to Train Data  \
+train                              758.492   
+valid                              749.250   
+test                               803.828   
+
+       Average Distance to closest Train Data Sample  \
+train                                          0.000   
+valid                                        528.971   
+test                                         603.562   
+
+       Average Biggest Distance for Single Neuron  \
+train                                       3.650   
+valid                                       3.321   
+test                                        3.738   
+
+       Minimum Biggest Distance for Single Neuron  
+train                                       0.000  
+valid                                       1.967  
+test                                        2.549  
+Original Data Shape:  (32561, 28)
+(27677, 28) (27677,)
+(1628, 28) (1628,)
+(3256, 28) (3256,)
+True Ratio:  0.5
+Training Network:  64.28261923789978
+Evaluate Network:  12.80460786819458
+Evaluate Network Complete:  77.54727411270142
+Original Data Shape:  (891, 9)
+(758, 28) (758,)
+(44, 28) (44,)
+(89, 28) (89,)
+True Ratio:  0.5
+Training Network:  9.505736351013184
+Evaluate Network:  12.200810432434082
+Evaluate Network Complete:  21.907284259796143
+Original Data Shape:  (740, 15)
+(629, 28) (629,)
+(37, 28) (37,)
+(74, 28) (74,)
+True Ratio:  0.5
+Training Network:  2.7126686573028564
+Evaluate Network:  11.266005754470825
+Evaluate Network Complete:  14.145756483078003
+Original Data Shape:  (614, 16)
+(523, 28) (523,)
+(30, 28) (30,)
+(61, 28) (61,)
+True Ratio:  0.5
+Training Network:  3.2149248123168945
+Evaluate Network:  11.451625108718872
+Evaluate Network Complete:  14.874979972839355
+Original Data Shape:  (63999, 32)
+(54401, 28) (54401,)
+(3199, 28) (3199,)
+(6399, 28) (6399,)
+True Ratio:  0.5
+Training Network:  127.9502580165863
+Evaluate Network:  13.791482925415039
+Evaluate Network Complete:  150.91287541389465
+Original Data Shape:  (1338, 9)
+(1139, 28) (1139,)
+(66, 28) (66,)
+(133, 28) (133,)
+True Ratio:  0.5
+Training Network:  19.835983991622925
+Evaluate Network:  11.637836217880249
+Evaluate Network Complete:  31.644582986831665
+Original Data Shape:  (45211, 29)
+(38430, 28) (38430,)
+(2260, 28) (2260,)
+(4521, 28) (4521,)
+True Ratio:  0.5
+Training Network:  160.23135018348694
+Evaluate Network:  12.582578659057617
+Evaluate Network Complete:  176.68126916885376
+Original Data Shape:  (858, 15)
+(731, 28) (731,)
+(42, 28) (42,)
+(85, 28) (85,)
+True Ratio:  0.5
+Training Network:  9.638680219650269
+Evaluate Network:  11.244255065917969
+Evaluate Network Complete:  21.072023153305054
+Original Data Shape:  (699, 9)
+(596, 28) (596,)
+(34, 28) (34,)
+(69, 28) (69,)
+True Ratio:  0.5
+Training Network:  18.771503925323486
+Evaluate Network:  16.195420503616333
+Evaluate Network Complete:  35.15175747871399
+Original Data Shape:  (569, 10)
+(485, 28) (485,)
+(28, 28) (28,)
+(56, 28) (56,)
+True Ratio:  0.5
+Training Network:  36.972692012786865
+Evaluate Network:  10.914847373962402
+Evaluate Network Complete:  48.12022924423218
+Original Data Shape:  (198, 10)
+(170, 28) (170,)
+(9, 28) (9,)
+(19, 28) (19,)
+True Ratio:  0.5
+Training Network:  8.13426160812378
+Evaluate Network:  11.961099624633789
+Evaluate Network Complete:  20.365316152572632
+Original Data Shape:  (4177, 10)
+(3552, 28) (3552,)
+(208, 28) (208,)
+(417, 28) (417,)
+True Ratio:  0.5
+Training Network:  14.903680086135864
+Evaluate Network:  15.78381633758545
+Evaluate Network Complete:  30.89615750312805
+Original Data Shape:  (1728, 21)
+(1470, 28) (1470,)
+(86, 28) (86,)
+(172, 28) (172,)
+True Ratio:  0.5
+Training Network:  19.042502880096436
+Evaluate Network:  10.066838264465332
+Evaluate Network Complete:  29.33448314666748
+                                    Acc Distilled (Train Data)  Acc Distilled  \
+Adult                                                    0.850          0.693   
+Titanic                                                  0.921          0.783   
+Absenteeism                                              0.932          0.651   
+Loan House                                               0.918          0.702   
+Loan Credit                                              0.840          0.334   
+Medical Insurance                                        0.962          0.854   
+Bank Marketing                                           0.906          0.638   
+Cervical Cancer                                          0.859          0.805   
+Brest Cancer Wisconsin                                   0.928          0.754   
+Wisconsin Diagnostic Breast Cancer                       0.964          0.615   
+Wisconsin Prognostic Breast Cancer                       0.632          0.618   
+Abalone                                                  0.904          0.686   
+Car                                                      0.895          0.736   
+
+                                    Acc Distilled STD  Acc I-Net  \
+Adult                                           0.003      0.531   
+Titanic                                         0.119      0.854   
+Absenteeism                                     0.097      0.595   
+Loan House                                      0.233      0.213   
+Loan Credit                                     0.145      0.650   
+Medical Insurance                               0.082      0.444   
+Bank Marketing                                  0.273      0.759   
+Cervical Cancer                                 0.113      0.165   
+Brest Cancer Wisconsin                          0.220      0.942   
+Wisconsin Diagnostic Breast Cancer              0.175      0.750   
+Wisconsin Prognostic Breast Cancer              0.113      0.526   
+Abalone                                         0.125      0.679   
+Car                                             0.098      0.547   
+
+                                    Soft BC Distilled (Train Data)  \
+Adult                                                        0.509   
+Titanic                                                      0.527   
+Absenteeism                                                  0.666   
+Loan House                                                   0.603   
+Loan Credit                                                  0.577   
+Medical Insurance                                            0.410   
+Bank Marketing                                               0.515   
+Cervical Cancer                                              0.648   
+Brest Cancer Wisconsin                                       0.402   
+Wisconsin Diagnostic Breast Cancer                           0.361   
+Wisconsin Prognostic Breast Cancer                           0.630   
+Abalone                                                      0.558   
+Car                                                          0.412   
+
+                                    Soft BC Distilled  Soft BC Distilled STD  \
+Adult                                           0.630                  0.006   
+Titanic                                         0.603                  0.031   
+Absenteeism                                     0.695                  0.033   
+Loan House                                      0.690                  0.072   
+Loan Credit                                     0.899                  0.135   
+Medical Insurance                               0.488                  0.044   
+Bank Marketing                                  0.626                  0.120   
+Cervical Cancer                                 0.632                  0.070   
+Brest Cancer Wisconsin                          0.591                  0.161   
+Wisconsin Diagnostic Breast Cancer              0.655                  0.113   
+Wisconsin Prognostic Breast Cancer              0.673                  0.069   
+Abalone                                         0.669                  0.038   
+Car                                             0.559                  0.072   
+
+                                    Soft BC I-Net  BC Distilled (Train Data)  \
+Adult                                       0.697                      0.303   
+Titanic                                     0.629                      0.933   
+Absenteeism                                 0.688                      0.226   
+Loan House                                  0.696                      0.276   
+Loan Credit                                 0.708                      0.413   
+Medical Insurance                           0.693                      0.073   
+Bank Marketing                              0.686                      0.314   
+Cervical Cancer                             0.702                      0.852   
+Brest Cancer Wisconsin                      0.631                      1.176   
+Wisconsin Diagnostic Breast Cancer          0.637                      0.096   
+Wisconsin Prognostic Breast Cancer          0.718                      2.253   
+Abalone                                     0.684                      0.261   
+Car                                         0.678                      0.203   
+
+                                    BC Distilled  BC Distilled STD  BC I-Net  \
+Adult                                      1.276             0.393     0.734   
+Titanic                                    0.675             0.467     0.503   
+Absenteeism                                2.664             3.669     0.660   
+Loan House                                 4.089             4.096     0.713   
+Loan Credit                               19.770             9.287     0.837   
+Medical Insurance                          0.819             0.818     0.697   
+Bank Marketing                             0.784             0.359     0.676   
+Cervical Cancer                            3.370             4.585     0.722   
+Brest Cancer Wisconsin                     4.817             7.049     0.573   
+Wisconsin Diagnostic Breast Cancer         1.481             1.508     0.616   
+Wisconsin Prognostic Breast Cancer         3.458             4.768     0.756   
+Abalone                                    0.680             0.166     0.668   
+Car                                        2.854             3.891     0.671   
+
+                                    F1 Score Distilled (Train Data)  \
+Adult                                                         0.793   
+Titanic                                                       0.911   
+Absenteeism                                                   0.930   
+Loan House                                                    0.950   
+Loan Credit                                                   0.582   
+Medical Insurance                                             0.953   
+Bank Marketing                                                0.762   
+Cervical Cancer                                               0.333   
+Brest Cancer Wisconsin                                        0.902   
+Wisconsin Diagnostic Breast Cancer                            0.941   
+Wisconsin Prognostic Breast Cancer                            0.462   
+Abalone                                                       0.839   
+Car                                                           0.870   
+
+                                    F1 Score Distilled  \
+Adult                                            0.045   
+Titanic                                          0.720   
+Absenteeism                                      0.480   
+Loan House                                       0.718   
+Loan Credit                                      0.338   
+Medical Insurance                                0.826   
+Bank Marketing                                   0.295   
+Cervical Cancer                                  0.057   
+Brest Cancer Wisconsin                           0.702   
+Wisconsin Diagnostic Breast Cancer               0.427   
+Wisconsin Prognostic Breast Cancer               0.233   
+Abalone                                          0.550   
+Car                                              0.504   
+
+                                    F1 Score Distilled STD  F1 Score I-Net  \
+Adult                                                0.025           0.539   
+Titanic                                              0.179           0.822   
+Absenteeism                                          0.216           0.667   
+Loan House                                           0.311           0.040   
+Loan Credit                                          0.057           0.084   
+Medical Insurance                                    0.112           0.580   
+Bank Marketing                                       0.223           0.149   
+Cervical Cancer                                      0.082           0.220   
+Brest Cancer Wisconsin                               0.207           0.905   
+Wisconsin Diagnostic Breast Cancer                   0.181           0.222   
+Wisconsin Prognostic Breast Cancer                   0.230           0.308   
+Abalone                                              0.147           0.000   
+Car                                                  0.267           0.361   
+
+                                    Runtime Distilled (Train Data)  \
+Adult                                                        0.040   
+Titanic                                                      0.001   
+Absenteeism                                                  0.001   
+Loan House                                                   0.001   
+Loan Credit                                                  0.285   
+Medical Insurance                                            0.001   
+Bank Marketing                                               0.062   
+Cervical Cancer                                              0.001   
+Brest Cancer Wisconsin                                       0.001   
+Wisconsin Diagnostic Breast Cancer                           0.002   
+Wisconsin Prognostic Breast Cancer                           0.001   
+Abalone                                                      0.006   
+Car                                                          0.001   
+
+                                    Runtime Distilled  Runtime Distilled STD  \
+Adult                                           0.078                    NaN   
+Titanic                                         0.080                    NaN   
+Absenteeism                                     0.079                    NaN   
+Loan House                                      0.053                    NaN   
+Loan Credit                                     0.009                    NaN   
+Medical Insurance                               0.079                    NaN   
+Bank Marketing                                  0.077                    NaN   
+Cervical Cancer                                 0.076                    NaN   
+Brest Cancer Wisconsin                          0.062                    NaN   
+Wisconsin Diagnostic Breast Cancer              0.076                    NaN   
+Wisconsin Prognostic Breast Cancer              0.068                    NaN   
+Abalone                                         0.074                    NaN   
+Car                                             0.074                    NaN   
+
+                                    Runtime I-Net  
+Adult                                       0.094  
+Titanic                                     0.090  
+Absenteeism                                 0.098  
+Loan House                                  0.095  
+Loan Credit                                 0.100  
+Medical Insurance                           0.096  
+Bank Marketing                              0.099  
+Cervical Cancer                             0.094  
+Brest Cancer Wisconsin                      0.104  
+Wisconsin Diagnostic Breast Cancer          0.099  
+Wisconsin Prognostic Breast Cancer          0.115  
+Abalone                                     0.099  
+Car                                         0.104  
+                                    Acc Distilled (Train Data)  \
+Adult                                                    0.850   
+Titanic                                                  0.921   
+Absenteeism                                              0.932   
+Loan House                                               0.918   
+Loan Credit                                              0.840   
+Medical Insurance                                        0.962   
+Bank Marketing                                           0.906   
+Cervical Cancer                                          0.859   
+Brest Cancer Wisconsin                                   0.928   
+Wisconsin Diagnostic Breast Cancer                       0.964   
+Wisconsin Prognostic Breast Cancer                       0.632   
+Abalone                                                  0.904   
+Car                                                      0.895   
+
+                                    Acc Distilled (uniform)  \
+Adult                                                 0.691   
+Titanic                                               0.854   
+Absenteeism                                           0.677   
+Loan House                                            0.407   
+Loan Credit                                           0.391   
+Medical Insurance                                     0.946   
+Bank Marketing                                        0.789   
+Cervical Cancer                                       0.814   
+Brest Cancer Wisconsin                                0.777   
+Wisconsin Diagnostic Breast Cancer                    0.627   
+Wisconsin Prognostic Breast Cancer                    0.689   
+Abalone                                               0.666   
+Car                                                   0.840   
+
+                                    Acc Distilled (normal)  \
+Adult                                                0.691   
+Titanic                                              0.669   
+Absenteeism                                          0.559   
+Loan House                                           0.787   
+Loan Credit                                          0.227   
+Medical Insurance                                    0.768   
+Bank Marketing                                       0.212   
+Cervical Cancer                                      0.755   
+Brest Cancer Wisconsin                               0.575   
+Wisconsin Diagnostic Breast Cancer                   0.412   
+Wisconsin Prognostic Breast Cancer                   0.605   
+Abalone                                              0.647   
+Car                                                  0.703   
+
+                                    Acc Distilled (gamma)  \
+Adult                                               0.692   
+Titanic                                             0.757   
+Absenteeism                                         0.730   
+Loan House                                          0.800   
+Loan Credit                                         0.332   
+Medical Insurance                                   0.829   
+Bank Marketing                                      0.853   
+Cervical Cancer                                     0.798   
+Brest Cancer Wisconsin                              0.839   
+Wisconsin Diagnostic Breast Cancer                  0.759   
+Wisconsin Prognostic Breast Cancer                  0.526   
+Abalone                                             0.764   
+Car                                                 0.678   
+
+                                    Acc Distilled (beta)  \
+Adult                                              0.691   
+Titanic                                            0.825   
+Absenteeism                                        0.666   
+Loan House                                         0.666   
+Loan Credit                                        0.282   
+Medical Insurance                                  0.873   
+Bank Marketing                                     0.564   
+Cervical Cancer                                    0.796   
+Brest Cancer Wisconsin                             0.677   
+Wisconsin Diagnostic Breast Cancer                 0.530   
+Wisconsin Prognostic Breast Cancer                 0.642   
+Abalone                                            0.679   
+Car                                                0.735   
+
+                                    Acc Distilled (poisson)  \
+Adult                                                 0.699   
+Titanic                                               0.810   
+Absenteeism                                           0.624   
+Loan House                                            0.849   
+Loan Credit                                           0.437   
+Medical Insurance                                     0.853   
+Bank Marketing                                        0.775   
+Cervical Cancer                                       0.862   
+Brest Cancer Wisconsin                                0.900   
+Wisconsin Diagnostic Breast Cancer                    0.745   
+Wisconsin Prognostic Breast Cancer                    0.626   
+Abalone                                               0.674   
+Car                                                   0.724   
+
+                                    STD Acc Distilled (uniform)  \
+Adult                                                     0.000   
+Titanic                                                   0.091   
+Absenteeism                                               0.076   
+Loan House                                                0.256   
+Loan Credit                                               0.251   
+Medical Insurance                                         0.018   
+Bank Marketing                                            0.001   
+Cervical Cancer                                           0.107   
+Brest Cancer Wisconsin                                    0.237   
+Wisconsin Diagnostic Breast Cancer                        0.137   
+Wisconsin Prognostic Breast Cancer                        0.016   
+Abalone                                                   0.164   
+Car                                                       0.075   
+
+                                    STD Acc Distilled (normal)  \
+Adult                                                    0.000   
+Titanic                                                  0.021   
+Absenteeism                                              0.111   
+Loan House                                               0.000   
+Loan Credit                                              0.000   
+Medical Insurance                                        0.140   
+Bank Marketing                                           0.000   
+Cervical Cancer                                          0.214   
+Brest Cancer Wisconsin                                   0.243   
+Wisconsin Diagnostic Breast Cancer                       0.173   
+Wisconsin Prognostic Breast Cancer                       0.167   
+Abalone                                                  0.212   
+Car                                                      0.065   
+
+                                    STD Acc Distilled (gamma)  \
+Adult                                                   0.001   
+Titanic                                                 0.172   
+Absenteeism                                             0.089   
+Loan House                                              0.206   
+Loan Credit                                             0.149   
+Medical Insurance                                       0.034   
+Bank Marketing                                          0.023   
+Cervical Cancer                                         0.088   
+Brest Cancer Wisconsin                                  0.106   
+Wisconsin Diagnostic Breast Cancer                      0.037   
+Wisconsin Prognostic Breast Cancer                      0.145   
+Abalone                                                 0.049   
+Car                                                     0.088   
+
+                                    STD Acc Distilled (beta)  \
+Adult                                                  0.002   
+Titanic                                                0.102   
+Absenteeism                                            0.082   
+Loan House                                             0.266   
+Loan Credit                                            0.164   
+Medical Insurance                                      0.054   
+Bank Marketing                                         0.288   
+Cervical Cancer                                        0.222   
+Brest Cancer Wisconsin                                 0.287   
+Wisconsin Diagnostic Breast Cancer                     0.174   
+Wisconsin Prognostic Breast Cancer                     0.122   
+Abalone                                                0.183   
+Car                                                    0.151   
+
+                                    STD Acc Distilled (poisson)  Acc I-Net  \
+Adult                                                     0.020      0.531   
+Titanic                                                   0.131      0.854   
+Absenteeism                                               0.086      0.595   
+Loan House                                                0.108      0.213   
+Loan Credit                                               0.125      0.650   
+Medical Insurance                                         0.052      0.444   
+Bank Marketing                                            0.189      0.759   
+Cervical Cancer                                           0.017      0.165   
+Brest Cancer Wisconsin                                    0.084      0.942   
+Wisconsin Diagnostic Breast Cancer                        0.149      0.750   
+Wisconsin Prognostic Breast Cancer                        0.095      0.526   
+Abalone                                                   0.146      0.679   
+Car                                                       0.085      0.547   
+
+                                    Soft BC Distilled (Train Data)  \
+Adult                                                        0.509   
+Titanic                                                      0.527   
+Absenteeism                                                  0.666   
+Loan House                                                   0.603   
+Loan Credit                                                  0.577   
+Medical Insurance                                            0.410   
+Bank Marketing                                               0.515   
+Cervical Cancer                                              0.648   
+Brest Cancer Wisconsin                                       0.402   
+Wisconsin Diagnostic Breast Cancer                           0.361   
+Wisconsin Prognostic Breast Cancer                           0.630   
+Abalone                                                      0.558   
+Car                                                          0.412   
+
+                                    Soft BC Distilled (uniform)  \
+Adult                                                     0.634   
+Titanic                                                   0.589   
+Absenteeism                                               0.674   
+Loan House                                                0.746   
+Loan Credit                                               0.888   
+Medical Insurance                                         0.440   
+Bank Marketing                                            0.554   
+Cervical Cancer                                           0.633   
+Brest Cancer Wisconsin                                    0.590   
+Wisconsin Diagnostic Breast Cancer                        0.669   
+Wisconsin Prognostic Breast Cancer                        0.640   
+Abalone                                                   0.672   
+Car                                                       0.491   
+
+                                    Soft BC Distilled (normal)  \
+Adult                                                    0.632   
+Titanic                                                  0.652   
+Absenteeism                                              0.752   
+Loan House                                               0.722   
+Loan Credit                                              1.003   
+Medical Insurance                                        0.549   
+Bank Marketing                                           0.816   
+Cervical Cancer                                          0.665   
+Brest Cancer Wisconsin                                   0.747   
+Wisconsin Diagnostic Breast Cancer                       0.766   
+Wisconsin Prognostic Breast Cancer                       0.718   
+Abalone                                                  0.701   
+Car                                                      0.627   
+
+                                    Soft BC Distilled (gamma)  \
+Adult                                                   0.630   
+Titanic                                                 0.593   
+Absenteeism                                             0.681   
+Loan House                                              0.626   
+Loan Credit                                             0.902   
+Medical Insurance                                       0.494   
+Bank Marketing                                          0.526   
+Cervical Cancer                                         0.624   
+Brest Cancer Wisconsin                                  0.477   
+Wisconsin Diagnostic Breast Cancer                      0.559   
+Wisconsin Prognostic Breast Cancer                      0.690   
+Abalone                                                 0.639   
+Car                                                     0.587   
+
+                                    Soft BC Distilled (beta)  \
+Adult                                                  0.633   
+Titanic                                                0.598   
+Absenteeism                                            0.687   
+Loan House                                             0.732   
+Loan Credit                                            0.965   
+Medical Insurance                                      0.471   
+Bank Marketing                                         0.656   
+Cervical Cancer                                        0.644   
+Brest Cancer Wisconsin                                 0.682   
+Wisconsin Diagnostic Breast Cancer                     0.734   
+Wisconsin Prognostic Breast Cancer                     0.663   
+Abalone                                                0.658   
+Car                                                    0.559   
+
+                                    Soft BC Distilled (poisson)  \
+Adult                                                     0.620   
+Titanic                                                   0.583   
+Absenteeism                                               0.681   
+Loan House                                                0.624   
+Loan Credit                                               0.738   
+Medical Insurance                                         0.487   
+Bank Marketing                                            0.580   
+Cervical Cancer                                           0.592   
+Brest Cancer Wisconsin                                    0.460   
+Wisconsin Diagnostic Breast Cancer                        0.548   
+Wisconsin Prognostic Breast Cancer                        0.653   
+Abalone                                                   0.674   
+Car                                                       0.532   
+
+                                    STD Soft BC Distilled (uniform)  \
+Adult                                                         0.000   
+Titanic                                                       0.008   
+Absenteeism                                                   0.006   
+Loan House                                                    0.063   
+Loan Credit                                                   0.175   
+Medical Insurance                                             0.013   
+Bank Marketing                                                0.003   
+Cervical Cancer                                               0.078   
+Brest Cancer Wisconsin                                        0.026   
+Wisconsin Diagnostic Breast Cancer                            0.052   
+Wisconsin Prognostic Breast Cancer                            0.026   
+Abalone                                                       0.014   
+Car                                                           0.028   
+
+                                    STD Soft BC Distilled (normal)  \
+Adult                                                        0.005   
+Titanic                                                      0.036   
+Absenteeism                                                  0.046   
+Loan House                                                   0.000   
+Loan Credit                                                  0.000   
+Medical Insurance                                            0.083   
+Bank Marketing                                               0.081   
+Cervical Cancer                                              0.127   
+Brest Cancer Wisconsin                                       0.243   
+Wisconsin Diagnostic Breast Cancer                           0.095   
+Wisconsin Prognostic Breast Cancer                           0.146   
+Abalone                                                      0.083   
+Car                                                          0.050   
+
+                                    STD Soft BC Distilled (gamma)  \
+Adult                                                       0.004   
+Titanic                                                     0.031   
+Absenteeism                                                 0.015   
+Loan House                                                  0.031   
+Loan Credit                                                 0.126   
+Medical Insurance                                           0.016   
+Bank Marketing                                              0.035   
+Cervical Cancer                                             0.059   
+Brest Cancer Wisconsin                                      0.062   
+Wisconsin Diagnostic Breast Cancer                          0.039   
+Wisconsin Prognostic Breast Cancer                          0.048   
+Abalone                                                     0.018   
+Car                                                         0.047   
+
+                                    STD Soft BC Distilled (beta)  \
+Adult                                                      0.001   
+Titanic                                                    0.025   
+Absenteeism                                                0.032   
+Loan House                                                 0.115   
+Loan Credit                                                0.114   
+Medical Insurance                                          0.028   
+Bank Marketing                                             0.141   
+Cervical Cancer                                            0.135   
+Brest Cancer Wisconsin                                     0.210   
+Wisconsin Diagnostic Breast Cancer                         0.132   
+Wisconsin Prognostic Breast Cancer                         0.109   
+Abalone                                                    0.029   
+Car                                                        0.139   
+
+                                    STD Soft BC Distilled (poisson)  \
+Adult                                                         0.015   
+Titanic                                                       0.019   
+Absenteeism                                                   0.015   
+Loan House                                                    0.033   
+Loan Credit                                                   0.083   
+Medical Insurance                                             0.021   
+Bank Marketing                                                0.063   
+Cervical Cancer                                               0.006   
+Brest Cancer Wisconsin                                        0.038   
+Wisconsin Diagnostic Breast Cancer                            0.061   
+Wisconsin Prognostic Breast Cancer                            0.048   
+Abalone                                                       0.057   
+Car                                                           0.041   
+
+                                    Soft BC I-Net  BC Distilled (Train Data)  \
+Adult                                       0.697                      0.303   
+Titanic                                     0.629                      0.933   
+Absenteeism                                 0.688                      0.226   
+Loan House                                  0.696                      0.276   
+Loan Credit                                 0.708                      0.413   
+Medical Insurance                           0.693                      0.073   
+Bank Marketing                              0.686                      0.314   
+Cervical Cancer                             0.702                      0.852   
+Brest Cancer Wisconsin                      0.631                      1.176   
+Wisconsin Diagnostic Breast Cancer          0.637                      0.096   
+Wisconsin Prognostic Breast Cancer          0.718                      2.253   
+Abalone                                     0.684                      0.261   
+Car                                         0.678                      0.203   
+
+                                    BC Distilled (uniform)  \
+Adult                                                1.473   
+Titanic                                              0.410   
+Absenteeism                                          0.576   
+Loan House                                           2.010   
+Loan Credit                                         21.042   
+Medical Insurance                                    0.161   
+Bank Marketing                                       0.681   
+Cervical Cancer                                      4.114   
+Brest Cancer Wisconsin                               0.693   
+Wisconsin Diagnostic Breast Cancer                   0.702   
+Wisconsin Prognostic Breast Cancer                   1.312   
+Abalone                                              0.644   
+Car                                                  0.430   
+
+                                    BC Distilled (normal)  \
+Adult                                               0.753   
+Titanic                                             0.637   
+Absenteeism                                         9.254   
+Loan House                                          7.361   
+Loan Credit                                        26.702   
+Medical Insurance                                   1.597   
+Bank Marketing                                      1.075   
+Cervical Cancer                                     6.338   
+Brest Cancer Wisconsin                             14.667   
+Wisconsin Diagnostic Breast Cancer                  1.074   
+Wisconsin Prognostic Breast Cancer                 11.073   
+Abalone                                             0.776   
+Car                                                 9.009   
+
+                                    BC Distilled (gamma)  BC Distilled (beta)  \
+Adult                                              1.397                1.355   
+Titanic                                            0.468                1.019   
+Absenteeism                                        0.901                1.918   
+Loan House                                         1.573                8.285   
+Loan Credit                                       20.707               24.816   
+Medical Insurance                                  0.691                0.771   
+Bank Marketing                                     0.413                0.813   
+Cervical Cancer                                    1.718                4.021   
+Brest Cancer Wisconsin                             1.210                7.033   
+Wisconsin Diagnostic Breast Cancer                 0.949                3.222   
+Wisconsin Prognostic Breast Cancer                 0.720                3.479   
+Abalone                                            0.559                0.625   
+Car                                                1.246                2.849   
+
+                                    BC Distilled (poisson)  \
+Adult                                                1.403   
+Titanic                                              0.842   
+Absenteeism                                          0.670   
+Loan House                                           1.215   
+Loan Credit                                          5.585   
+Medical Insurance                                    0.874   
+Bank Marketing                                       0.936   
+Cervical Cancer                                      0.660   
+Brest Cancer Wisconsin                               0.483   
+Wisconsin Diagnostic Breast Cancer                   1.458   
+Wisconsin Prognostic Breast Cancer                   0.706   
+Abalone                                              0.797   
+Car                                                  0.737   
+
+                                    STD BC Distilled (uniform)  \
+Adult                                                    0.084   
+Titanic                                                  0.026   
+Absenteeism                                              0.058   
+Loan House                                               1.206   
+Loan Credit                                              8.657   
+Medical Insurance                                        0.030   
+Bank Marketing                                           0.056   
+Cervical Cancer                                          4.355   
+Brest Cancer Wisconsin                                   0.583   
+Wisconsin Diagnostic Breast Cancer                       0.121   
+Wisconsin Prognostic Breast Cancer                       0.179   
+Abalone                                                  0.046   
+Car                                                      0.326   
+
+                                    STD BC Distilled (normal)  \
+Adult                                                   0.271   
+Titanic                                                 0.126   
+Absenteeism                                             5.878   
+Loan House                                              0.000   
+Loan Credit                                             0.000   
+Medical Insurance                                       3.610   
+Bank Marketing                                          0.284   
+Cervical Cancer                                         7.892   
+Brest Cancer Wisconsin                                  8.385   
+Wisconsin Diagnostic Breast Cancer                      0.309   
+Wisconsin Prognostic Breast Cancer                      7.683   
+Abalone                                                 0.324   
+Car                                                     3.546   
+
+                                    STD BC Distilled (gamma)  \
+Adult                                                  0.245   
+Titanic                                                0.110   
+Absenteeism                                            0.592   
+Loan House                                             2.334   
+Loan Credit                                            8.406   
+Medical Insurance                                      1.074   
+Bank Marketing                                         0.066   
+Cervical Cancer                                        2.977   
+Brest Cancer Wisconsin                                 2.007   
+Wisconsin Diagnostic Breast Cancer                     0.482   
+Wisconsin Prognostic Breast Cancer                     0.144   
+Abalone                                                0.060   
+Car                                                    1.513   
+
+                                    STD BC Distilled (beta)  \
+Adult                                                 0.230   
+Titanic                                               1.737   
+Absenteeism                                           3.888   
+Loan House                                            8.857   
+Loan Credit                                           5.658   
+Medical Insurance                                     1.648   
+Bank Marketing                                        0.459   
+Cervical Cancer                                       8.757   
+Brest Cancer Wisconsin                               10.085   
+Wisconsin Diagnostic Breast Cancer                    7.154   
+Wisconsin Prognostic Breast Cancer                    6.728   
+Abalone                                               0.084   
+Car                                                   6.563   
+
+                                    STD BC Distilled (poisson)  BC I-Net  \
+Adult                                                    0.682     0.734   
+Titanic                                                  1.201     0.503   
+Absenteeism                                              0.219     0.660   
+Loan House                                               1.164     0.713   
+Loan Credit                                              7.750     0.837   
+Medical Insurance                                        1.263     0.697   
+Bank Marketing                                           0.710     0.676   
+Cervical Cancer                                          0.231     0.722   
+Brest Cancer Wisconsin                                   0.514     0.573   
+Wisconsin Diagnostic Breast Cancer                       2.807     0.616   
+Wisconsin Prognostic Breast Cancer                       0.173     0.756   
+Abalone                                                  0.324     0.668   
+Car                                                      0.678     0.671   
+
+                                    F1 Score Distilled (Train Data)  \
+Adult                                                         0.793   
+Titanic                                                       0.911   
+Absenteeism                                                   0.930   
+Loan House                                                    0.950   
+Loan Credit                                                   0.582   
+Medical Insurance                                             0.953   
+Bank Marketing                                                0.762   
+Cervical Cancer                                               0.333   
+Brest Cancer Wisconsin                                        0.902   
+Wisconsin Diagnostic Breast Cancer                            0.941   
+Wisconsin Prognostic Breast Cancer                            0.462   
+Abalone                                                       0.839   
+Car                                                           0.870   
+
+                                    F1 Score Distilled (uniform)  \
+Adult                                                      0.033   
+Titanic                                                    0.798   
+Absenteeism                                                0.459   
+Loan House                                                 0.302   
+Loan Credit                                                0.311   
+Medical Insurance                                          0.940   
+Bank Marketing                                             0.002   
+Cervical Cancer                                            0.041   
+Brest Cancer Wisconsin                                     0.789   
+Wisconsin Diagnostic Breast Cancer                         0.539   
+Wisconsin Prognostic Breast Cancer                         0.029   
+Abalone                                                    0.379   
+Car                                                        0.732   
+
+                                    F1 Score Distilled (normal)  \
+Adult                                                     0.033   
+Titanic                                                   0.459   
+Absenteeism                                               0.402   
+Loan House                                                0.881   
+Loan Credit                                               0.370   
+Medical Insurance                                         0.708   
+Bank Marketing                                            0.349   
+Cervical Cancer                                           0.074   
+Brest Cancer Wisconsin                                    0.590   
+Wisconsin Diagnostic Breast Cancer                        0.489   
+Wisconsin Prognostic Breast Cancer                        0.197   
+Abalone                                                   0.517   
+Car                                                       0.580   
+
+                                    F1 Score Distilled (gamma)  \
+Adult                                                    0.038   
+Titanic                                                  0.776   
+Absenteeism                                              0.628   
+Loan House                                               0.820   
+Loan Credit                                              0.346   
+Medical Insurance                                        0.812   
+Bank Marketing                                           0.528   
+Cervical Cancer                                          0.132   
+Brest Cancer Wisconsin                                   0.612   
+Wisconsin Diagnostic Breast Cancer                       0.261   
+Wisconsin Prognostic Breast Cancer                       0.448   
+Abalone                                                  0.700   
+Car                                                      0.293   
+
+                                    F1 Score Distilled (beta)  \
+Adult                                                   0.029   
+Titanic                                                 0.751   
+Absenteeism                                             0.440   
+Loan House                                              0.691   
+Loan Credit                                             0.335   
+Medical Insurance                                       0.848   
+Bank Marketing                                          0.192   
+Cervical Cancer                                         0.023   
+Brest Cancer Wisconsin                                  0.726   
+Wisconsin Diagnostic Breast Cancer                      0.450   
+Wisconsin Prognostic Breast Cancer                      0.123   
+Abalone                                                 0.574   
+Car                                                     0.532   
+
+                                    F1 Score Distilled (poisson)  \
+Adult                                                      0.090   
+Titanic                                                    0.816   
+Absenteeism                                                0.471   
+Loan House                                                 0.895   
+Loan Credit                                                0.329   
+Medical Insurance                                          0.820   
+Bank Marketing                                             0.404   
+Cervical Cancer                                            0.013   
+Brest Cancer Wisconsin                                     0.795   
+Wisconsin Diagnostic Breast Cancer                         0.398   
+Wisconsin Prognostic Breast Cancer                         0.368   
+Abalone                                                    0.582   
+Car                                                        0.384   
+
+                                    STD F1 Score Distilled (uniform)  \
+Adult                                                          0.000   
+Titanic                                                        0.173   
+Absenteeism                                                    0.185   
+Loan House                                                     0.379   
+Loan Credit                                                    0.141   
+Medical Insurance                                              0.019   
+Bank Marketing                                                 0.006   
+Cervical Cancer                                                0.082   
+Brest Cancer Wisconsin                                         0.174   
+Wisconsin Diagnostic Breast Cancer                             0.117   
+Wisconsin Prognostic Breast Cancer                             0.086   
+Abalone                                                        0.063   
+Car                                                            0.144   
+
+                                    STD F1 Score Distilled (normal)  \
+Adult                                                         0.000   
+Titanic                                                       0.039   
+Absenteeism                                                   0.287   
+Loan House                                                    0.000   
+Loan Credit                                                   0.000   
+Medical Insurance                                             0.138   
+Bank Marketing                                                0.001   
+Cervical Cancer                                               0.091   
+Brest Cancer Wisconsin                                        0.110   
+Wisconsin Diagnostic Breast Cancer                            0.068   
+Wisconsin Prognostic Breast Cancer                            0.261   
+Abalone                                                       0.121   
+Car                                                           0.213   
+
+                                    STD F1 Score Distilled (gamma)  \
+Adult                                                        0.003   
+Titanic                                                      0.121   
+Absenteeism                                                  0.214   
+Loan House                                                   0.278   
+Loan Credit                                                  0.040   
+Medical Insurance                                            0.066   
+Bank Marketing                                               0.151   
+Cervical Cancer                                              0.115   
+Brest Cancer Wisconsin                                       0.337   
+Wisconsin Diagnostic Breast Cancer                           0.216   
+Wisconsin Prognostic Breast Cancer                           0.146   
+Abalone                                                      0.056   
+Car                                                          0.294   
+
+                                    STD F1 Score Distilled (beta)  \
+Adult                                                       0.010   
+Titanic                                                     0.196   
+Absenteeism                                                 0.212   
+Loan House                                                  0.326   
+Loan Credit                                                 0.104   
+Medical Insurance                                           0.090   
+Bank Marketing                                              0.170   
+Cervical Cancer                                             0.069   
+Brest Cancer Wisconsin                                      0.196   
+Wisconsin Diagnostic Breast Cancer                          0.042   
+Wisconsin Prognostic Breast Cancer                          0.166   
+Abalone                                                     0.188   
+Car                                                         0.287   
+
+                                    STD F1 Score Distilled (poisson)  \
+Adult                                                          0.159   
+Titanic                                                        0.085   
+Absenteeism                                                    0.215   
+Loan House                                                     0.095   
+Loan Credit                                                    0.044   
+Medical Insurance                                              0.099   
+Bank Marketing                                                 0.225   
+Cervical Cancer                                                0.038   
+Brest Cancer Wisconsin                                         0.251   
+Wisconsin Diagnostic Breast Cancer                             0.315   
+Wisconsin Prognostic Breast Cancer                             0.269   
+Abalone                                                        0.164   
+Car                                                            0.323   
+
+                                    F1 Score I-Net  \
+Adult                                        0.539   
+Titanic                                      0.822   
+Absenteeism                                  0.667   
+Loan House                                   0.040   
+Loan Credit                                  0.084   
+Medical Insurance                            0.580   
+Bank Marketing                               0.149   
+Cervical Cancer                              0.220   
+Brest Cancer Wisconsin                       0.905   
+Wisconsin Diagnostic Breast Cancer           0.222   
+Wisconsin Prognostic Breast Cancer           0.308   
+Abalone                                      0.000   
+Car                                          0.361   
+
+                                    Runtime Distilled (Train Data)  \
+Adult                                                        0.040   
+Titanic                                                      0.001   
+Absenteeism                                                  0.001   
+Loan House                                                   0.001   
+Loan Credit                                                  0.285   
+Medical Insurance                                            0.001   
+Bank Marketing                                               0.062   
+Cervical Cancer                                              0.001   
+Brest Cancer Wisconsin                                       0.001   
+Wisconsin Diagnostic Breast Cancer                           0.002   
+Wisconsin Prognostic Breast Cancer                           0.001   
+Abalone                                                      0.006   
+Car                                                          0.001   
+
+                                    Runtime Distilled (uniform)  \
+Adult                                                     0.094   
+Titanic                                                   0.094   
+Absenteeism                                               0.094   
+Loan House                                                0.093   
+Loan Credit                                               0.014   
+Medical Insurance                                         0.095   
+Bank Marketing                                            0.093   
+Cervical Cancer                                           0.095   
+Brest Cancer Wisconsin                                    0.092   
+Wisconsin Diagnostic Breast Cancer                        0.090   
+Wisconsin Prognostic Breast Cancer                        0.091   
+Abalone                                                   0.088   
+Car                                                       0.090   
+
+                                    Runtime Distilled (normal)  \
+Adult                                                    0.094   
+Titanic                                                  0.096   
+Absenteeism                                              0.097   
+Loan House                                               0.001   
+Loan Credit                                              0.001   
+Medical Insurance                                        0.099   
+Bank Marketing                                           0.094   
+Cervical Cancer                                          0.092   
+Brest Cancer Wisconsin                                   0.023   
+Wisconsin Diagnostic Breast Cancer                       0.092   
+Wisconsin Prognostic Breast Cancer                       0.065   
+Abalone                                                  0.089   
+Car                                                      0.095   
+
+                                    Runtime Distilled (gamma)  \
+Adult                                                   0.094   
+Titanic                                                 0.098   
+Absenteeism                                             0.096   
+Loan House                                              0.094   
+Loan Credit                                             0.020   
+Medical Insurance                                       0.095   
+Bank Marketing                                          0.093   
+Cervical Cancer                                         0.094   
+Brest Cancer Wisconsin                                  0.095   
+Wisconsin Diagnostic Breast Cancer                      0.094   
+Wisconsin Prognostic Breast Cancer                      0.090   
+Abalone                                                 0.089   
+Car                                                     0.090   
+
+                                    Runtime Distilled (beta)  \
+Adult                                                  0.093   
+Titanic                                                0.095   
+Absenteeism                                            0.092   
+Loan House                                             0.062   
+Loan Credit                                            0.004   
+Medical Insurance                                      0.092   
+Bank Marketing                                         0.091   
+Cervical Cancer                                        0.083   
+Brest Cancer Wisconsin                                 0.084   
+Wisconsin Diagnostic Breast Cancer                     0.087   
+Wisconsin Prognostic Breast Cancer                     0.081   
+Abalone                                                0.087   
+Car                                                    0.081   
+
+                                    Runtime Distilled (poisson)  \
+Adult                                                     0.016   
+Titanic                                                   0.016   
+Absenteeism                                               0.015   
+Loan House                                                0.014   
+Loan Credit                                               0.007   
+Medical Insurance                                         0.015   
+Bank Marketing                                            0.015   
+Cervical Cancer                                           0.015   
+Brest Cancer Wisconsin                                    0.015   
+Wisconsin Diagnostic Breast Cancer                        0.015   
+Wisconsin Prognostic Breast Cancer                        0.015   
+Abalone                                                   0.016   
+Car                                                       0.016   
+
+                                    STD Runtime Distilled (uniform)  \
+Adult                                                         0.002   
+Titanic                                                       0.003   
+Absenteeism                                                   0.002   
+Loan House                                                    0.011   
+Loan Credit                                                   0.021   
+Medical Insurance                                             0.002   
+Bank Marketing                                                0.003   
+Cervical Cancer                                               0.003   
+Brest Cancer Wisconsin                                        0.001   
+Wisconsin Diagnostic Breast Cancer                            0.002   
+Wisconsin Prognostic Breast Cancer                            0.003   
+Abalone                                                       0.001   
+Car                                                           0.001   
+
+                                    STD Runtime Distilled (normal)  \
+Adult                                                        0.001   
+Titanic                                                      0.004   
+Absenteeism                                                  0.001   
+Loan House                                                   0.000   
+Loan Credit                                                  0.000   
+Medical Insurance                                            0.004   
+Bank Marketing                                               0.001   
+Cervical Cancer                                              0.009   
+Brest Cancer Wisconsin                                       0.015   
+Wisconsin Diagnostic Breast Cancer                           0.001   
+Wisconsin Prognostic Breast Cancer                           0.032   
+Abalone                                                      0.002   
+Car                                                          0.003   
+
+                                    STD Runtime Distilled (gamma)  \
+Adult                                                       0.001   
+Titanic                                                     0.003   
+Absenteeism                                                 0.001   
+Loan House                                                  0.009   
+Loan Credit                                                 0.029   
+Medical Insurance                                           0.002   
+Bank Marketing                                              0.003   
+Cervical Cancer                                             0.002   
+Brest Cancer Wisconsin                                      0.002   
+Wisconsin Diagnostic Breast Cancer                          0.001   
+Wisconsin Prognostic Breast Cancer                          0.001   
+Abalone                                                     0.000   
+Car                                                         0.001   
+
+                                    STD Runtime Distilled (beta)  \
+Adult                                                      0.005   
+Titanic                                                    0.006   
+Absenteeism                                                0.012   
+Loan House                                                 0.042   
+Loan Credit                                                0.010   
+Medical Insurance                                          0.013   
+Bank Marketing                                             0.004   
+Cervical Cancer                                            0.027   
+Brest Cancer Wisconsin                                     0.028   
+Wisconsin Diagnostic Breast Cancer                         0.012   
+Wisconsin Prognostic Breast Cancer                         0.027   
+Abalone                                                    0.004   
+Car                                                        0.027   
+
+                                    STD Runtime Distilled (poisson)  \
+Adult                                                         0.005   
+Titanic                                                       0.005   
+Absenteeism                                                   0.005   
+Loan House                                                    0.005   
+Loan Credit                                                   0.001   
+Medical Insurance                                             0.005   
+Bank Marketing                                                0.005   
+Cervical Cancer                                               0.005   
+Brest Cancer Wisconsin                                        0.005   
+Wisconsin Diagnostic Breast Cancer                            0.005   
+Wisconsin Prognostic Breast Cancer                            0.004   
+Abalone                                                       0.005   
+Car                                                           0.005   
+
+                                    Runtime I-Net  
+Adult                                       0.094  
+Titanic                                     0.090  
+Absenteeism                                 0.098  
+Loan House                                  0.095  
+Loan Credit                                 0.100  
+Medical Insurance                           0.096  
+Bank Marketing                              0.099  
+Cervical Cancer                             0.094  
+Brest Cancer Wisconsin                      0.104  
+Wisconsin Diagnostic Breast Cancer          0.099  
+Wisconsin Prognostic Breast Cancer          0.115  
+Abalone                                     0.099  
+Car                                         0.104  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             2588.970   
+valid                                                             2566.279   
+test                                                              2827.093   
+Adult                                                             4864.902   
+Titanic                                                           1568.880   
+Absenteeism                                                        822.726   
+Loan House                                                        1055.475   
+Loan Credit                                                      11656.202   
+Medical Insurance                                                 1929.267   
+Bank Marketing                                                   11041.746   
+Cervical Cancer                                                   2315.515   
+Brest Cancer Wisconsin                                            1845.487   
+Wisconsin Diagnostic Breast Cancer                                2067.752   
+Wisconsin Prognostic Breast Cancer                                1104.181   
+Abalone                                                           1484.053   
+Car                                                               3795.169   
+
+                                    Average Distance to Initialization  \
+train                                                          532.269   
+valid                                                          525.850   
+test                                                           598.031   
+Adult                                                          876.253   
+Titanic                                                        215.906   
+Absenteeism                                                     83.485   
+Loan House                                                     132.439   
+Loan Credit                                                   2129.952   
+Medical Insurance                                              318.400   
+Bank Marketing                                                1873.106   
+Cervical Cancer                                                458.208   
+Brest Cancer Wisconsin                                         302.367   
+Wisconsin Diagnostic Breast Cancer                             324.252   
+Wisconsin Prognostic Breast Cancer                             145.976   
+Abalone                                                        218.676   
+Car                                                            670.656   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           758.492   
+valid                                                           749.250   
+test                                                            803.828   
+Adult                                                          1067.237   
+Titanic                                                         593.141   
+Absenteeism                                                     504.671   
+Loan House                                                      523.465   
+Loan Credit                                                    2266.514   
+Medical Insurance                                               665.074   
+Bank Marketing                                                 1965.844   
+Cervical Cancer                                                 740.303   
+Brest Cancer Wisconsin                                          650.817   
+Wisconsin Diagnostic Breast Cancer                              674.965   
+Wisconsin Prognostic Breast Cancer                              534.536   
+Abalone                                                         594.893   
+Car                                                             878.040   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     528.971   
+test                                                                      603.562   
+Adult                                                                     880.351   
+Titanic                                                                   257.805   
+Absenteeism                                                               117.312   
+Loan House                                                                166.295   
+Loan Credit                                                              2118.977   
+Medical Insurance                                                         360.633   
+Bank Marketing                                                           1865.058   
+Cervical Cancer                                                           488.564   
+Brest Cancer Wisconsin                                                    341.145   
+Wisconsin Diagnostic Breast Cancer                                        368.194   
+Wisconsin Prognostic Breast Cancer                                        188.172   
+Abalone                                                                   265.112   
+Car                                                                       677.621   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    3.650   
+valid                                                                    3.321   
+test                                                                     3.738   
+Adult                                                                    3.753   
+Titanic                                                                  2.751   
+Absenteeism                                                              2.566   
+Loan House                                                               2.556   
+Loan Credit                                                             11.176   
+Medical Insurance                                                        3.486   
+Bank Marketing                                                           9.666   
+Cervical Cancer                                                          3.654   
+Brest Cancer Wisconsin                                                   3.769   
+Wisconsin Diagnostic Breast Cancer                                       5.143   
+Wisconsin Prognostic Breast Cancer                                       2.570   
+Abalone                                                                  2.680   
+Car                                                                      3.021   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    1.967  
+test                                                                     2.549  
+Adult                                                                    3.150  
+Titanic                                                                  1.296  
+Absenteeism                                                              0.233  
+Loan House                                                               0.326  
+Loan Credit                                                             10.352  
+Medical Insurance                                                        2.483  
+Bank Marketing                                                           8.923  
+Cervical Cancer                                                          2.270  
+Brest Cancer Wisconsin                                                   2.779  
+Wisconsin Diagnostic Breast Cancer                                       3.234  
+Wisconsin Prognostic Breast Cancer                                       0.828  
+Abalone                                                                  1.150  
+Car                                                                      1.892  

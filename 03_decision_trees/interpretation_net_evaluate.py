@@ -90,34 +90,9 @@ from utilities.metrics import *
 from utilities.utility_functions import *
 from utilities.DecisionTree_BASIC import *
 
-
-
-def run_evaluation(enumerator, timestr, parameter_setting):
-
+def extend_inet_parameter_setting(parameter_setting):
     
-    if parameter_setting['dt_setting'] == 1:
-        parameter_setting['dt_type'] = 'vanilla'
-        parameter_setting['decision_sparsity'] = 1     
-        parameter_setting['function_representation_type'] = 3
-    elif parameter_setting['dt_setting'] == 2:
-        parameter_setting['dt_type'] = 'SDT'
-        parameter_setting['decision_sparsity'] = -1      
-        parameter_setting['function_representation_type'] = 1
-    
-    #filename = './running_evaluations/04_interpretation_net_script-' + str(parameter_setting['dt_type']) + str(parameter_setting['decision_sparsity']) + '_n' + str(parameter_setting['number_of_variables']) + '_d' + str(parameter_setting['maximum_depth']) +  '.txt'
-       
-    if False:
-        parameter_setting_name = ''
-        for i, (key, value) in enumerate(parameter_setting.items()):
-            parameter_setting_name += (key + str(value))
-            if i % 5 == 0:
-                parameter_setting_name += '/'
-            else:
-                parameter_setting_name += '-'
-
-        filename = './running_evaluations/04_interpretation_net_script-' + parameter_setting_name  +  '.txt'
-    else: 
-        filename = './running_evaluations/04_interpretation_net_script-' + timestr + '/' + 'trial' + str(enumerator).zfill(4) + parameter_setting['dt_type'] + 'n' + str(parameter_setting['number_of_variables']) + '.txt'
+    print(parameter_setting)
     
     if parameter_setting['inet_setting'] == 1:
         parameter_setting['dense_layers'] = [1792, 512, 512]
@@ -156,41 +131,44 @@ def run_evaluation(enumerator, timestr, parameter_setting):
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001      
     elif parameter_setting['inet_setting'] == 7:
+        parameter_setting['dense_layers'] = [512]
+        parameter_setting['dropout'] = [0]     
+        parameter_setting['hidden_activation'] = ['sigmoid']
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001   
+    elif parameter_setting['inet_setting'] == 8:
         pass
-                #'dense_layers': [1024, 1024, 256, 2048, 2048],
-                #'dense_layers': [1792, 512, 512],
-                #'dense_layers': [704], #SDT-1 n=15
-                #'dense_layers': [512, 512, 512], #vanilla n=15 BEST for 15 and 32 on real-world
-                #'dense_layers': [512, 512, 512], #SDT-1 n=32
-                #'dense_layers': [512, 512, 512], #vanilla n=32        
 
-                #'dropout': [0, 0, 0, 0, 0.3],#[0.3, 0.3, 0.3, 0.3, 0.3],
-                #'dropout': [0, 0, 0.5],
-                #'dropout': [0], #SDT-1 n=15
-                #'dropout': [0.3, 0, 0], #vanilla n=15 BEST for 15 and 32 on real-world
-                #'dropout': [0, 0, 0], #SDT-1 n=32
-                #'dropout': [0.5, 0, 0], #vanilla n=32
+    return parameter_setting
+    
+def run_evaluation(enumerator, timestr, parameter_setting):
 
-                #'hidden_activation': 'relu',
-                #'hidden_activation': 'sigmoid',
-                #'hidden_activation': ['sigmoid'], #SDT-1 n=15
-                #'hidden_activation': ['sigmoid', 'tanh', 'sigmoid'], #vanilla n=15 BEST for 15 and 32 on real-world
-                #'hidden_activation': ['sigmoid', 'tanh', 'tanh'], #SDT-1 n=32
-                #'hidden_activation': ['sigmoid', 'tanh', 'sigmoid'], #vanilla n=32
+    
+    if parameter_setting['dt_setting'] == 1:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 3
+    elif parameter_setting['dt_setting'] == 2:
+        parameter_setting['dt_type'] = 'SDT'
+        parameter_setting['decision_sparsity'] = -1      
+        parameter_setting['function_representation_type'] = 1
+    
+    #filename = './running_evaluations/04_interpretation_net_script-' + str(parameter_setting['dt_type']) + str(parameter_setting['decision_sparsity']) + '_n' + str(parameter_setting['number_of_variables']) + '_d' + str(parameter_setting['maximum_depth']) +  '.txt'
+       
+    if False:
+        parameter_setting_name = ''
+        for i, (key, value) in enumerate(parameter_setting.items()):
+            parameter_setting_name += (key + str(value))
+            if i % 5 == 0:
+                parameter_setting_name += '/'
+            else:
+                parameter_setting_name += '-'
 
-                #'optimizer': 'rmsprop', 
-                #'optimizer': 'adam', 
-                #'optimizer': 'adam', #SDT-1 n=15
-                #'optimizer': 'adam', #vanilla n=15  BEST for 15 and 32 on real-world
-                #'optimizer': 'adam', #SDT-1 n=32
-                #'optimizer': 'adam', #vanilla n=32
-
-                #'learning_rate': 0.001,
-                #'learning_rate': 0.001,
-                #'learning_rate': 0.001, #SDT-1 n=15
-                #'learning_rate': 0.001, #vanilla n=15 BEST for 15 and 32 on real-world
-                #'learning_rate': 0.001, #SDT-1 n=32
-                #'learning_rate': 0.001, #vanilla n=32    
+        filename = './running_evaluations/04_interpretation_net_script-' + parameter_setting_name  +  '.txt'
+    else: 
+        filename = './running_evaluations/04_interpretation_net_script-' + timestr + '/' + 'trial' + str(enumerator).zfill(4) + parameter_setting['dt_type'] + 'n' + str(parameter_setting['number_of_variables']) + '.txt'
+    
+    parameter_setting = extend_inet_parameter_setting(parameter_setting)
     
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'a+') as f:

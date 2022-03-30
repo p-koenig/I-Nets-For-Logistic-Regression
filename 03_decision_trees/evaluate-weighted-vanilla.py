@@ -27,11 +27,11 @@ def main():
             evaluation_grid = {
                 
                 'n_jobs': [7],   
-                'force_evaluate_real_world': [True],
+                'force_evaluate_real_world': [False],
                 'number_of_random_evaluations_per_distribution': [10],
                 
                 'dt_setting': [1], # 1=vanilla; 2=SDT ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
-                'inet_setting': [6], 
+                'inet_setting': [7], 
                 'dataset_size': [10000], #50000
                 
                 'maximum_depth': [3],
@@ -61,10 +61,12 @@ def main():
             }
 
 
-            parameter_grid = ParameterGrid(evaluation_grid)
+            parameter_grid = list(ParameterGrid(evaluation_grid))
 
             for parameter_setting in parameter_grid:
                 print(parameter_setting)
+                
+            print('Possible Evaluations: ', len(parameter_grid))
 
             timestr = time.strftime("%Y%m%d-%H%M%S")
                 
