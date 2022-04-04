@@ -4905,7 +4905,8 @@ def per_network_dt_optimization_tf(network_parameters,
     ########################################### GENERATE RELEVANT PARAMETERS FOR OPTIMIZATION ########################################################
                     
     random.seed(config['computation']['RANDOM_SEED'])
-    np.random.seed(config['computation']['RANDOM_SEED'])    
+    np.random.seed(config['computation']['RANDOM_SEED'])  
+    
     if int(tf.__version__[0]) >= 2:
         tf.random.set_seed(config['computation']['RANDOM_SEED'])
     else:

@@ -69,15 +69,59 @@ import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
 tf.autograph.set_verbosity(3)
 
-            
+from autokeras.keras_layers import CastToFloat32     
+
+from autokeras.engine import io_hypermodel
+from autokeras.engine import node as node_module
+from typing import Optional
+    
 #######################################################################################################################################################
 ######################################################################AUTOKERAS BLOCKS#################################################################
 #######################################################################################################################################################
 
+
+class InputInet(node_module.Node, io_hypermodel.IOHyperModel):
+    """Input node for tensor data.
+    The data should be numpy.ndarray or tf.data.Dataset.
+    # Arguments
+        name: String. The name of the input node. If unspecified, it will be set
+            automatically with the class name.
+    """
+
+    def __init__(self, name: Optional[str] = None, **kwargs):
+        super().__init__(name=name, **kwargs)
+
+    def build_node(self, hp):
+        return tf.keras.Input(shape=self.shape)#tf.keras.Input(shape=self.shape, dtype=self.dtype)
+
+    def build(self, hp, inputs=None):
+        #input_node = nest.flatten(inputs)[0]
+        return inputs#keras_layers.CastToFloat32()(input_node)
+
+    def get_adapter(self):
+        return adapters.InputAdapter()
+
+    def get_analyser(self):
+        return analysers.InputAnalyser()
+
+    def get_block(self):
+        return blocks.GeneralBlock()
+
+    def get_hyper_preprocessors(self):
+        return []
+
+def cast_to_float32(tensor):
+    if tensor.dtype == tf.float32:
+        return tensor
+    if tensor.dtype == tf.string:
+        return tf.strings.to_number(tensor, tf.float32)
+    return tf.cast(tensor, tf.float32)
+
 class CombinedOutputInet(ak.Head):
 
-    def __init__(self, loss = None, metrics = None, output_dim=None, **kwargs):
+    def __init__(self, loss = None, metrics = None, output_dim=None, seed=42, **kwargs):
         super().__init__(loss=loss, metrics=metrics, **kwargs)
+        self.seed = seed
         self.output_dim = output_dim
 
     def get_config(self):
@@ -113,8 +157,9 @@ class CombinedOutputInet(ak.Head):
 
 class OutputInet(ak.Head):
 
-    def __init__(self, loss = None, metrics = None, output_dim=None, **kwargs):
+    def __init__(self, loss = None, metrics = None, output_dim=None, seed=42, **kwargs):
         super().__init__(loss=loss, metrics=metrics, **kwargs)
+        self.seed = seed
         self.output_dim = output_dim
 
     def get_config(self):
@@ -154,40 +199,58 @@ class CustomDenseInet(ak.Block):
     neurons=None
     activation=None
     
-    def __init__(self, neurons=None, activation=None, **kwargs):
+    def __init__(self, neurons=None, activation=None, seed=42, **kwargs):
         super().__init__(**kwargs)
+        self.seed = seed
         self.neurons = neurons
         self.activation = activation
         
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
         input_node = tf.nest.flatten(inputs)[0]
-        layer = Dense(units=self.neurons, activation=self.activation)
+        layer = Dense(units=self.neurons, 
+                      activation=self.activation, 
+                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=self.seed))
         #layer = Dense(1, activation='linear')
         output_node = layer(input_node)
+        #output_node = tf.keras.layers.Activation(activation=self.activation)(output_node)
         return output_node    
 
 class SingleDenseLayerBlock(ak.Block):
+    
+    def __init__(self, seed=42, **kwargs):
+        super().__init__(**kwargs)
+        self.seed = seed
+        
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
         input_node = tf.nest.flatten(inputs)[0]
         layer = tf.keras.layers.Dense(
-            hp.Int("num_units", min_value=16, max_value=512, step=16, default=32)
+            hp.Int("num_units", min_value=16, max_value=512, step=16, default=32), 
+            kernel_initializer = tf.keras.initializers.GlorotUniform(seed=self.seed)
         )
         output_node = layer(input_node)
         return output_node
     
 class DeepDenseLayerBlock(ak.Block):
+    
+    def __init__(self, seed=42, **kwargs):
+        super().__init__(**kwargs)
+        self.seed = seed
+        
     def build(self, hp, inputs=None):
         # Get the input_node from inputs.
+        
+        tf.random.set_seed(self.seed)
+
         input_node = tf.nest.flatten(inputs)[0]
         
         num_layers = hp.Int("num_layers", min_value=1, max_value=5, step=1, default=3)
         #activation = hp.Choice("activation", values=['relu', 'sigmoid', 'tanh'], default='sigmoid')
-        
         num_units_list = []
         dropout_list = []
         activation_list = []
+        
         for i in range(5):
             num_units = hp.Int("num_units_" + str(i), min_value=64, max_value=2048, default=512) #, step=64
             dropout = hp.Choice("dropout_" + str(i), [0.0, 0.1, 0.3, 0.5], default=0.0)
@@ -200,19 +263,27 @@ class DeepDenseLayerBlock(ak.Block):
             if i == 0:
                 hidden_node = tf.keras.layers.Dense(
                     units = num_units_list[i],
-                    activation = activation_list[i]
+                    #activation = activation_list[i], 
+                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=self.seed)
                 )(input_node)
-                hidden_node = tf.keras.layers.Dropout(
-                    rate = dropout_list[i]
-                )(hidden_node)   
+                hidden_node = tf.keras.layers.Activation(activation=activation_list[i])(hidden_node)
+                if dropout_list[i] > 0:
+                    hidden_node = tf.keras.layers.Dropout(
+                        rate = dropout_list[i],
+                        seed = self.seed
+                    )(hidden_node)   
             else:
                 hidden_node = tf.keras.layers.Dense(
                     units = num_units_list[i],
-                    activation =  activation_list[i]
+                    #activation =  activation_list[i], 
+                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=self.seed)
                 )(hidden_node)
-                hidden_node = tf.keras.layers.Dropout(
-                    rate = dropout_list[i]
-                )(hidden_node)               
+                hidden_node = tf.keras.layers.Activation(activation=activation_list[i])(hidden_node)
+                if dropout_list[i] > 0:
+                    hidden_node = tf.keras.layers.Dropout(
+                        rate = dropout_list[i],
+                        seed = self.seed
+                    )(hidden_node)               
         return hidden_node  
 
 
@@ -690,7 +761,7 @@ def train_inet(lambda_net_train_dataset,
     #metrics = [inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_crossentropy'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'mae'), inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, 'binary_accuracy')]
         
     ############################## BUILD MODEL ###############################
-    if not config['computation']['load_model']:
+    if not config['computation']['load_model']:              
         if config['i_net']['nas']:
             from tensorflow.keras.utils import CustomObjectScope
             
@@ -710,14 +781,13 @@ def train_inet(lambda_net_train_dataset,
             #print(metric_names)
             #print(loss_function_name)
 
-            #CustomDenseInet(neurons, activation)
             #config['i_net']['function_representation_type']
             #config['function_family']['dt_type']          
                                                            
             
             with CustomObjectScope(custom_object_dict):
                 if config['i_net']['nas_type'] == 'SEQUENTIAL':
-                    input_node = ak.Input()
+                    input_node = InputInet()#ak.Input()
                     hidden_node = DeepDenseLayerBlock()(input_node)   
                     
                 elif config['i_net']['nas_type'] == 'CNN': 
@@ -750,30 +820,36 @@ def train_inet(lambda_net_train_dataset,
                     if config['function_family']['dt_type'] == 'SDT':     
                         if config['i_net']['additional_hidden']:
                             hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
-                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'])(hidden_node_outputs_coeff)
+                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'], 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_coeff)
                         else:
-                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'])(hidden_node)        
+                            outputs_coeff = CustomDenseInet(internal_node_num_ * config['data']['number_of_variables'], 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)        
                         outputs_list = [outputs_coeff]
                         
                         
                     elif config['function_family']['dt_type'] == 'vanilla':                                  
                         if config['i_net']['additional_hidden']:
-                            hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
+                            hidden_node_outputs_coeff = SingleDenseLayerBlock(seed=config['computation']['RANDOM_SEED'])(hidden_node)
                             outputs_coeff = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                              activation='sigmoid')(hidden_node_outputs_coeff)
+                                                            activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_coeff)
                         else:                        
                             outputs_coeff = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
-                                                              activation='sigmoid')(hidden_node)   
+                                                            activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)   
                         outputs_list = [outputs_coeff]
                         
                         if config['i_net']['additional_hidden']:
                             hidden_node_outputs_index = SingleDenseLayerBlock()(hidden_node)
                             outputs_index = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
                                                                   activation='linear', 
+                                                                  seed=config['computation']['RANDOM_SEED'], 
                                                                   name='outputs_index_')(hidden_node_outputs_index)
                         else:                              
                             outputs_index = CustomDenseInet(internal_node_num_ * config['function_family']['decision_sparsity'], 
                                                                   activation='linear', 
+                                                                  seed=config['computation']['RANDOM_SEED'], 
                                                                   name='outputs_index_')(hidden_node)      
                         outputs_list.append(outputs_index)
                         
@@ -783,9 +859,11 @@ def train_inet(lambda_net_train_dataset,
                         
                         if config['i_net']['additional_hidden']:
                             hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
-                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients)(hidden_node_outputs_coeff)
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_coeff)
                         else:
-                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients)(hidden_node)
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)
 
                         outputs_list = [outputs_coeff]
 
@@ -793,9 +871,13 @@ def train_inet(lambda_net_train_dataset,
                             for var_index in range(config['function_family']['decision_sparsity']):
                                 if config['i_net']['additional_hidden']:
                                     hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
-                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node_outputs_identifer)
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], 
+                                                                        activation='softmax', 
+                                                                        seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_identifer)
                                 else:
-                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], 
+                                                                        activation='softmax', 
+                                                                        seed=config['computation']['RANDOM_SEED'])(hidden_node)
                                 outputs_list.append(outputs_identifer)    
 
                     
@@ -805,9 +887,13 @@ def train_inet(lambda_net_train_dataset,
                         
                         if config['i_net']['additional_hidden']:
                             hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
-                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='sigmoid')(hidden_node_outputs_coeff)
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, 
+                                                            activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_coeff)
                         else:                                 
-                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, activation='sigmoid')(hidden_node)
+                            outputs_coeff = CustomDenseInet(neurons=number_output_coefficients, 
+                                                            activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)
                             
                         outputs_list = [outputs_coeff]
                         for outputs_index in range(internal_node_num_):
@@ -815,9 +901,13 @@ def train_inet(lambda_net_train_dataset,
                                 output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
                                 if config['i_net']['additional_hidden']:
                                     hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
-                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node_outputs_identifer)
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], 
+                                                                        activation='softmax', 
+                                                                        seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_identifer)
                                 else:                                  
-                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                    outputs_identifer = CustomDenseInet(neurons=config['data']['number_of_variables'], 
+                                                                        activation='softmax', 
+                                                                        seed=config['computation']['RANDOM_SEED'])(hidden_node)
                                 outputs_list.append(outputs_identifer)    
 
 
@@ -828,9 +918,11 @@ def train_inet(lambda_net_train_dataset,
                         
                         if config['i_net']['additional_hidden']:
                             hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
-                            outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'])(hidden_node_outputs_coeff)
+                            outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'], 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_coeff)
                         else: 
-                            outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'])(hidden_node)
+                            outputs_coeff = CustomDenseInet(internal_node_num_*config['data']['number_of_variables'], 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)
                         
                         outputs_list = [outputs_coeff]
 
@@ -839,10 +931,12 @@ def train_inet(lambda_net_train_dataset,
                             if config['i_net']['additional_hidden']:
                                 hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
                                 outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
-                                                                      activation='softmax')(hidden_node_outputs_identifer)
+                                                                    activation='softmax', 
+                                                                    seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_identifer)
                             else:                             
                                 outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
-                                                                      activation='softmax')(hidden_node)
+                                                                    activation='softmax', 
+                                                                    seed=config['computation']['RANDOM_SEED'])(hidden_node)
                             outputs_list.append(outputs_identifer)    
 
                
@@ -851,42 +945,58 @@ def train_inet(lambda_net_train_dataset,
                     elif config['function_family']['dt_type'] == 'vanilla': 
                         if config['i_net']['additional_hidden']:
                             hidden_node_outputs_coeff = SingleDenseLayerBlock()(hidden_node)
-                            outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], activation='sigmoid')(hidden_node_outputs_coeff)
+                            outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], 
+                                                            activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_coeff)
                         else:                              
-                            outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], activation='sigmoid')(hidden_node)
+                            outputs_coeff = CustomDenseInet(neurons=internal_node_num_*config['data']['number_of_variables'], 
+                                                            activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)
                         outputs_list = [outputs_coeff]
 
 
                         for outputs_index in range(internal_node_num_):
                             if config['i_net']['additional_hidden']:
                                 hidden_node_outputs_identifer = SingleDenseLayerBlock()(hidden_node)
-                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], activation='softmax')(hidden_node_outputs_identifer)
+                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
+                                                                    activation='softmax', 
+                                                                    seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_identifer)
                             else:                               
-                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], activation='softmax')(hidden_node)
+                                outputs_identifer = CustomDenseInet(config['data']['number_of_variables'], 
+                                                                    activation='softmax', 
+                                                                    seed=config['computation']['RANDOM_SEED'])(hidden_node)
                             outputs_list.append(outputs_identifer)    
                 
                 if config['function_family']['dt_type'] == 'SDT':
                     if config['i_net']['additional_hidden']:
                         hidden_node_outputs_bias = SingleDenseLayerBlock()(hidden_node)
-                        outputs_bias = CustomDenseInet(internal_node_num_)(hidden_node_outputs_bias)
+                        outputs_bias = CustomDenseInet(internal_node_num_, 
+                                                       seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_bias)
                     else:    
-                        outputs_bias = CustomDenseInet(internal_node_num_)(hidden_node)
+                        outputs_bias = CustomDenseInet(internal_node_num_, 
+                                                       seed=config['computation']['RANDOM_SEED'])(hidden_node)
                     outputs_list.append(outputs_bias)    
 
                     if config['i_net']['additional_hidden']:
                         hidden_node_outputs_leaf_nodes = SingleDenseLayerBlock()(hidden_node)
-                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'])(hidden_node_outputs_leaf_nodes)
+                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'], 
+                                                             seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_leaf_nodes)
                     else:                            
-                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'])(hidden_node)
+                        outputs_leaf_nodes = CustomDenseInet(leaf_node_num_ * config['data']['num_classes'], 
+                                                             seed=config['computation']['RANDOM_SEED'])(hidden_node)
                     outputs_list.append(outputs_leaf_nodes)     
 
                     output_node = CombinedOutputInet()(outputs_list)                         
                 elif config['function_family']['dt_type'] == 'vanilla':  
                     if config['i_net']['additional_hidden']:
                         hidden_node_outputs_leaf_nodes = SingleDenseLayerBlock()(hidden_node)
-                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, activation='sigmoid')(hidden_node_outputs_leaf_nodes)
+                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, 
+                                                             activation='sigmoid', 
+                                                             seed=config['computation']['RANDOM_SEED'])(hidden_node_outputs_leaf_nodes)
                     else:                         
-                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, activation='sigmoid')(hidden_node)
+                        outputs_leaf_nodes = CustomDenseInet(neurons=leaf_node_num_, 
+                                                             activation='sigmoid', 
+                                                            seed=config['computation']['RANDOM_SEED'])(hidden_node)
                     outputs_list.append(outputs_leaf_nodes)    
                     
                     output_node = CombinedOutputInet()(outputs_list)
@@ -912,14 +1022,21 @@ def train_inet(lambda_net_train_dataset,
                     optimizer = tf.keras.optimizers.get(optimizer_name)
                     optimizer.learning_rate = learning_rate
                     
+                    random.seed(config['computation']['RANDOM_SEED'])
+                    np.random.seed(config['computation']['RANDOM_SEED'])  
+                    tf.random.set_seed(config['computation']['RANDOM_SEED'])                      
                     model.compile(
-                        optimizer=optimizer, metrics=self._get_metrics(), loss=self._get_loss(), jit_compile=True
+                        optimizer=optimizer, metrics=self._get_metrics(), loss=self._get_loss()#, jit_compile=True
                     )
+                    
+                    #print(model.get_weights())
 
                     return model
                     
-                ak.graph.Graph._compile_keras_model = _compile_keras_model_adjusted
+                ak.graph.Graph._compile_keras_model = _compile_keras_model_adjusted           
 
+                
+                
                 auto_model = ak.AutoModel(inputs=input_node, 
                                     outputs=output_node,
                                     loss=loss_function_name,
@@ -937,16 +1054,22 @@ def train_inet(lambda_net_train_dataset,
                 #earlyStopping = EarlyStopping(monitor='val_loss', patience=20, min_delta=0.01, verbose=0, mode='min', restore_best_weights=True)
                 earlyStopping = CustomStopper(monitor='val_loss', patience=20, min_delta=0.01, verbose=0, mode='min', restore_best_weights=True, start_epoch = 25)
                 
+                
+                random.seed(config['computation']['RANDOM_SEED'])
+                np.random.seed(config['computation']['RANDOM_SEED'])  
+                tf.random.set_seed(config['computation']['RANDOM_SEED'])           
+                
                 auto_model.fit(
                     x=X_train,
                     y=y_train_model,
                     validation_data=valid_data,
                     epochs=config['i_net']['epochs'],
                     batch_size=config['i_net']['batch_size'],
+                    shuffle=False,
                     callbacks=[earlyStopping],
                     verbose=2,
-                    workers=10,
-                    use_multiprocessing=True,
+                    workers=1, #10
+                    use_multiprocessing=False, #True
                     )         
 
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
@@ -956,88 +1079,96 @@ def train_inet(lambda_net_train_dataset,
                 
         else: 
             
+            
             if not isinstance(config['i_net']['hidden_activation'], list):
                 config['i_net']['hidden_activation'] = [config['i_net']['hidden_activation'] for _ in range(len(config['i_net']['dense_layers']))]
 
+            tf.random.set_seed(config['computation']['RANDOM_SEED'])
+                
             if config['i_net']['separate_weight_bias']:
-                print('separate_weight_bias')
-                if False:
-                    inputs_weight = Input(shape=weight_count, 
-                               name='input_weight')
-                    inputs_bias = Input(shape=bias_count, 
-                               name='input_bias')
-
-
-                    inputs = [inputs_bias, inputs_weight]
-                else:
-                    inputs = Input(shape=X_train.shape[1], 
-                               name='input')                    
+                inputs = Input(shape=X_train.shape[1], 
+                                   dtype=tf.float64,
+                                   name='input')                    
+                    
+                #inputs = CastToFloat32()(inputs)
                     
                 inputs_bias = crop(1, 0, bias_count)(inputs)
                 inputs_weight = crop(1, 0, bias_count)(inputs)#crop(1, bias_count, bias_count+weight_count)(inputs)
                 
                 hidden_weight = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
-                                               name='hidden1_weight_' + str(config['i_net']['dense_layers'][0]))(inputs_weight)
+                                                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                      name='hidden1_weight_' + str(config['i_net']['dense_layers'][0]))(inputs_weight)
                 hidden_weight = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
-                                                    name='activation1_weight_' + config['i_net']['hidden_activation'][0])(hidden_weight)
-
+                                                           name='activation1_weight_' + config['i_net']['hidden_activation'][0])(hidden_weight)
+                
                 hidden_bias = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
-                                               name='hidden1_bias_' + str(config['i_net']['dense_layers'][0]))(inputs_bias)
+                                                    kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                    name='hidden1_bias_' + str(config['i_net']['dense_layers'][0]))(inputs_bias)
                 hidden_bias = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
-                                                    name='activation1_bias_' + config['i_net']['hidden_activation'][0])(hidden_bias)
+                                                         name='activation1_bias_' + config['i_net']['hidden_activation'][0])(hidden_bias)
                 
                 
                 if config['i_net']['dropout'][0] > 0:
                     hidden_weight = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
-                                                     name='dropout1_weight_' + str(config['i_net']['dropout'][0]))(hidden_weight)
+                                                            seed=config['computation']['RANDOM_SEED'],
+                                                            name='dropout1_weight_' + str(config['i_net']['dropout'][0]))(hidden_weight)
                     
                     hidden_bias = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
-                                                     name='dropout1_bias_' + str(config['i_net']['dropout'][0]))(hidden_bias)
+                                                          seed=config['computation']['RANDOM_SEED'], 
+                                                          name='dropout1_bias_' + str(config['i_net']['dropout'][0]))(hidden_bias)
                     
                 for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
                     hidden_weight = tf.keras.layers.Dense(neurons, 
-                                                   name='hidden_weight' + str(layer_index+2) + '_' + str(neurons))(hidden_weight)
+                                                          kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                          name='hidden_weight' + str(layer_index+2) + '_' + str(neurons))(hidden_weight)
                     hidden_weight = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
-                                                        name='activation_weight'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden_weight)
+                                                               name='activation_weight'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden_weight)
 
                     if config['i_net']['dropout'][layer_index+1] > 0:
                         hidden_weight = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
-                                                         name='dropout_weight' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden_weight)
+                                                                seed=config['computation']['RANDOM_SEED'], 
+                                                                name='dropout_weight' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden_weight)
 
                         
                     hidden_bias = tf.keras.layers.Dense(neurons, 
-                                                   name='hidden_bias' + str(layer_index+2) + '_' + str(neurons))(hidden_bias)
+                                                        kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                        name='hidden_bias' + str(layer_index+2) + '_' + str(neurons))(hidden_bias)
                     hidden_bias = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
                                                         name='activation_bias'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden_bias)
 
                     if config['i_net']['dropout'][layer_index+1] > 0:
                         hidden_bias = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
-                                                         name='dropout_bias' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden_bias)
+                                                              seed=config['computation']['RANDOM_SEED'], 
+                                                              name='dropout_bias' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden_bias)
 
                         
 
                 hidden = concatenate([hidden_bias, hidden_weight], name='hidden_combined')  
             else:
                 inputs = Input(shape=X_train.shape[1], 
-                           name='input')
-            
+                                   name='input')                    
+
                 hidden = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
+                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                name='hidden1_' + str(config['i_net']['dense_layers'][0]))(inputs)
                 hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][0],  
                                                     name='activation1_' + config['i_net']['hidden_activation'][0])(hidden)
 
                 if config['i_net']['dropout'][0] > 0:
                     hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][0], 
+                                                     seed=config['computation']['RANDOM_SEED'], 
                                                      name='dropout1_' + str(config['i_net']['dropout'][0]))(hidden)
 
                 for layer_index, neurons in enumerate(config['i_net']['dense_layers'][1:]):
                     hidden = tf.keras.layers.Dense(neurons, 
+                                                   kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                    name='hidden' + str(layer_index+2) + '_' + str(neurons))(hidden)
                     hidden = tf.keras.layers.Activation(activation=config['i_net']['hidden_activation'][layer_index+1], 
                                                         name='activation'  + str(layer_index+2) + '_' + config['i_net']['hidden_activation'][layer_index+1])(hidden)
 
                     if config['i_net']['dropout'][layer_index+1] > 0:
                         hidden = tf.keras.layers.Dropout(config['i_net']['dropout'][layer_index+1], 
+                                                         seed=config['computation']['RANDOM_SEED'], 
                                                          name='dropout' + str(layer_index+2) + '_' + str(config['i_net']['dropout'][layer_index+1]))(hidden)
 
             internal_node_num_ = 2 ** config['function_family']['maximum_depth'] - 1 
@@ -1047,36 +1178,47 @@ def train_inet(lambda_net_train_dataset,
                 if config['function_family']['dt_type'] == 'SDT':
                     outputs_coeff_neurons = internal_node_num_ * config['data']['number_of_variables']
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2)(hidden)
-                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons)(hidden_outputs_coeff)
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']))(hidden)
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']))(hidden_outputs_coeff)
                     else:
-                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons)(hidden)        
+                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']))(hidden)        
                     outputs_list = [outputs_coeff]
                         
                     
                 elif config['function_family']['dt_type'] == 'vanilla':   
                     outputs_coeff_neurons = internal_node_num_ * config['function_family']['decision_sparsity']
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_outputs_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                     name='hidden_outputs_coeff_' + str(outputs_coeff_neurons))(hidden)
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               activation='sigmoid', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='outputs_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                           
                     else:                    
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               activation='sigmoid', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='outputs_coeff_' + str(outputs_coeff_neurons))(hidden)   
                     
                     outputs_list = [outputs_coeff]
                     
                     outputs_index_neurons = internal_node_num_ * config['function_family']['decision_sparsity']
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_index = tf.keras.layers.Dense(outputs_index_neurons*2, name='hidden_outputs_index_' + str(outputs_index_neurons))(hidden)
+                        hidden_outputs_index = tf.keras.layers.Dense(outputs_index_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                     name='hidden_outputs_index_' + str(outputs_index_neurons))(hidden)
                         outputs_index = tf.keras.layers.Dense(outputs_index_neurons, 
                                                               activation='linear', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='outputs_index_' + str(outputs_index_neurons))(hidden_outputs_index)                                
                     else:                          
                         outputs_index = tf.keras.layers.Dense(outputs_index_neurons, 
                                                               activation='linear', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='outputs_index_' + str(outputs_index_neurons))(hidden)      
 
                     outputs_list.append(outputs_index)
@@ -1085,13 +1227,17 @@ def train_inet(lambda_net_train_dataset,
                 if config['function_family']['dt_type'] == 'SDT':                        
                     outputs_coeff_neurons = internal_node_num_ * config['function_family']['decision_sparsity'] 
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                     name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               #activation='tanh', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                                
                     else:                               
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               #activation='tanh', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
 
                     outputs_list = [outputs_coeff]
@@ -1101,26 +1247,34 @@ def train_inet(lambda_net_train_dataset,
                             output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
                             outputs_identifer_neurons = config['data']['number_of_variables']
                             if config['i_net']['additional_hidden']:
-                                hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden_' + output_name)(hidden)
+                                hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, 
+                                                                                 kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                                 name='hidden_' + output_name)(hidden)
                                 outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                           activation='softmax', 
+                                                                          kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                           name=output_name)(hidden_outputs_identifer)                               
                             else:                                  
                                 outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                           activation='softmax', 
+                                                                          kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                           name=output_name)(hidden)
                             outputs_list.append(outputs_identifer)        
                     
                 elif config['function_family']['dt_type'] == 'vanilla':                    
                     outputs_coeff_neurons = internal_node_num_ * config['function_family']['decision_sparsity'] 
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                     name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               activation='sigmoid', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
                     else:                        
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               activation='sigmoid', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                         
                     outputs_list = [outputs_coeff]
@@ -1129,13 +1283,17 @@ def train_inet(lambda_net_train_dataset,
                             output_name = 'output_identifier' + str(outputs_index+1) + '_var' + str(var_index+1) + '_' + str(config['function_family']['decision_sparsity'])
                             outputs_identifer_neurons = config['data']['number_of_variables']
                             if config['i_net']['additional_hidden']:
-                                hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden_' + output_name)(hidden)
+                                hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, 
+                                                                                 kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                                 name='hidden_' + output_name)(hidden)
                                 outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
-                                                                      activation='softmax', 
-                                                                      name=output_name)(hidden_outputs_identifer)                       
+                                                                          activation='softmax', 
+                                                                          kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                          name=output_name)(hidden_outputs_identifer)                       
                             else:                                 
                                 outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                           activation='softmax', 
+                                                                          kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                           name=output_name)(hidden)
                             outputs_list.append(outputs_identifer)    
 
@@ -1145,13 +1303,17 @@ def train_inet(lambda_net_train_dataset,
                     
                     outputs_coeff_neurons = internal_node_num_*config['data']['number_of_variables']
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                     name='hidden_output_coeff_' + str(outputs_coeff_neurons))(hidden)
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               #activation='tanh', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                      
                     else:                          
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               #activation='tanh', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                     outputs_list = [outputs_coeff]
                     
@@ -1160,13 +1322,17 @@ def train_inet(lambda_net_train_dataset,
                         output_name = 'output_identifier_' + str(outputs_index+1)
                         outputs_identifer_neurons = config['data']['number_of_variables']
                         if config['i_net']['additional_hidden']:
-                            hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden_' + output_name)(hidden)
+                            hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, 
+                                                                             kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                             name='hidden_' + output_name)(hidden)
                             outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                       activation='softmax', 
+                                                                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                       name=output_name)(hidden_outputs_identifer)                     
                         else:                          
                             outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
                                                                       activation='softmax', 
+                                                                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                       name=output_name)(hidden)
                         outputs_list.append(outputs_identifer)    
               
@@ -1175,13 +1341,17 @@ def train_inet(lambda_net_train_dataset,
                     
                     outputs_coeff_neurons = internal_node_num_*config['data']['number_of_variables']
                     if config['i_net']['additional_hidden']:
-                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, name='hidden' + 'output_coeff_' + str(outputs_coeff_neurons))(hidden)    
+                        hidden_outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons*2, 
+                                                                     kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                     name='hidden' + 'output_coeff_' + str(outputs_coeff_neurons))(hidden)    
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
-                                                          activation='sigmoid', 
-                                                          name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
+                                                              activation='sigmoid', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
                     else:
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                               activation='sigmoid', 
+                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                     outputs_list = [outputs_coeff]
                     
@@ -1190,14 +1360,18 @@ def train_inet(lambda_net_train_dataset,
                         output_name = 'output_identifier_' + str(outputs_index+1)
                         outputs_identifer_neurons = config['data']['number_of_variables']
                         if config['i_net']['additional_hidden']:
-                            hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, name='hidden' + output_name)(hidden)                        
+                            hidden_outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons*2, 
+                                                                             kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                             name='hidden' + output_name)(hidden)                        
                             outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
-                                                                  activation='softmax', 
-                                                                  name=output_name)(hidden_outputs_identifer)
+                                                                      activation='softmax', 
+                                                                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                      name=output_name)(hidden_outputs_identifer)
                         else:
                             outputs_identifer = tf.keras.layers.Dense(outputs_identifer_neurons, 
-                                                                  activation='softmax', 
-                                                                  name=output_name)(hidden)                            
+                                                                      activation='softmax', 
+                                                                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                      name=output_name)(hidden)                            
                         outputs_list.append(outputs_identifer)    
 
        
@@ -1205,25 +1379,33 @@ def train_inet(lambda_net_train_dataset,
             if config['function_family']['dt_type'] == 'SDT':
                 outputs_bias_neurons = internal_node_num_
                 if config['i_net']['additional_hidden']:
-                    hidden_outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons*2, name='hidden_' + 'output_bias_' + str(outputs_bias_neurons))(hidden)    
+                    hidden_outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons*2, 
+                                                                kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                name='hidden_' + 'output_bias_' + str(outputs_bias_neurons))(hidden)    
                     outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons, 
                                                          #activation='tanh', 
+                                                         kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                          name='output_bias_' + str(outputs_bias_neurons))(hidden_outputs_bias)
                 else:
                     outputs_bias = tf.keras.layers.Dense(outputs_bias_neurons, 
                                                          #activation='tanh', 
+                                                         kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                          name='output_bias_' + str(outputs_bias_neurons))(hidden)
                 outputs_list.append(outputs_bias)     
 
                 outputs_leaf_nodes_neurons = leaf_node_num_ * config['data']['num_classes']
                 if config['i_net']['additional_hidden']:
-                    hidden_outputs_bias = tf.keras.layers.Dense(outputs_leaf_nodes_neurons*2, name='hidden_' + 'output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)    
+                    hidden_outputs_bias = tf.keras.layers.Dense(outputs_leaf_nodes_neurons*2, 
+                                                                kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                name='hidden_' + 'output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)    
                     outputs_bias = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
-                                                               #activation='tanh', 
-                                                               name='output_leaf_nodes_' + str(outputs_leaf_nodes_neurons))(hidden_outputs_bias)
+                                                         #activation='tanh', 
+                                                         kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                         name='output_leaf_nodes_' + str(outputs_leaf_nodes_neurons))(hidden_outputs_bias)
                 else:                
                     outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
                                                                #activation='tanh', 
+                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                name='output_leaf_nodes_' + str(outputs_leaf_nodes_neurons))(hidden)
                 outputs_list.append(outputs_leaf_nodes)     
 
@@ -1231,21 +1413,25 @@ def train_inet(lambda_net_train_dataset,
             elif config['function_family']['dt_type'] == 'vanilla':
                 outputs_leaf_nodes_neurons = leaf_node_num_
                 if config['i_net']['additional_hidden']:
-                    hidden_outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons*2, name='hidden_' + 'output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)    
+                    hidden_outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons*2, 
+                                                                      kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                      name='hidden_' + 'output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)    
                     outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
-                                                           activation='sigmoid', 
-                                                           name='output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden_outputs_leaf_nodes)                    
+                                                               activation='sigmoid', 
+                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                               name='output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden_outputs_leaf_nodes)                    
                 else:
                     outputs_leaf_nodes = tf.keras.layers.Dense(outputs_leaf_nodes_neurons, 
-                                                           activation='sigmoid', 
-                                                           name='output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)
+                                                               activation='sigmoid', 
+                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                               name='output_leaf_node_' + str(outputs_leaf_nodes_neurons))(hidden)
                 outputs_list.append(outputs_leaf_nodes)    
 
                 outputs = concatenate(outputs_list, name='output_combined')        
                     
 
             model = Model(inputs=inputs, outputs=outputs)
-                        
+                    
             if config['i_net']['early_stopping']:
                 callback_names.append('early_stopping')
             
@@ -1254,19 +1440,29 @@ def train_inet(lambda_net_train_dataset,
             optimizer = tf.keras.optimizers.get(config['i_net']['optimizer'])
             optimizer.learning_rate = config['i_net']['learning_rate']
 
+            random.seed(config['computation']['RANDOM_SEED'])
+            np.random.seed(config['computation']['RANDOM_SEED'])  
+            tf.random.set_seed(config['computation']['RANDOM_SEED'])  
+            
             model.compile(optimizer=optimizer,
                           loss=loss_function,
                           metrics=metrics
                          )
-
+            #print(model.get_weights())
             verbosity = 2 #if n_jobs ==1 else 0
             
+            random.seed(config['computation']['RANDOM_SEED'])
+            np.random.seed(config['computation']['RANDOM_SEED'])  
+            tf.random.set_seed(config['computation']['RANDOM_SEED'])                
             ############################## PREDICTION ###############################
+            
+            #print(model.get_weights())
+            
             history = model.fit(X_train,
                       y_train_model,
                       epochs=config['i_net']['epochs'], 
                       batch_size=config['i_net']['batch_size'], 
-                      #shuffle=False,
+                      shuffle=False,
                       validation_data=valid_data,
                       callbacks=callbacks,
                       verbose=verbosity,
