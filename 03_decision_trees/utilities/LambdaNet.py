@@ -564,6 +564,61 @@ class LambdaNet():
                                 'feature_weight_0': feature_weight_0_list[i],
                                 'seed_shuffeling': seed_shuffeling_list[i],
                             }}  
+                        elif distribution_name == 'lognormal':
+                            distribution_dict = {distribution_name: {
+                                'class_0': {
+                                    'mean': distribution_parameters_0_param_1,
+                                    'mesigmaan': distribution_parameters_0_param_2,
+                                },
+                                'class_1': {
+                                    'mean': distribution_parameters_1_param_1,
+                                    'sigma': distribution_parameters_1_param_2,
+                                },
+                                'samples_class_0': samples_class_0_list[i],
+                                'feature_weight_0': feature_weight_0_list[i],
+                                'seed_shuffeling': seed_shuffeling_list[i],       
+                            }} 
+                        elif distribution_name == 'f':
+                            distribution_dict = {distribution_name: {
+                                'class_0': {
+                                    'dfnum': distribution_parameters_0_param_1,
+                                    'dfden': distribution_parameters_0_param_2,
+                                },
+                                'class_1': {
+                                    'dfnum': distribution_parameters_1_param_1,
+                                    'dfden': distribution_parameters_1_param_2,
+                                },
+                                'samples_class_0': samples_class_0_list[i],
+                                'feature_weight_0': feature_weight_0_list[i],
+                                'seed_shuffeling': seed_shuffeling_list[i],       
+                            }} 
+                        elif distribution_name == 'logistic':
+                            distribution_dict = {distribution_name: {
+                                'class_0': {
+                                    'loc': distribution_parameters_0_param_1,
+                                    'scale': distribution_parameters_0_param_2,
+                                },
+                                'class_1': {
+                                    'loc': distribution_parameters_1_param_1,
+                                    'scale': distribution_parameters_1_param_2,
+                                },
+                                'samples_class_0': samples_class_0_list[i],
+                                'feature_weight_0': feature_weight_0_list[i],
+                                'seed_shuffeling': seed_shuffeling_list[i],       
+                            }} 
+                        elif distribution_name == 'weibull':
+                            distribution_dict = {distribution_name: {
+                                'class_0': {
+                                    'a': distribution_parameters_0_param_1,
+                                },
+                                'class_1': {
+                                    'a': distribution_parameters_1_param_1,
+                                },
+                                'samples_class_0': samples_class_0_list[i],
+                                'feature_weight_0': feature_weight_0_list[i],
+                                'seed_shuffeling': seed_shuffeling_list[i],       
+                            }}                              
+                            
 
                         distribution_dict[distribution_name]['samples_class_0'] = self.samples_class_0_list[i]
                         self.distribution_dict_list.append(distribution_dict)

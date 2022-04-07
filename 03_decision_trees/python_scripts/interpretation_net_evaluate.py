@@ -137,8 +137,8 @@ def extend_inet_parameter_setting(parameter_setting):
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001   
     elif parameter_setting['inet_setting'] == 8:
-        parameter_setting['dense_layers'] = [2048, 1024]
-        parameter_setting['dropout'] = [0, 0.25]     
+        parameter_setting['dense_layers'] = [512, 512, 512]
+        parameter_setting['dropout'] = [0, 0, 0]     
         parameter_setting['hidden_activation'] = 'relu'
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001 
@@ -214,6 +214,8 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'decision_sparsity_train': 1, #None or int
 
                         'function_generation_type': parameter_setting['function_generation_type'],# 'make_classification_distribution', 'make_classification_distribution_trained', 'distribution', 'distribution_trained', 'make_classification', 'make_classification_trained', 'random_decision_tree', 'random_decision_tree_trained'
+                        
+                        'distrib_by_feature': parameter_setting['distrib_by_feature'],
                         'distribution_list': parameter_setting['distribution_list'],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
                         'distribution_list_eval': parameter_setting['distribution_list_eval'],
 
@@ -433,7 +435,12 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                   else ((2 ** maximum_depth - 1) * number_of_variables * 2) + (2 ** maximum_depth - 1) + (2 ** maximum_depth) * num_classes if function_representation_type == 3 and dt_type == 'SDT'
                   else None
                                                                             )
-                #######################################################################################################################################
+                if distrib_by_feature:
+                    config['evaluation']['random_evaluation_dataset_distribution'] = config['data']['distribution_list_eval']
+                    config['data']['distribution_list'] = [config['data']['distribution_list']]
+                    config['data']['distribution_list_eval'] = [config['data']['distribution_list_eval']]
+
+                            #######################################################################################################################################
                 ################################################## UPDATE VARIABLES ###################################################################
                 #######################################################################################################################################
                 globals().update(config['function_family'])
@@ -709,61 +716,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 # In[ ]:
 
 
-                if False:
-                    index = 0
-                    lambda_net = lambda_net_dataset_train.lambda_net_list[index]
-
-                    lambda_net_model = network_parameters_to_network(lambda_net.network_parameters, config)
-                    lambda_net_model_preds = lambda_net_model.predict(lambda_net.X_train_lambda)
-                    dt_train_data = DecisionTreeClassifier(max_depth=3)
-                    dt_train_data.fit(lambda_net.X_train_lambda, np.round(lambda_net_model_preds))
-
-                    random_data = np.random.uniform(0, 1, lambda_net.X_train_lambda.shape)
-                    lambda_net_model_preds_random = lambda_net_model.predict(random_data)
-                    dt_random_data = DecisionTreeClassifier(max_depth=3)
-                    dt_random_data.fit(random_data, np.round(lambda_net_model_preds_random))
-
-                    plot_decision_area_evaluation(lambda_net.X_train_lambda, 
-                                                lambda_net.y_train_lambda.flatten(), 
-                                                lambda_net.X_test_lambda, 
-                                                lambda_net.y_test_lambda.flatten(),
-                                                lambda_net_model,
-                                                dt_train_data,
-                                                dt_random_data,
-                                                model.predict(np.array([lambda_net.network_parameters]))[0],
-                                                np.array([str(i) for i in range(lambda_net.X_train_lambda.shape[1])]),
-                                                config
-                                               )
-
-                    index = 0
-                    lambda_net = lambda_net_dataset_valid.lambda_net_list[index]
-
-                    lambda_net_model = network_parameters_to_network(lambda_net.network_parameters, config)
-                    lambda_net_model_preds = lambda_net_model.predict(lambda_net.X_train_lambda)
-                    dt_train_data = DecisionTreeClassifier(max_depth=3)
-                    dt_train_data.fit(lambda_net.X_train_lambda, np.round(lambda_net_model_preds))
-
-                    random_data = np.random.uniform(0, 1, lambda_net.X_train_lambda.shape)
-                    lambda_net_model_preds_random = lambda_net_model.predict(random_data)
-                    dt_random_data = DecisionTreeClassifier(max_depth=3)
-                    dt_random_data.fit(random_data, np.round(lambda_net_model_preds_random))
-
-                    plot_decision_area_evaluation(lambda_net.X_train_lambda, 
-                                                lambda_net.y_train_lambda.flatten(), 
-                                                lambda_net.X_test_lambda, 
-                                                lambda_net.y_test_lambda.flatten(),
-                                                lambda_net_model,
-                                                dt_train_data,
-                                                dt_random_data,
-                                                model.predict(np.array([lambda_net.network_parameters]))[0],
-                                                np.array([str(i) for i in range(lambda_net.X_train_lambda.shape[1])]),
-                                                config
-                                               )    
-
-
-                # In[ ]:
-
-
                 index = 0
                 if test_size > 0 and not evaluate_distribution:
                     network_parameters = np.array([lambda_net_dataset_test.network_parameters_array[index]])
@@ -937,178 +889,32 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
 
                 # In[ ]:
-
-
+                
                 if evaluate_distribution and test_size > 0:
                     #print(distribution_parameter_list_list[0])
                     #print(lambda_net_dataset_valid.distribution_dict_list_list[0])
 
-                    inet_performance_distrib_evaluation = np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy'])
+                    inet_performance_distrib_evaluation = np.array(inet_evaluation_result_dict_complete_by_distribution_test[list(inet_evaluation_result_dict_complete_by_distribution_test.keys())[0]]['inet_scores']['accuracy'])
                     print('I-Net Performance by Network: ', inet_performance_distrib_evaluation)
 
-                    mean_random_performance_distrib_evaluation = np.mean(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0)
+                    mean_random_performance_distrib_evaluation = np.mean(np.array([inet_evaluation_result_dict_complete_by_distribution_test[str(distrib)]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0)
                     print('Distilled Mean Performance by Network: ', mean_random_performance_distrib_evaluation)
 
-                    max_random_performance_distrib_evaluation = np.max(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0)
+                    max_random_performance_distrib_evaluation = np.max(np.array([inet_evaluation_result_dict_complete_by_distribution_test[str(distrib)]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0)
                     print('Distilled Max Performance by Network: ', max_random_performance_distrib_evaluation)
 
-                    print('Median I-Net:', np.median(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']))
-                    print('Median DT Distilled:', np.median(np.median(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0)))#np.median(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['dt_scores']['accuracy']))
+                    print('Median I-Net:', np.median(inet_evaluation_result_dict_complete_by_distribution_test[list(inet_evaluation_result_dict_complete_by_distribution_test.keys())[0]]['inet_scores']['accuracy']))
+                    print('Median DT Distilled:', np.median(np.median(np.array([inet_evaluation_result_dict_complete_by_distribution_test[str(distrib)]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0)))
 
                     complete_distribution_evaluation_results = get_complete_distribution_evaluation_results_dataframe(inet_evaluation_result_dict_mean_by_distribution_test)
                     display(complete_distribution_evaluation_results.head(20))
 
                     network_distances = get_print_network_distances_dataframe(distances_dict)
-                    display(network_distances.head(20))
+                    display(network_distances.head(20))                
 
-
-                # In[ ]:
-
-
-                #%load_ext autoreload
-                #%autoreload 2
 
 
                 # In[ ]:
-
-
-                if evaluate_distribution:
-                    if False:
-                        for i in range(min(3, test_size)):
-                            #index = 14
-                            #index = np.argmax(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['dt_scores']['accuracy']))
-                            top_number = i
-                            #index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['dt_scores']['accuracy']))[::-1][top_number]
-
-                            index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.median(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0))[::-1][top_number]
-                            #index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.max(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0))[::-1][top_number]
-                            #index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.mean(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0))[::-1][top_number]
-
-                            distrib_for_index = np.argmax(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in distribution_list_eval])[:,index]) 
-
-                            print('Index: ', index)
-                            #print(distribution_parameter_list_list[index])
-                            plot_decision_area_evaluation_all_distrib(data_dict_list_test[index]['X_train'], 
-                                                                data_dict_list_test[index]['y_train'], 
-                                                                data_dict_list_test[index]['X_test'], 
-                                                                data_dict_list_test[index]['y_test'],
-                                                                network_parameters_to_network(shaped_network_parameters_to_array(test_network_list_distrib[index], config), config),
-                                                                dt_distilled_list_test[0][index][1],
-                                                                [dt_distilled_list_test[i][index][0] for i in range(len(config['data']['distribution_list_eval']))],     
-                                                                dt_inet_list_test[0][index],
-                                                                np.array([str(i) for i in range(data_dict_list_test[index]['X_train'].shape[1])]),
-                                                                config['data']['distribution_list_eval'],
-                                                                config
-                                                               )    
-
-
-                    elif False:
-                        #index = np.argmax(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['dt_scores']['accuracy']))
-                        top_number = 0
-                        #index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['dt_scores']['accuracy']))[::-1][top_number]
-                        index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.median(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0))[::-1][top_number]
-                        #index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.max(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0))[::-1][top_number]
-                        #index = np.argsort(np.array(inet_evaluation_result_dict_complete_by_distribution_test['uniform']['inet_scores']['accuracy']) - np.mean(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in config['data']['distribution_list_eval']]), axis=0))[::-1][top_number]
-
-                        distrib_for_index = np.argmax(np.array([inet_evaluation_result_dict_complete_by_distribution_test[distrib]['dt_scores']['accuracy'] for distrib in distribution_list_eval])[:,index])
-
-                        print('Index: ', index)
-                        #print(distribution_parameter_list_list[index])
-
-                        plot_decision_area_evaluation(data_dict_list_test[index]['X_train'], 
-                                                    data_dict_list_test[index]['y_train'], 
-                                                    data_dict_list_test[index]['X_test'], 
-                                                    data_dict_list_test[index]['y_test'],
-                                                    network_parameters_to_network(shaped_network_parameters_to_array(test_network_list_distrib[index], config), config),
-                                                    dt_distilled_list_test[distrib_for_index][index][1],
-                                                    dt_distilled_list_test[distrib_for_index][index][0],
-                                                    dt_inet_list_test[distrib_for_index][index],
-                                                    np.array([str(i) for i in range(data_dict_list_test[index]['X_train'].shape[1])]),
-                                                    config
-                                                   )
-
-
-                # In[ ]:
-
-                if False:
-                    if config['function_family']['dt_type'] == 'vanilla':
-                        plt.figure(figsize=(15,8))
-                        dt_inet = parameterDT(dt_inet_list_test[distrib_for_index][index], config)
-                        image = dt_inet.plot()
-                        display(image)
-
-                        plt.figure(figsize=(15,8))
-                        plot_tree(dt_distilled_list_test[distrib_for_index][index][0], fontsize=10)  #fist index=distrib; second index=index; third index=10k vs Train
-                        plt.show()
-
-                        plt.figure(figsize=(15,8))
-                        plot_tree(dt_distilled_list_test[distrib_for_index][index][1], fontsize=10)  #fist index=distrib; second index=index; third index=10k vs Train
-                        plt.show()    
-                    else:
-                        plt.figure(figsize=(15,8))
-                        dt_parameters = dt_inet_list_test[distrib_for_index][index]
-                        tree = generate_random_decision_tree(config)
-                        tree.initialize_from_parameter_array(dt_parameters, reshape=True, config=config)
-                        image = tree.plot_tree()
-                        display(image)
-
-                        plt.figure(figsize=(15,8))
-                        image = dt_distilled_list_test[distrib_for_index][index][0].plot_tree()
-                        display(image)
-
-                        plt.figure(figsize=(15,8))
-                        image = dt_distilled_list_test[distrib_for_index][index][0].plot_tree()    
-                        display(image)
-
-
-                # In[ ]:
-
-
-                if False:
-                    plot_class_distrib_by_feature(model = model,
-                                                  index = index,
-                                                  test_network = network_parameters_to_network(lambda_net_dataset_valid.network_parameters_array[index], config, base_model=None),
-                                                  distribution_training = config['data']['distribution_list_eval'][distrib_for_index],
-                                                  distribution_dict = lambda_net_dataset_valid.distribution_dict_list_list[index],
-                                                  X_test = lambda_net_dataset_valid.X_test_lambda_array[index],
-                                                  config = config)
-
-
-                # In[ ]:
-
-
-                if False:
-                    plot_class_distrib_by_feature(model = model,
-                                                  index = index,
-                                                  test_network = network_parameters_to_network(shaped_network_parameters_to_array(test_network_list_distrib[index], config), config, base_model=None),
-                                                  distribution_training = config['data']['distribution_list_eval'][distrib_for_index],
-                                                  distribution_dict = lambda_net_dataset_valid.distribution_dict_list_list[index],
-                                                  X_test =  data_dict_list_test[0]['X_test'],
-                                                  config = config)
-
-
-                # ### Distribution Evaluation (Selected Samples)
-
-                # In[ ]:
-
-
-                #%load_ext autoreload
-                #%autoreload 2
-                evaluate_network_on_distribution_custom_parameters(distribution_name_feature_0 = 'normal',
-                                                                   distribution_name_feature_1 = 'normal',
-                                                                   distribution_parameters_0_param_1_feature_0 = 1.188840288782265,
-                                                                   distribution_parameters_0_param_2_feature_0 = 0.8566173698593895,
-                                                                   distribution_parameters_1_param_1_feature_0 = 0.8713650102755661,
-                                                                   distribution_parameters_1_param_2_feature_0 = 1.8484540179178748,
-                                                                   distribution_parameters_0_param_1_feature_1 = 1.7185974826882278,
-                                                                   distribution_parameters_0_param_2_feature_1 = 0.5807878500034862,
-                                                                   distribution_parameters_1_param_1_feature_1 = 0.44369536008631294,
-                                                                   distribution_parameters_1_param_2_feature_1 = 1.17864258666672,
-                                                                   inet = model,
-                                                                   config = config,
-                                                                   distribution_list_evaluation = config['data']['distribution_list_eval'])
-
-
                 # # Real-World Data Evaluation
 
                 # In[ ]:
@@ -1256,24 +1062,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
 
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
-
                 # ## Titanic Dataset
 
                 # In[ ]:
@@ -1358,23 +1146,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
-
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
 
 
                 # ## Absenteeism at Work Dataset
@@ -1470,23 +1241,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
-
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
 
 
                 # ## Loan House
@@ -1596,23 +1350,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
-
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
 
 
                 # In[ ]:
@@ -1827,23 +1564,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 print_head
 
 
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
-
                 # ## Medical Insurance
 
                 # In[ ]:
@@ -1918,21 +1638,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
 
                 # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
 
                 # ## Bank Marketing
 
@@ -2019,23 +1724,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
-
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
 
 
                 # ## Cervical cancer (Risk Factors) Data Set
@@ -2130,21 +1818,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
 
                 # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
 
                 # ## Brest Cancer Wisconsin
 
@@ -2242,23 +1915,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 print_head
 
 
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
-
                 # ## Wisconsin Diagnostic Breast Cancer
 
                 # In[ ]:
@@ -2345,23 +2001,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
-
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
 
 
                 # ## Wisconsin Prognostic Breast Cancer
@@ -2451,23 +2090,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 print_head
 
 
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
-
                 # ## Abalone
 
                 # In[ ]:
@@ -2550,23 +2172,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
-
-
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
 
 
                 # ## Car
@@ -2655,23 +2260,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 print_head
 
 
-                # In[ ]:
-
-
-                if test_network_list[identifier] is not None and False:
-                    plot_decision_area_evaluation(data_dict[identifier]['X_train'].values, 
-                                                data_dict[identifier]['y_train'].values, 
-                                                data_dict[identifier]['X_test'].values, 
-                                                data_dict[identifier]['y_test'].values,
-                                                test_network_list[identifier],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index('TRAIN_DATA')],
-                                                dt_distilled_list_dict[identifier][0][dataset_size_list.index(10_000)],
-                                                dt_inet_dict[identifier],
-                                                data_dict[identifier]['X_train'].columns,
-                                                config
-                                               )
-
-
                 # # Plot and Save Results
 
                 # In[ ]:
@@ -2712,8 +2300,15 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                 for save_prefix in ['', timestr]:
 
-                    writepath_complete = './results_complete' + save_prefix + '.csv'
-                    writepath_summary = './results_summary' + save_prefix + '.csv'
+                    if save_prefix != '':
+                        os.makedirs(os.path.dirname("./results_complete/"), exist_ok=True)
+                        os.makedirs(os.path.dirname("./results_summary/"), exist_ok=True)
+                        
+                        writepath_complete = './results_complete/' + save_prefix + '.csv'
+                        writepath_summary = './results_summary/' + save_prefix + '.csv'   
+                    else:
+                        writepath_complete = './results_complete' + save_prefix + '.csv'
+                        writepath_summary = './results_summary' + save_prefix + '.csv'
 
                     #TODO: ADD COMPLEXITY FOR DTS
 
@@ -2729,31 +2324,54 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                     else:
                         flat_dict_test = flatten_dict(inet_evaluation_result_dict_complete_by_distribution_test)
 
+                    header_column = ''  
+
+                    for key in flat_config.keys():
+                        header_column += key
+                        header_column += ';'     
+
+                    number_of_evaluated_networks = np.array(flat_dict_train['inet_scores_binary_crossentropy']).shape[0]
+                    for key in flat_dict_train.keys():
+                        #if 'function_values' not in key:
+                        for i in range(number_of_evaluated_networks):
+                            header_column += key + '_train_' + str(i) + ';'  
+
+                    number_of_evaluated_networks = np.array(flat_dict_valid['inet_scores_binary_crossentropy']).shape[0]
+                    for key in flat_dict_valid.keys():
+                        #if 'function_values' not in key:
+                        for i in range(number_of_evaluated_networks):
+                            header_column += key + '_valid_' + str(i) + ';'       
+
+                    number_of_evaluated_networks = np.array(flat_dict_test[list(flat_dict_test.keys())[0]]).shape[0]
+                    for key in flat_dict_test.keys():
+                        #if 'function_values' not in key:
+                        for i in range(number_of_evaluated_networks):
+                            header_column += key + '_test_' + str(i) + ';'          
+
+                    header_column += '\n'
+
+
+                    if os.path.exists(writepath_complete):        
+                        with open(writepath_complete, 'r') as text_file: 
+                            lines = text_file.readlines()
+
+                        counter = 1
+                        while lines[0] != header_column:  
+                            if save_prefix != '':
+                                writepath_complete = './results_complete/' + save_prefix + '-' + str(counter) + '.csv' 
+                            else:
+                                writepath_complete = './results_complete' + save_prefix + '-' + str(counter) + '.csv' 
+                            if os.path.exists(writepath_complete):
+                                with open(writepath_complete, 'r') as text_file: 
+                                    lines = text_file.readlines()
+                            else:
+                                break
+                            counter += 1    
+
                     if not os.path.exists(writepath_complete):
-                        with open(writepath_complete, 'w+') as text_file:       
-                            for key in flat_config.keys():
-                                text_file.write(key)
-                                text_file.write(';')      
+                        with open(writepath_complete, 'w+') as text_file: 
+                            text_file.write(header_column)
 
-                            number_of_evaluated_networks = np.array(flat_dict_train['inet_scores_binary_crossentropy']).shape[0]
-                            for key in flat_dict_train.keys():
-                                #if 'function_values' not in key:
-                                for i in range(number_of_evaluated_networks):
-                                    text_file.write(key + '_train_' + str(i) + ';')    
-
-                            number_of_evaluated_networks = np.array(flat_dict_valid['inet_scores_binary_crossentropy']).shape[0]
-                            for key in flat_dict_valid.keys():
-                                #if 'function_values' not in key:
-                                for i in range(number_of_evaluated_networks):
-                                    text_file.write(key + '_valid_' + str(i) + ';')       
-
-                            number_of_evaluated_networks = np.array(flat_dict_test[list(flat_dict_test.keys())[0]]).shape[0]
-                            for key in flat_dict_test.keys():
-                                #if 'function_values' not in key:
-                                for i in range(number_of_evaluated_networks):
-                                    text_file.write(key + '_test_' + str(i) + ';')          
-
-                            text_file.write('\n')
 
                     with open(writepath_complete, 'a+') as text_file:  
                         for value in flat_config.values():
@@ -2785,7 +2403,8 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
 
 
-                    # In[ ]:
+
+
 
 
                     inet_evaluation_result_dict_mean_train_flat = flatten_dict(inet_evaluation_result_dict_mean_train)
@@ -2798,34 +2417,54 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                     #identifier_list_synthetic = ['train', 'valid', 'test']
                     identifier_list_combined = list(flatten_list([identifier_list, ['train', 'valid', 'test']]))
 
+                    header_column = ''
+
+                    for key in flat_config.keys():
+                        header_column += key + ';'
+
+                    for key in inet_evaluation_result_dict_mean_train_flat.keys():
+                        header_column += 'train_' + key + ';'
+                    for key in inet_evaluation_result_dict_mean_valid_flat.keys():
+                        header_column += 'valid_' + key + ';'          
+                    for key in inet_evaluation_result_dict_mean_test_flat.keys():
+                        header_column += 'test_' + key + ';'                
+
+                    for dataset_size in dataset_size_list:
+                        for identifier in identifier_list:
+                            results_dict_flat = flatten_dict(results_dict[identifier][-2])
+                            #del results_dict_flat['function_values_y_test_inet_dt']
+                            #del results_dict_flat['function_values_y_test_distilled_dt']
+
+                            for key in results_dict_flat.keys():
+                                header_column += key + '_' + identifier + '_' + str(dataset_size) + ';'                                   
+
+                    for key in distances_dict['train'].keys():
+                        for identifier in identifier_list_combined:
+                            header_column += key + '_' + identifier + ';' 
+
+                    header_column += '\n'
+
+                    if os.path.exists(writepath_summary):        
+                        with open(writepath_summary, 'r') as text_file: 
+                            lines = text_file.readlines()
+                            
+                        counter = 1
+                        while lines[0] != header_column:  
+                            if save_prefix != '':
+                                writepath_summary = './results_summary/' + save_prefix + '-' + str(counter) + '.csv' 
+                            else:
+                                writepath_summary = './results_summary' + save_prefix + '-' + str(counter) + '.csv'                         
+                            if os.path.exists(writepath_summary):
+                                with open(writepath_summary, 'r') as text_file: 
+                                    lines = text_file.readlines()
+                            else:
+                                break
+                            counter += 1                            
+                            
+
                     if not os.path.exists(writepath_summary):
                         with open(writepath_summary, 'w+') as text_file: 
-
-                            for key in flat_config.keys():
-                                text_file.write(key + ';')
-
-                            for key in inet_evaluation_result_dict_mean_train_flat.keys():
-                                text_file.write('train_' + key + ';')
-                            for key in inet_evaluation_result_dict_mean_valid_flat.keys():
-                                text_file.write('valid_' + key + ';')            
-                            for key in inet_evaluation_result_dict_mean_test_flat.keys():
-                                text_file.write('test_' + key + ';')                
-
-                            for dataset_size in dataset_size_list:
-                                for identifier in identifier_list:
-                                    results_dict_flat = flatten_dict(results_dict[identifier][-2])
-                                    #del results_dict_flat['function_values_y_test_inet_dt']
-                                    #del results_dict_flat['function_values_y_test_distilled_dt']
-
-                                    for key in results_dict_flat.keys():
-                                        text_file.write(key + '_' + identifier + '_' + str(dataset_size) + ';')                                   
-
-
-                            for key in distances_dict['train'].keys():
-                                for identifier in identifier_list_combined:
-                                    text_file.write(key + '_' + identifier + ';') 
-
-                            text_file.write('\n')
+                            text_file.write(header_column)
 
                     with open(writepath_summary, 'a+') as text_file: 
 
@@ -2854,9 +2493,10 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                         text_file.write('\n')
 
-                        text_file.close()      
-
-
+                        text_file.close()                          
+                    
+                    
+                    
                 # In[ ]:
 
 

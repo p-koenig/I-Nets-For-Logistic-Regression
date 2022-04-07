@@ -1,0 +1,276 @@
+\newpage 
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{ll}
+\toprule
+{} & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &                 \bftab\phantom{0}57.19 $\pm$ 14.72 \\
+\textbf{Medical Insurance (n=9)                  } &                 \bftab\phantom{0}50.68 $\pm$ 10.27 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &       \bftab\phantom{0}86.67 $\pm$ \phantom{0}7.36 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &                 \bftab\phantom{0}71.96 $\pm$ 18.59 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &                 \bftab\phantom{0}62.63 $\pm$ 20.85 \\
+\textbf{Abalone (n=10)                           } &                 \bftab\phantom{0}48.06 $\pm$ 12.82 \\
+\textbf{Absenteeism (n=15)                       } &       \bftab\phantom{0}53.38 $\pm$ \phantom{0}7.72 \\
+\textbf{Cervical Cancer (n=15)                   } &                 \bftab\phantom{0}54.82 $\pm$ 32.48 \\
+\textbf{Loan House (n=16)                        } &       \bftab\phantom{0}81.97 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &                 \bftab\phantom{0}38.78 $\pm$ 14.79 \\
+\textbf{Bank Marketing (n=29)                    } &                 \bftab\phantom{0}60.19 $\pm$ 16.03 \\
+\textbf{Loan Credit (n=32)                       } &                 \bftab\phantom{0}52.41 $\pm$ 19.88 \\
+\midrule
+\textbf{Summary                                  } &                 \bftab\phantom{0}59.90 $\pm$ 13.42 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results vanilla distrib comparison.}}
+\label{tab:eval-results}
+\end{table}
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{ll}
+\toprule
+{} & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &                 \bftab\phantom{0}66.40 $\pm$ 15.96 \\
+\textbf{Medical Insurance (n=9)                  } &       \bftab\phantom{0}49.70 $\pm$ \phantom{0}9.29 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &       \bftab\phantom{0}95.22 $\pm$ \phantom{0}1.13 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &       \bftab\phantom{0}82.14 $\pm$ \phantom{0}6.08 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &                 \bftab\phantom{0}70.53 $\pm$ 15.82 \\
+\textbf{Abalone (n=10)                           } &                 \bftab\phantom{0}41.03 $\pm$ 10.25 \\
+\textbf{Absenteeism (n=15)                       } &       \bftab\phantom{0}55.81 $\pm$ \phantom{0}5.47 \\
+\textbf{Cervical Cancer (n=15)                   } &                 \bftab\phantom{0}66.12 $\pm$ 22.02 \\
+\textbf{Loan House (n=16)                        } &       \bftab\phantom{0}18.03 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &       \bftab\phantom{0}67.95 $\pm$ \phantom{0}1.97 \\
+\textbf{Bank Marketing (n=29)                    } &       \bftab\phantom{0}23.78 $\pm$ \phantom{0}0.95 \\
+\textbf{Loan Credit (n=32)                       } &       \bftab\phantom{0}74.39 $\pm$ \phantom{0}0.01 \\
+\midrule
+\textbf{Summary                                  } &                 \bftab\phantom{0}59.26 $\pm$ 21.87 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT distrib comparison.}}
+\label{tab:eval-results}
+\end{table}
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lll}
+\toprule
+{} &                                          inet & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}83.15 $\pm$ \phantom{0}0.00 &                       \phantom{0}57.19 $\pm$ 14.72 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}82.71 $\pm$ \phantom{0}0.00 &                       \phantom{0}50.68 $\pm$ 10.27 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \bftab\phantom{0}91.30 $\pm$ \phantom{0}0.00 &             \phantom{0}86.67 $\pm$ \phantom{0}7.36 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}89.29 $\pm$ \phantom{0}0.00 &                       \phantom{0}71.96 $\pm$ 18.59 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &        \phantom{0}42.11 $\pm$ \phantom{0}0.00 &                 \bftab\phantom{0}62.63 $\pm$ 20.85 \\
+\textbf{Abalone (n=10)                           } &        \phantom{0}55.16 $\pm$ \phantom{0}0.00 &                       \phantom{0}48.06 $\pm$ 12.82 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}62.16 $\pm$ \phantom{0}0.00 &             \phantom{0}53.38 $\pm$ \phantom{0}7.72 \\
+\textbf{Cervical Cancer (n=15)                   } &        \phantom{0}69.41 $\pm$ \phantom{0}0.00 &                       \phantom{0}54.82 $\pm$ 32.48 \\
+\textbf{Loan House (n=16)                        } &  \bftab\phantom{0}91.80 $\pm$ \phantom{0}0.00 &             \phantom{0}81.97 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &        \phantom{0}43.98 $\pm$ \phantom{0}0.00 &                       \phantom{0}38.78 $\pm$ 14.79 \\
+\textbf{Bank Marketing (n=29)                    } &        \phantom{0}30.15 $\pm$ \phantom{0}0.00 &                 \bftab\phantom{0}60.19 $\pm$ 16.03 \\
+\textbf{Loan Credit (n=32)                       } &  \bftab\phantom{0}71.70 $\pm$ \phantom{0}0.00 &                       \phantom{0}52.41 $\pm$ 19.88 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}67.74 $\pm$ 20.21 &                       \phantom{0}59.90 $\pm$ 13.42 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results vanilla distrib inet.}}
+\label{tab:eval-results}
+\end{table}
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lll}
+\toprule
+{} &                                          inet & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}82.02 $\pm$ \phantom{0}0.00 &                       \phantom{0}66.40 $\pm$ 15.96 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}94.74 $\pm$ \phantom{0}0.00 &             \phantom{0}49.70 $\pm$ \phantom{0}9.29 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \bftab\phantom{0}97.10 $\pm$ \phantom{0}0.00 &             \phantom{0}95.22 $\pm$ \phantom{0}1.13 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}96.43 $\pm$ \phantom{0}0.00 &             \phantom{0}82.14 $\pm$ \phantom{0}6.08 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &  \bftab\phantom{0}94.74 $\pm$ \phantom{0}0.00 &                       \phantom{0}70.53 $\pm$ 15.82 \\
+\textbf{Abalone (n=10)                           } &  \bftab\phantom{0}74.10 $\pm$ \phantom{0}0.00 &                       \phantom{0}41.03 $\pm$ 10.25 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}93.24 $\pm$ \phantom{0}0.00 &             \phantom{0}55.81 $\pm$ \phantom{0}5.47 \\
+\textbf{Cervical Cancer (n=15)                   } &  \bftab\phantom{0}85.88 $\pm$ \phantom{0}0.00 &                       \phantom{0}66.12 $\pm$ 22.02 \\
+\textbf{Loan House (n=16)                        } &  \bftab\phantom{0}95.08 $\pm$ \phantom{0}0.00 &             \phantom{0}18.03 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &        \phantom{0}32.77 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}67.95 $\pm$ \phantom{0}1.97 \\
+\textbf{Bank Marketing (n=29)                    } &  \bftab\phantom{0}76.84 $\pm$ \phantom{0}0.00 &             \phantom{0}23.78 $\pm$ \phantom{0}0.95 \\
+\textbf{Loan Credit (n=32)                       } &        \phantom{0}27.64 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}74.39 $\pm$ \phantom{0}0.01 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}79.22 $\pm$ 23.18 &                       \phantom{0}59.26 $\pm$ 21.87 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT distrib inet.}}
+\label{tab:eval-results}
+\end{table}
+\newpage 
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{llll}
+\toprule
+{} &                                          inet &                               distilled & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}83.15 $\pm$ \phantom{0}0.00 &            \phantom{0}57.19 $\pm$ 14.72 &                 \bftab\phantom{0}57.19 $\pm$ 14.72 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}82.71 $\pm$ \phantom{0}0.00 &            \phantom{0}50.68 $\pm$ 10.27 &                 \bftab\phantom{0}50.68 $\pm$ 10.27 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &        \phantom{0}91.30 $\pm$ \phantom{0}0.00 &  \phantom{0}86.67 $\pm$ \phantom{0}7.36 &       \bftab\phantom{0}86.67 $\pm$ \phantom{0}7.36 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}89.29 $\pm$ \phantom{0}0.00 &            \phantom{0}71.96 $\pm$ 18.59 &                 \bftab\phantom{0}71.96 $\pm$ 18.59 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &        \phantom{0}42.11 $\pm$ \phantom{0}0.00 &      \bftab\phantom{0}62.63 $\pm$ 20.85 &                 \bftab\phantom{0}62.63 $\pm$ 20.85 \\
+\textbf{Abalone (n=10)                           } &        \phantom{0}55.16 $\pm$ \phantom{0}0.00 &            \phantom{0}48.06 $\pm$ 12.82 &                 \bftab\phantom{0}48.06 $\pm$ 12.82 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}62.16 $\pm$ \phantom{0}0.00 &  \phantom{0}53.38 $\pm$ \phantom{0}7.72 &       \bftab\phantom{0}53.38 $\pm$ \phantom{0}7.72 \\
+\textbf{Cervical Cancer (n=15)                   } &        \phantom{0}69.41 $\pm$ \phantom{0}0.00 &            \phantom{0}54.82 $\pm$ 32.48 &                 \bftab\phantom{0}54.82 $\pm$ 32.48 \\
+\textbf{Loan House (n=16)                        } &  \bftab\phantom{0}91.80 $\pm$ \phantom{0}0.00 &  \phantom{0}81.97 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}81.97 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &        \phantom{0}43.98 $\pm$ \phantom{0}0.00 &            \phantom{0}38.78 $\pm$ 14.79 &                 \bftab\phantom{0}38.78 $\pm$ 14.79 \\
+\textbf{Bank Marketing (n=29)                    } &        \phantom{0}30.15 $\pm$ \phantom{0}0.00 &      \bftab\phantom{0}60.19 $\pm$ 16.03 &                 \bftab\phantom{0}60.19 $\pm$ 16.03 \\
+\textbf{Loan Credit (n=32)                       } &  \bftab\phantom{0}71.70 $\pm$ \phantom{0}0.00 &            \phantom{0}52.41 $\pm$ 19.88 &                 \bftab\phantom{0}52.41 $\pm$ 19.88 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}67.74 $\pm$ 20.21 &            \phantom{0}59.90 $\pm$ 13.42 &                 \bftab\phantom{0}59.90 $\pm$ 13.42 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results vanilla.}}
+\label{tab:eval-results}
+\end{table}
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{llll}
+\toprule
+{} &                                          inet &                                     distilled & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}82.02 $\pm$ \phantom{0}0.00 &                  \phantom{0}66.40 $\pm$ 15.96 &                 \bftab\phantom{0}66.40 $\pm$ 15.96 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}94.74 $\pm$ \phantom{0}0.00 &        \phantom{0}49.70 $\pm$ \phantom{0}9.29 &       \bftab\phantom{0}49.70 $\pm$ \phantom{0}9.29 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \bftab\phantom{0}97.10 $\pm$ \phantom{0}0.00 &        \phantom{0}95.22 $\pm$ \phantom{0}1.13 &       \bftab\phantom{0}95.22 $\pm$ \phantom{0}1.13 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}96.43 $\pm$ \phantom{0}0.00 &        \phantom{0}82.14 $\pm$ \phantom{0}6.08 &       \bftab\phantom{0}82.14 $\pm$ \phantom{0}6.08 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &  \bftab\phantom{0}94.74 $\pm$ \phantom{0}0.00 &                  \phantom{0}70.53 $\pm$ 15.82 &                 \bftab\phantom{0}70.53 $\pm$ 15.82 \\
+\textbf{Abalone (n=10)                           } &  \bftab\phantom{0}74.10 $\pm$ \phantom{0}0.00 &                  \phantom{0}41.03 $\pm$ 10.25 &                 \bftab\phantom{0}41.03 $\pm$ 10.25 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}93.24 $\pm$ \phantom{0}0.00 &        \phantom{0}55.81 $\pm$ \phantom{0}5.47 &       \bftab\phantom{0}55.81 $\pm$ \phantom{0}5.47 \\
+\textbf{Cervical Cancer (n=15)                   } &  \bftab\phantom{0}85.88 $\pm$ \phantom{0}0.00 &                  \phantom{0}66.12 $\pm$ 22.02 &                 \bftab\phantom{0}66.12 $\pm$ 22.02 \\
+\textbf{Loan House (n=16)                        } &  \bftab\phantom{0}95.08 $\pm$ \phantom{0}0.00 &        \phantom{0}18.03 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}18.03 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &        \phantom{0}32.77 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}67.95 $\pm$ \phantom{0}1.97 &       \bftab\phantom{0}67.95 $\pm$ \phantom{0}1.97 \\
+\textbf{Bank Marketing (n=29)                    } &  \bftab\phantom{0}76.84 $\pm$ \phantom{0}0.00 &        \phantom{0}23.78 $\pm$ \phantom{0}0.95 &       \bftab\phantom{0}23.78 $\pm$ \phantom{0}0.95 \\
+\textbf{Loan Credit (n=32)                       } &        \phantom{0}27.64 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}74.39 $\pm$ \phantom{0}0.01 &       \bftab\phantom{0}74.39 $\pm$ \phantom{0}0.01 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}79.22 $\pm$ 23.18 &                  \phantom{0}59.26 $\pm$ 21.87 &                 \bftab\phantom{0}59.26 $\pm$ 21.87 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT.}}
+\label{tab:eval-results}
+\end{table}
+\newpage 
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lll}
+\toprule
+{} &                                          inet & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}83.15 $\pm$ \phantom{0}0.00 &                       \phantom{0}57.19 $\pm$ 14.72 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}82.71 $\pm$ \phantom{0}0.00 &                       \phantom{0}50.68 $\pm$ 10.27 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &        \phantom{0}91.30 $\pm$ \phantom{0}0.00 &             \phantom{0}86.67 $\pm$ \phantom{0}7.36 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}89.29 $\pm$ \phantom{0}0.00 &                       \phantom{0}71.96 $\pm$ 18.59 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &        \phantom{0}42.11 $\pm$ \phantom{0}0.00 &                 \bftab\phantom{0}62.63 $\pm$ 20.85 \\
+\textbf{Abalone (n=10)                           } &        \phantom{0}55.16 $\pm$ \phantom{0}0.00 &                       \phantom{0}48.06 $\pm$ 12.82 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}62.16 $\pm$ \phantom{0}0.00 &             \phantom{0}53.38 $\pm$ \phantom{0}7.72 \\
+\textbf{Cervical Cancer (n=15)                   } &        \phantom{0}69.41 $\pm$ \phantom{0}0.00 &                       \phantom{0}54.82 $\pm$ 32.48 \\
+\textbf{Loan House (n=16)                        } &  \bftab\phantom{0}91.80 $\pm$ \phantom{0}0.00 &             \phantom{0}81.97 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &        \phantom{0}43.98 $\pm$ \phantom{0}0.00 &                       \phantom{0}38.78 $\pm$ 14.79 \\
+\textbf{Bank Marketing (n=29)                    } &        \phantom{0}30.15 $\pm$ \phantom{0}0.00 &                 \bftab\phantom{0}60.19 $\pm$ 16.03 \\
+\textbf{Loan Credit (n=32)                       } &  \bftab\phantom{0}71.70 $\pm$ \phantom{0}0.00 &                       \phantom{0}52.41 $\pm$ 19.88 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}67.74 $\pm$ 20.21 &                       \phantom{0}59.90 $\pm$ 13.42 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results vanilla.}}
+\label{tab:eval-results}
+\end{table}
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lll}
+\toprule
+{} &                                          inet & ['uniform', 'gamma', 'poisson', 'exponential', 'weibull'] \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}82.02 $\pm$ \phantom{0}0.00 &                       \phantom{0}66.40 $\pm$ 15.96 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}94.74 $\pm$ \phantom{0}0.00 &             \phantom{0}49.70 $\pm$ \phantom{0}9.29 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \bftab\phantom{0}97.10 $\pm$ \phantom{0}0.00 &             \phantom{0}95.22 $\pm$ \phantom{0}1.13 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}96.43 $\pm$ \phantom{0}0.00 &             \phantom{0}82.14 $\pm$ \phantom{0}6.08 \\
+\textbf{Wisconsin Prognostic Breast Cancer (n=10)} &  \bftab\phantom{0}94.74 $\pm$ \phantom{0}0.00 &                       \phantom{0}70.53 $\pm$ 15.82 \\
+\textbf{Abalone (n=10)                           } &  \bftab\phantom{0}74.10 $\pm$ \phantom{0}0.00 &                       \phantom{0}41.03 $\pm$ 10.25 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}93.24 $\pm$ \phantom{0}0.00 &             \phantom{0}55.81 $\pm$ \phantom{0}5.47 \\
+\textbf{Cervical Cancer (n=15)                   } &  \bftab\phantom{0}85.88 $\pm$ \phantom{0}0.00 &                       \phantom{0}66.12 $\pm$ 22.02 \\
+\textbf{Loan House (n=16)                        } &  \bftab\phantom{0}95.08 $\pm$ \phantom{0}0.00 &             \phantom{0}18.03 $\pm$ \phantom{0}0.00 \\
+\textbf{Adult (n=28)                             } &        \phantom{0}32.77 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}67.95 $\pm$ \phantom{0}1.97 \\
+\textbf{Bank Marketing (n=29)                    } &  \bftab\phantom{0}76.84 $\pm$ \phantom{0}0.00 &             \phantom{0}23.78 $\pm$ \phantom{0}0.95 \\
+\textbf{Loan Credit (n=32)                       } &        \phantom{0}27.64 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}74.39 $\pm$ \phantom{0}0.01 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}79.22 $\pm$ 23.18 &                       \phantom{0}59.26 $\pm$ 21.87 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT.}}
+\label{tab:eval-results}
+\end{table}
+\newpage 
