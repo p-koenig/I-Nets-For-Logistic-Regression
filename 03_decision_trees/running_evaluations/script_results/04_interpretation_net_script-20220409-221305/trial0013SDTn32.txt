@@ -1,0 +1,540 @@
+{'data_generation_filtering': False, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': [['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'uniform'], 'dt_setting': 2, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 6, 'noise_injected_level': 0, 'normalize_lambda_nets': True, 'number_of_random_evaluations_per_distribution': 10, 'number_of_variables': 32, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False, 'dt_type': 'SDT', 'decision_sparsity': -1, 'function_representation_type': 1, 'dense_layers': [1792, 512, 512], 'dropout': [0, 0, 0.5], 'hidden_activation': 'sigmoid', 'optimizer': 'adam', 'learning_rate': 0.001}
+lNetSize5000_numLNets10000_var32_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_randClassProb_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42/inet_dense1792-512-512_drop0-0-0.5e500b256_adam_funcRep1_reshapeNone
+lNetSize5000_numLNets10000_var32_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_randClassProb_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42
+Num GPUs Available:  0
+Num XLA-GPUs Available:  0
+(9000, 4602)
+(1000, 4602)
+----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------
+network_parameters_structure [(32, 128), (128,), (128, 1), (1,)]
+Epoch 1/500
+36/36 - 12s - loss: 0.7151 - binary_accuracy_inet_decision_function_fv_metric: 0.4982 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 12s/epoch - 337ms/step
+Epoch 2/500
+36/36 - 7s - loss: 0.6938 - binary_accuracy_inet_decision_function_fv_metric: 0.5023 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5008 - 7s/epoch - 184ms/step
+Epoch 3/500
+36/36 - 7s - loss: 0.6933 - binary_accuracy_inet_decision_function_fv_metric: 0.5052 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5002 - 7s/epoch - 186ms/step
+Epoch 4/500
+36/36 - 7s - loss: 0.6932 - binary_accuracy_inet_decision_function_fv_metric: 0.5036 - val_loss: 0.6935 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5022 - 7s/epoch - 201ms/step
+Epoch 5/500
+36/36 - 7s - loss: 0.6932 - binary_accuracy_inet_decision_function_fv_metric: 0.5058 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 196ms/step
+Epoch 6/500
+36/36 - 6s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5052 - val_loss: 0.6934 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 6s/epoch - 178ms/step
+Epoch 7/500
+36/36 - 6s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5066 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 6s/epoch - 167ms/step
+Epoch 8/500
+36/36 - 7s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5057 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 196ms/step
+Epoch 9/500
+36/36 - 6s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5070 - val_loss: 0.6934 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 6s/epoch - 178ms/step
+Epoch 10/500
+36/36 - 7s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5075 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 181ms/step
+Epoch 11/500
+36/36 - 7s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5065 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 185ms/step
+Epoch 12/500
+36/36 - 7s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5084 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 196ms/step
+Epoch 13/500
+36/36 - 7s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5071 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5002 - 7s/epoch - 183ms/step
+Epoch 14/500
+36/36 - 7s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5077 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 201ms/step
+Epoch 15/500
+36/36 - 7s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5078 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5005 - 7s/epoch - 194ms/step
+Epoch 16/500
+36/36 - 7s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5072 - val_loss: 0.6931 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 197ms/step
+Epoch 17/500
+36/36 - 7s - loss: 0.6929 - binary_accuracy_inet_decision_function_fv_metric: 0.5083 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5003 - 7s/epoch - 197ms/step
+Epoch 18/500
+36/36 - 7s - loss: 0.6929 - binary_accuracy_inet_decision_function_fv_metric: 0.5076 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5005 - 7s/epoch - 202ms/step
+Epoch 19/500
+36/36 - 7s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5154 - val_loss: 0.6908 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5135 - 7s/epoch - 199ms/step
+Epoch 20/500
+36/36 - 7s - loss: 0.6890 - binary_accuracy_inet_decision_function_fv_metric: 0.5302 - val_loss: 0.6873 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5402 - 7s/epoch - 190ms/step
+Epoch 21/500
+36/36 - 7s - loss: 0.6846 - binary_accuracy_inet_decision_function_fv_metric: 0.5410 - val_loss: 0.6889 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5370 - 7s/epoch - 195ms/step
+Epoch 22/500
+36/36 - 7s - loss: 0.6832 - binary_accuracy_inet_decision_function_fv_metric: 0.5458 - val_loss: 0.6885 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5439 - 7s/epoch - 188ms/step
+Epoch 23/500
+36/36 - 7s - loss: 0.6811 - binary_accuracy_inet_decision_function_fv_metric: 0.5488 - val_loss: 0.6910 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5354 - 7s/epoch - 192ms/step
+Epoch 24/500
+36/36 - 7s - loss: 0.6803 - binary_accuracy_inet_decision_function_fv_metric: 0.5474 - val_loss: 0.6874 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5343 - 7s/epoch - 182ms/step
+Epoch 25/500
+36/36 - 7s - loss: 0.6812 - binary_accuracy_inet_decision_function_fv_metric: 0.5447 - val_loss: 0.6856 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5403 - 7s/epoch - 190ms/step
+Epoch 26/500
+36/36 - 6s - loss: 0.6791 - binary_accuracy_inet_decision_function_fv_metric: 0.5545 - val_loss: 0.6844 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5474 - 6s/epoch - 178ms/step
+Epoch 27/500
+36/36 - 7s - loss: 0.6746 - binary_accuracy_inet_decision_function_fv_metric: 0.5651 - val_loss: 0.6830 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5540 - 7s/epoch - 187ms/step
+Epoch 28/500
+36/36 - 7s - loss: 0.6701 - binary_accuracy_inet_decision_function_fv_metric: 0.5676 - val_loss: 0.6844 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5384 - 7s/epoch - 187ms/step
+Epoch 29/500
+36/36 - 7s - loss: 0.6701 - binary_accuracy_inet_decision_function_fv_metric: 0.5683 - val_loss: 0.6879 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5453 - 7s/epoch - 183ms/step
+Epoch 30/500
+36/36 - 6s - loss: 0.6680 - binary_accuracy_inet_decision_function_fv_metric: 0.5657 - val_loss: 0.6869 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5358 - 6s/epoch - 179ms/step
+Epoch 31/500
+36/36 - 7s - loss: 0.6683 - binary_accuracy_inet_decision_function_fv_metric: 0.5665 - val_loss: 0.6867 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5369 - 7s/epoch - 186ms/step
+Epoch 32/500
+36/36 - 7s - loss: 0.6712 - binary_accuracy_inet_decision_function_fv_metric: 0.5663 - val_loss: 0.6876 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5436 - 7s/epoch - 186ms/step
+Epoch 33/500
+36/36 - 7s - loss: 0.6657 - binary_accuracy_inet_decision_function_fv_metric: 0.5766 - val_loss: 0.6871 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5481 - 7s/epoch - 186ms/step
+Epoch 34/500
+36/36 - 6s - loss: 0.6629 - binary_accuracy_inet_decision_function_fv_metric: 0.5790 - val_loss: 0.6864 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5568 - 6s/epoch - 176ms/step
+Epoch 35/500
+36/36 - 6s - loss: 0.6625 - binary_accuracy_inet_decision_function_fv_metric: 0.5812 - val_loss: 0.6975 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5470 - 6s/epoch - 180ms/step
+Epoch 36/500
+36/36 - 6s - loss: 0.6660 - binary_accuracy_inet_decision_function_fv_metric: 0.5770 - val_loss: 0.6859 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5451 - 6s/epoch - 177ms/step
+Epoch 37/500
+36/36 - 6s - loss: 0.6654 - binary_accuracy_inet_decision_function_fv_metric: 0.5802 - val_loss: 0.6917 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5429 - 6s/epoch - 177ms/step
+Epoch 38/500
+36/36 - 7s - loss: 0.6616 - binary_accuracy_inet_decision_function_fv_metric: 0.5839 - val_loss: 0.6947 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5448 - 7s/epoch - 187ms/step
+Epoch 39/500
+36/36 - 6s - loss: 0.6604 - binary_accuracy_inet_decision_function_fv_metric: 0.5859 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5506 - 6s/epoch - 170ms/step
+Epoch 40/500
+36/36 - 7s - loss: 0.6589 - binary_accuracy_inet_decision_function_fv_metric: 0.5872 - val_loss: 0.7063 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5515 - 7s/epoch - 182ms/step
+Epoch 41/500
+36/36 - 6s - loss: 0.6603 - binary_accuracy_inet_decision_function_fv_metric: 0.5875 - val_loss: 0.7085 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5472 - 6s/epoch - 175ms/step
+Epoch 42/500
+36/36 - 7s - loss: 0.6608 - binary_accuracy_inet_decision_function_fv_metric: 0.5888 - val_loss: 0.6923 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5484 - 7s/epoch - 183ms/step
+Epoch 43/500
+36/36 - 7s - loss: 0.6589 - binary_accuracy_inet_decision_function_fv_metric: 0.5900 - val_loss: 0.6914 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5467 - 7s/epoch - 185ms/step
+Epoch 44/500
+36/36 - 6s - loss: 0.6561 - binary_accuracy_inet_decision_function_fv_metric: 0.5916 - val_loss: 0.6907 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5494 - 6s/epoch - 154ms/step
+Epoch 45/500
+36/36 - 6s - loss: 0.6550 - binary_accuracy_inet_decision_function_fv_metric: 0.5931 - val_loss: 0.6882 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5491 - 6s/epoch - 162ms/step
+Epoch 46/500
+36/36 - 6s - loss: 0.6546 - binary_accuracy_inet_decision_function_fv_metric: 0.5939 - val_loss: 0.6874 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5473 - 6s/epoch - 164ms/step
+Epoch 47/500
+36/36 - 6s - loss: 0.6550 - binary_accuracy_inet_decision_function_fv_metric: 0.5938 - val_loss: 0.6881 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5510 - 6s/epoch - 171ms/step
+Epoch 48/500
+36/36 - 6s - loss: 0.6535 - binary_accuracy_inet_decision_function_fv_metric: 0.5957 - val_loss: 0.6924 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5528 - 6s/epoch - 166ms/step
+Epoch 49/500
+36/36 - 6s - loss: 0.6506 - binary_accuracy_inet_decision_function_fv_metric: 0.5984 - val_loss: 0.6993 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5483 - 6s/epoch - 157ms/step
+Epoch 50/500
+36/36 - 6s - loss: 0.6493 - binary_accuracy_inet_decision_function_fv_metric: 0.6000 - val_loss: 0.6944 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5513 - 6s/epoch - 171ms/step
+Epoch 51/500
+36/36 - 6s - loss: 0.6490 - binary_accuracy_inet_decision_function_fv_metric: 0.6009 - val_loss: 0.6924 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5538 - 6s/epoch - 154ms/step
+Epoch 52/500
+36/36 - 6s - loss: 0.6490 - binary_accuracy_inet_decision_function_fv_metric: 0.6011 - val_loss: 0.6955 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5530 - 6s/epoch - 163ms/step
+Epoch 53/500
+36/36 - 6s - loss: 0.6500 - binary_accuracy_inet_decision_function_fv_metric: 0.6015 - val_loss: 0.6997 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5476 - 6s/epoch - 160ms/step
+Epoch 54/500
+36/36 - 6s - loss: 0.6477 - binary_accuracy_inet_decision_function_fv_metric: 0.6040 - val_loss: 0.6888 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5490 - 6s/epoch - 158ms/step
+Epoch 55/500
+36/36 - 5s - loss: 0.6455 - binary_accuracy_inet_decision_function_fv_metric: 0.6073 - val_loss: 0.6836 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5568 - 5s/epoch - 150ms/step
+Epoch 56/500
+36/36 - 5s - loss: 0.6462 - binary_accuracy_inet_decision_function_fv_metric: 0.6071 - val_loss: 0.6831 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5513 - 5s/epoch - 152ms/step
+Epoch 57/500
+36/36 - 5s - loss: 0.6486 - binary_accuracy_inet_decision_function_fv_metric: 0.6042 - val_loss: 0.6878 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5471 - 5s/epoch - 149ms/step
+Epoch 58/500
+36/36 - 5s - loss: 0.6502 - binary_accuracy_inet_decision_function_fv_metric: 0.6043 - val_loss: 0.6898 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5515 - 5s/epoch - 151ms/step
+Epoch 59/500
+36/36 - 6s - loss: 0.6445 - binary_accuracy_inet_decision_function_fv_metric: 0.6090 - val_loss: 0.6970 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5490 - 6s/epoch - 155ms/step
+Epoch 60/500
+36/36 - 6s - loss: 0.6429 - binary_accuracy_inet_decision_function_fv_metric: 0.6113 - val_loss: 0.7021 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5459 - 6s/epoch - 159ms/step
+Epoch 61/500
+36/36 - 6s - loss: 0.6403 - binary_accuracy_inet_decision_function_fv_metric: 0.6143 - val_loss: 0.7163 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5443 - 6s/epoch - 154ms/step
+Epoch 62/500
+36/36 - 6s - loss: 0.6401 - binary_accuracy_inet_decision_function_fv_metric: 0.6155 - val_loss: 0.7084 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5426 - 6s/epoch - 161ms/step
+Epoch 63/500
+36/36 - 6s - loss: 0.6412 - binary_accuracy_inet_decision_function_fv_metric: 0.6150 - val_loss: 0.6941 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5491 - 6s/epoch - 172ms/step
+Epoch 64/500
+36/36 - 6s - loss: 0.6383 - binary_accuracy_inet_decision_function_fv_metric: 0.6170 - val_loss: 0.6879 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5618 - 6s/epoch - 178ms/step
+Epoch 65/500
+36/36 - 6s - loss: 0.6314 - binary_accuracy_inet_decision_function_fv_metric: 0.6233 - val_loss: 0.6874 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5660 - 6s/epoch - 164ms/step
+Epoch 66/500
+36/36 - 6s - loss: 0.6261 - binary_accuracy_inet_decision_function_fv_metric: 0.6285 - val_loss: 0.6890 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5636 - 6s/epoch - 173ms/step
+Epoch 67/500
+36/36 - 6s - loss: 0.6244 - binary_accuracy_inet_decision_function_fv_metric: 0.6290 - val_loss: 0.6855 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5626 - 6s/epoch - 165ms/step
+Epoch 68/500
+36/36 - 6s - loss: 0.6241 - binary_accuracy_inet_decision_function_fv_metric: 0.6302 - val_loss: 0.6849 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5611 - 6s/epoch - 167ms/step
+Epoch 69/500
+36/36 - 6s - loss: 0.6248 - binary_accuracy_inet_decision_function_fv_metric: 0.6289 - val_loss: 0.6903 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5597 - 6s/epoch - 175ms/step
+Epoch 70/500
+36/36 - 6s - loss: 0.6209 - binary_accuracy_inet_decision_function_fv_metric: 0.6365 - val_loss: 0.6890 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5645 - 6s/epoch - 174ms/step
+Epoch 71/500
+36/36 - 7s - loss: 0.6168 - binary_accuracy_inet_decision_function_fv_metric: 0.6406 - val_loss: 0.6980 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5647 - 7s/epoch - 198ms/step
+Epoch 72/500
+36/36 - 7s - loss: 0.6183 - binary_accuracy_inet_decision_function_fv_metric: 0.6408 - val_loss: 0.6960 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5706 - 7s/epoch - 208ms/step
+Epoch 73/500
+36/36 - 7s - loss: 0.6236 - binary_accuracy_inet_decision_function_fv_metric: 0.6368 - val_loss: 0.7096 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5668 - 7s/epoch - 193ms/step
+Epoch 74/500
+36/36 - 6s - loss: 0.6205 - binary_accuracy_inet_decision_function_fv_metric: 0.6414 - val_loss: 0.6945 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5713 - 6s/epoch - 172ms/step
+Epoch 75/500
+36/36 - 6s - loss: 0.6143 - binary_accuracy_inet_decision_function_fv_metric: 0.6464 - val_loss: 0.6852 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5691 - 6s/epoch - 160ms/step
+Epoch 76/500
+36/36 - 6s - loss: 0.6150 - binary_accuracy_inet_decision_function_fv_metric: 0.6461 - val_loss: 0.6890 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5678 - 6s/epoch - 164ms/step
+Epoch 77/500
+36/36 - 6s - loss: 0.6192 - binary_accuracy_inet_decision_function_fv_metric: 0.6432 - val_loss: 0.6834 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5767 - 6s/epoch - 166ms/step
+Training Time: 0:08:20
+---------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------ LOADING MODELS -----------------------------------------------------
+Loading Time: 0:00:00
+Model: "model_1"
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input (InputLayer)             [(None, 4353)]       0           []                               
+                                                                                                  
+ hidden1_1792 (Dense)           (None, 1792)         7802368     ['input[0][0]']                  
+                                                                                                  
+ activation1_sigmoid (Activatio  (None, 1792)        0           ['hidden1_1792[0][0]']           
+ n)                                                                                               
+                                                                                                  
+ hidden2_512 (Dense)            (None, 512)          918016      ['activation1_sigmoid[0][0]']    
+                                                                                                  
+ activation2_sigmoid (Activatio  (None, 512)         0           ['hidden2_512[0][0]']            
+ n)                                                                                               
+                                                                                                  
+ hidden3_512 (Dense)            (None, 512)          262656      ['activation2_sigmoid[0][0]']    
+                                                                                                  
+ activation3_sigmoid (Activatio  (None, 512)         0           ['hidden3_512[0][0]']            
+ n)                                                                                               
+                                                                                                  
+ dropout3_0.5 (Dropout)         (None, 512)          0           ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ dense_65 (Dense)               (None, 224)          114912      ['dropout3_0.5[0][0]']           
+                                                                                                  
+ output_bias_7 (Dense)          (None, 7)            3591        ['dropout3_0.5[0][0]']           
+                                                                                                  
+ output_leaf_nodes_16 (Dense)   (None, 16)           8208        ['dropout3_0.5[0][0]']           
+                                                                                                  
+ output_combined (Concatenate)  (None, 247)          0           ['dense_65[0][0]',               
+                                                                  'output_bias_7[0][0]',          
+                                                                  'output_leaf_nodes_16[0][0]']   
+                                                                                                  
+==================================================================================================
+Total params: 9,109,751
+Trainable params: 9,109,751
+Non-trainable params: 0
+__________________________________________________________________________________________________
+  0%|          | 0/10 [00:00<?, ?it/s]
+  0%|          | 0/10 [00:00<?, ?it/s]
+I-Net Performance by Network:  [0.536 0.526 0.532 0.514 0.514 0.492 0.518 0.52  0.542 0.57 ]
+Distilled Mean Performance by Network:  [0.99  0.994 0.983 0.948 0.962 0.748 1.    0.754 0.737 0.777]
+Distilled Max Performance by Network:  [0.994 0.998 0.986 0.97  0.986 0.986 1.    0.988 0.968 0.984]
+Median I-Net: 0.523
+Median DT Distilled: 0.955
+                                                   Acc Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                     0.986   
+uniform                                                               0.986   
+
+                                                   Acc Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                      0.972   
+uniform                                                                0.968   
+
+                                                   Acc Distilled  Acc I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.797      0.526   
+uniform                                                    0.981      0.526   
+
+                                                   Soft BC Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                         0.355   
+uniform                                                                   0.355   
+
+                                                   Soft BC Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                          0.385   
+uniform                                                                    0.382   
+
+                                                   Soft BC Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']              0.509   
+uniform                                                        0.374   
+
+                                                   Soft BC I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.692   
+uniform                                                    0.692   
+
+                                                   BC Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                    0.052   
+uniform                                                              0.052   
+
+                                                   BC Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                     0.104   
+uniform                                                               0.099   
+
+                                                   BC Distilled  BC I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']         0.603     0.692   
+uniform                                                   0.095     0.692   
+
+                                                   F1 Score Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                          0.985   
+uniform                                                                    0.985   
+
+                                                   F1 Score Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                           0.627   
+uniform                                                                     0.916   
+
+                                                   F1 Score Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']               0.658   
+uniform                                                         0.980   
+
+                                                   F1 Score I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']           0.000   
+uniform                                                     0.000   
+
+                                                   Runtime Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                        19.652   
+uniform                                                                  16.968   
+
+                                                   Runtime Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                         19.652   
+uniform                                                                   16.968   
+
+                                                   Runtime Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']             19.652   
+uniform                                                       16.968   
+
+                                                   Runtime I-Net  
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.188  
+uniform                                                    0.078  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             2983.472   
+valid                                                             3105.689   
+test                                                              3217.780   
+Adult                                                                  NaN   
+Titanic                                                                NaN   
+Absenteeism                                                            NaN   
+Loan House                                                             NaN   
+Loan Credit                                                            NaN   
+Medical Insurance                                                      NaN   
+Bank Marketing                                                         NaN   
+Cervical Cancer                                                        NaN   
+Brest Cancer Wisconsin                                                 NaN   
+Wisconsin Diagnostic Breast Cancer                                1322.283   
+Wisconsin Prognostic Breast Cancer                                 879.988   
+Abalone                                                           1092.911   
+Car                                                                    NaN   
+
+                                    Average Distance to Initialization  \
+train                                                          728.476   
+valid                                                          745.648   
+test                                                           374.778   
+Adult                                                              NaN   
+Titanic                                                            NaN   
+Absenteeism                                                        NaN   
+Loan House                                                         NaN   
+Loan Credit                                                        NaN   
+Medical Insurance                                                  NaN   
+Bank Marketing                                                     NaN   
+Cervical Cancer                                                    NaN   
+Brest Cancer Wisconsin                                             NaN   
+Wisconsin Diagnostic Breast Cancer                             316.145   
+Wisconsin Prognostic Breast Cancer                             148.114   
+Abalone                                                        226.916   
+Car                                                                NaN   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           848.345   
+valid                                                           868.382   
+test                                                            875.631   
+Adult                                                               NaN   
+Titanic                                                             NaN   
+Absenteeism                                                         NaN   
+Loan House                                                          NaN   
+Loan Credit                                                         NaN   
+Medical Insurance                                                   NaN   
+Bank Marketing                                                      NaN   
+Cervical Cancer                                                     NaN   
+Brest Cancer Wisconsin                                              NaN   
+Wisconsin Diagnostic Breast Cancer                              526.370   
+Wisconsin Prognostic Breast Cancer                              417.914   
+Abalone                                                         471.158   
+Car                                                                 NaN   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     725.039   
+test                                                                      755.778   
+Adult                                                                         NaN   
+Titanic                                                                       NaN   
+Absenteeism                                                                   NaN   
+Loan House                                                                    NaN   
+Loan Credit                                                                   NaN   
+Medical Insurance                                                             NaN   
+Bank Marketing                                                                NaN   
+Cervical Cancer                                                               NaN   
+Brest Cancer Wisconsin                                                        NaN   
+Wisconsin Diagnostic Breast Cancer                                        415.921   
+Wisconsin Prognostic Breast Cancer                                        285.137   
+Abalone                                                                   345.246   
+Car                                                                           NaN   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    3.622   
+valid                                                                    3.287   
+test                                                                     3.111   
+Adult                                                                      NaN   
+Titanic                                                                    NaN   
+Absenteeism                                                                NaN   
+Loan House                                                                 NaN   
+Loan Credit                                                                NaN   
+Medical Insurance                                                          NaN   
+Bank Marketing                                                             NaN   
+Cervical Cancer                                                            NaN   
+Brest Cancer Wisconsin                                                     NaN   
+Wisconsin Diagnostic Breast Cancer                                       6.526   
+Wisconsin Prognostic Breast Cancer                                       4.381   
+Abalone                                                                  4.524   
+Car                                                                        NaN   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    1.911  
+test                                                                     1.949  
+Adult                                                                      NaN  
+Titanic                                                                    NaN  
+Absenteeism                                                                NaN  
+Loan House                                                                 NaN  
+Loan Credit                                                                NaN  
+Medical Insurance                                                          NaN  
+Bank Marketing                                                             NaN  
+Cervical Cancer                                                            NaN  
+Brest Cancer Wisconsin                                                     NaN  
+Wisconsin Diagnostic Breast Cancer                                       3.787  
+Wisconsin Prognostic Breast Cancer                                       1.225  
+Abalone                                                                  1.356  
+Car                                                                        NaN  
+Original Data Shape:  (32561, 28)
+Original Data Shape:  (891, 9)
+Original Data Shape:  (740, 15)
+Original Data Shape:  (614, 16)
+Original Data Shape:  (63999, 32)
+(54401, 32) (54401,)
+(3199, 32) (3199,)
+(6399, 32) (6399,)
+True Ratio:  0.5
+Training Network:  141.85724759101868
+Evaluate Network:  341.55710768699646
+Evaluate Network Complete:  486.4052457809448
+Original Data Shape:  (1338, 9)
+Original Data Shape:  (45211, 29)
+Original Data Shape:  (858, 15)
+Original Data Shape:  (699, 9)
+Original Data Shape:  (569, 10)
+Original Data Shape:  (198, 10)
+Original Data Shape:  (4177, 10)
+Original Data Shape:  (1728, 21)
+             Acc Distilled (Train Data)  Acc Distilled  Acc Distilled STD  \
+Loan Credit                       0.591          0.744              0.000   
+
+             Acc I-Net  Soft BC Distilled (Train Data)  Soft BC Distilled  \
+Loan Credit      0.744                           0.655              0.642   
+
+             Soft BC Distilled STD  Soft BC I-Net  BC Distilled (Train Data)  \
+Loan Credit                  0.000          0.686                      0.684   
+
+             BC Distilled  BC Distilled STD  BC I-Net  \
+Loan Credit         1.105             0.032     0.674   
+
+             F1 Score Distilled (Train Data)  F1 Score Distilled  \
+Loan Credit                            0.547               0.000   
+
+             F1 Score Distilled STD  F1 Score I-Net  \
+Loan Credit                   0.000           0.000   
+
+             Runtime Distilled (Train Data)  Runtime Distilled  \
+Loan Credit                          72.534             24.844   
+
+             Runtime Distilled STD  Runtime I-Net  
+Loan Credit                    NaN          0.113  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             2983.472   
+valid                                                             3105.689   
+test                                                              3217.780   
+Adult                                                                  NaN   
+Titanic                                                                NaN   
+Absenteeism                                                            NaN   
+Loan House                                                             NaN   
+Loan Credit                                                      12702.657   
+Medical Insurance                                                      NaN   
+Bank Marketing                                                         NaN   
+Cervical Cancer                                                        NaN   
+Brest Cancer Wisconsin                                                 NaN   
+Wisconsin Diagnostic Breast Cancer                                     NaN   
+Wisconsin Prognostic Breast Cancer                                     NaN   
+Abalone                                                                NaN   
+Car                                                                    NaN   
+
+                                    Average Distance to Initialization  \
+train                                                          728.476   
+valid                                                          745.648   
+test                                                           374.778   
+Adult                                                              NaN   
+Titanic                                                            NaN   
+Absenteeism                                                        NaN   
+Loan House                                                         NaN   
+Loan Credit                                                   2356.255   
+Medical Insurance                                                  NaN   
+Bank Marketing                                                     NaN   
+Cervical Cancer                                                    NaN   
+Brest Cancer Wisconsin                                             NaN   
+Wisconsin Diagnostic Breast Cancer                                 NaN   
+Wisconsin Prognostic Breast Cancer                                 NaN   
+Abalone                                                            NaN   
+Car                                                                NaN   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           848.345   
+valid                                                           868.382   
+test                                                            875.631   
+Adult                                                               NaN   
+Titanic                                                             NaN   
+Absenteeism                                                         NaN   
+Loan House                                                          NaN   
+Loan Credit                                                    2638.715   
+Medical Insurance                                                   NaN   
+Bank Marketing                                                      NaN   
+Cervical Cancer                                                     NaN   
+Brest Cancer Wisconsin                                              NaN   
+Wisconsin Diagnostic Breast Cancer                                  NaN   
+Wisconsin Prognostic Breast Cancer                                  NaN   
+Abalone                                                             NaN   
+Car                                                                 NaN   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     725.039   
+test                                                                      755.778   
+Adult                                                                         NaN   
+Titanic                                                                       NaN   
+Absenteeism                                                                   NaN   
+Loan House                                                                    NaN   
+Loan Credit                                                              2542.615   
+Medical Insurance                                                             NaN   
+Bank Marketing                                                                NaN   
+Cervical Cancer                                                               NaN   
+Brest Cancer Wisconsin                                                        NaN   
+Wisconsin Diagnostic Breast Cancer                                            NaN   
+Wisconsin Prognostic Breast Cancer                                            NaN   
+Abalone                                                                       NaN   
+Car                                                                           NaN   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    3.622   
+valid                                                                    3.287   
+test                                                                     3.111   
+Adult                                                                      NaN   
+Titanic                                                                    NaN   
+Absenteeism                                                                NaN   
+Loan House                                                                 NaN   
+Loan Credit                                                             11.193   
+Medical Insurance                                                          NaN   
+Bank Marketing                                                             NaN   
+Cervical Cancer                                                            NaN   
+Brest Cancer Wisconsin                                                     NaN   
+Wisconsin Diagnostic Breast Cancer                                         NaN   
+Wisconsin Prognostic Breast Cancer                                         NaN   
+Abalone                                                                    NaN   
+Car                                                                        NaN   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    1.911  
+test                                                                     1.949  
+Adult                                                                      NaN  
+Titanic                                                                    NaN  
+Absenteeism                                                                NaN  
+Loan House                                                                 NaN  
+Loan Credit                                                             10.423  
+Medical Insurance                                                          NaN  
+Bank Marketing                                                             NaN  
+Cervical Cancer                                                            NaN  
+Brest Cancer Wisconsin                                                     NaN  
+Wisconsin Diagnostic Breast Cancer                                         NaN  
+Wisconsin Prognostic Breast Cancer                                         NaN  
+Abalone                                                                    NaN  
+Car                                                                        NaN  

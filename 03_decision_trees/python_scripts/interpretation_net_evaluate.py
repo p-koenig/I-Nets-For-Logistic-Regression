@@ -202,7 +202,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                         'use_distribution_list': True,
                         'random_parameters_distribution': True, ##MAKEPATH DIFFERENT FILES
-                        'max_distributions_per_class': 1, # None; 0; int >= 1  
+                        'max_distributions_per_class': parameter_setting['max_distributions_per_class'], # None; 0; int >= 1  
                         'exclude_linearly_seperable': True,
                         'data_generation_filtering':  parameter_setting['data_generation_filtering'], 
                         'fixed_class_probability':  parameter_setting['fixed_class_probability'], 
@@ -228,7 +228,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'lambda_dataset_size': 5000, #number of samples per function
                         'number_of_generated_datasets': parameter_setting['dataset_size'],
 
-                        'noise_injected_level': 0, 
+                        'noise_injected_level': parameter_setting['noise_injected_level'], 
                         'noise_injected_type': 'flip_percentage', # '' 'normal' 'uniform' 'normal_range' 'uniform_range'
 
                         'data_noise': 0, #None or float
@@ -262,7 +262,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'optimizer': parameter_setting['optimizer'], 
                         'learning_rate': parameter_setting['learning_rate'],
 
-                        'separate_weight_bias': False,
+                        'separate_weight_bias': parameter_setting['separate_weight_bias'],
 
                         'convolution_layers': None,
                         'lstm_layers': None,        
@@ -282,7 +282,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'force_evaluate_real_world':  parameter_setting['force_evaluate_real_world'],
 
                         'function_representation_type': parameter_setting['function_representation_type'], # 1=standard representation; 2=sparse representation with classification for variables; 3=softmax to select classes (n top probabilities)
-                        'normalize_lambda_nets': False,
+                        'normalize_lambda_nets': parameter_setting['normalize_lambda_nets'],
 
                         'optimize_decision_function': True, #False
                         'function_value_loss': True, #False
@@ -435,10 +435,18 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                   else ((2 ** maximum_depth - 1) * number_of_variables * 2) + (2 ** maximum_depth - 1) + (2 ** maximum_depth) * num_classes if function_representation_type == 3 and dt_type == 'SDT'
                   else None
                                                                             )
+
                 if distrib_by_feature:
-                    config['evaluation']['random_evaluation_dataset_distribution'] = config['data']['distribution_list_eval']
-                    config['data']['distribution_list'] = [config['data']['distribution_list']]
-                    config['data']['distribution_list_eval'] = [config['data']['distribution_list_eval']]
+                    if isinstance(config['data']['distribution_list_eval'][0], list):
+                        config['evaluation']['random_evaluation_dataset_distribution'] = config['data']['distribution_list_eval'][0]
+                        config['data']['distribution_list'] = [config['data']['distribution_list']]
+                        #config['data']['distribution_list_eval'] = [config['data']['distribution_list_eval']]    
+                    else:
+                        config['evaluation']['random_evaluation_dataset_distribution'] = config['data']['distribution_list_eval']
+                        config['data']['distribution_list'] = [config['data']['distribution_list']]
+                        config['data']['distribution_list_eval'] = [config['data']['distribution_list_eval']]
+
+
 
                             #######################################################################################################################################
                 ################################################## UPDATE VARIABLES ###################################################################
@@ -920,7 +928,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 # In[ ]:
 
 
-                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAIN_DATA'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAIN_DATA']
+                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAIN_DATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAIN_DATA']
                 dataset_size_list_print = []
                 for size in dataset_size_list:
                     if type(size) is int:

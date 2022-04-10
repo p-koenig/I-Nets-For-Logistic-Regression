@@ -277,7 +277,7 @@ class LambdaNet():
     #def __init__(self, line_weights, line_X_data, line_y_data, config):
     #def __init__(self, line_weights, line_distribution_parameters, config):
     def __init__(self, line_weights, line_distribution_parameters, X_data, y_data, config):
-        from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array, get_number_of_function_parameters, shaped_network_parameters_to_array
+        from utilities.utility_functions import network_parameters_to_network, generate_decision_tree_from_array, get_number_of_function_parameters, shaped_network_parameters_to_array, normal_neural_net, shape_flat_network_parameters, generate_base_model
         
         assert isinstance(line_weights, np.ndarray), 'line is no array: ' + str(line_weights) 
         

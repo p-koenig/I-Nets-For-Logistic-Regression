@@ -35,7 +35,7 @@ def main():
                 'force_evaluate_real_world': [False],
                 'number_of_random_evaluations_per_distribution': [10],
                 
-                'dt_setting': [1, 2], # 1=vanilla; 2=SDT ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
+                'dt_setting': [2, 1], # 1=vanilla; 2=SDT ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
                 'inet_setting': [1], 
                 'dataset_size': [10000], #10000, 50000
                 
@@ -54,16 +54,21 @@ def main():
                 'function_generation_type': ['distribution'],# 'make_classification_distribution', 'make_classification_distribution_trained', 'distribution', 'distribution_trained', 'make_classification', 'make_classification_trained', 'random_decision_tree', 'random_decision_tree_trained'
                 
                 'distrib_by_feature': [True],
-                'distribution_list': [['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
-                'distribution_list_eval': [['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],
+                'max_distributions_per_class': [1],
+                'distribution_list': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], #[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
+                'distribution_list_eval': [[['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'uniform']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],
                 'distrib_param_max': [5],
                 
-                'data_generation_filtering':  [True], 
+                'data_generation_filtering':  [False], 
                 'fixed_class_probability':  [False], 
                 'weighted_data_generation':  [False], 
-                'shift_distrib':  [False],                 
+                'shift_distrib':  [False],        
+                
+                'separate_weight_bias': [True, False],
+                'normalize_lambda_nets': [True, False],
                                 
-                          
+                'noise_injected_level': [0],
+                
             }
 
 
@@ -76,7 +81,7 @@ def main():
 
             timestr = time.strftime("%Y%m%d-%H%M%S")
                 
-            Parallel(n_jobs=5, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
+            Parallel(n_jobs=7, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
 
             #for parameter_setting in parameter_grid:
                 #run_evaluation.remote(parameter_setting)

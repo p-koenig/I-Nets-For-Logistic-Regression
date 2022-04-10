@@ -1,0 +1,80 @@
+{'data_generation_filtering': False, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': [['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'uniform'], 'dt_setting': 2, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'maximum_depth': 3, 'n_jobs': 6, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'number_of_variables': 9, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False, 'dt_type': 'SDT', 'decision_sparsity': -1, 'function_representation_type': 1, 'dense_layers': [1792, 512, 512], 'dropout': [0, 0, 0.5], 'hidden_activation': 'sigmoid', 'optimizer': 'adam', 'learning_rate': 0.001}
+lNetSize5000_numLNets10000_var9_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_randClassProb_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42/inet_dense1792-512-512_drop0-0-0.5e500b256_adam_funcRep1_reshapeNone
+lNetSize5000_numLNets10000_var9_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_randClassProb_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42
+Num GPUs Available:  0
+Num XLA-GPUs Available:  0
+(9000, 1497)
+(1000, 1497)
+----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------
+network_parameters_structure [(9, 128), (128,), (128, 1), (1,)]
+Epoch 1/500
+36/36 - 10s - loss: 0.7036 - binary_accuracy_inet_decision_function_fv_metric: 0.5003 - val_loss: 0.6938 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4978 - 10s/epoch - 289ms/step
+Epoch 2/500
+36/36 - 4s - loss: 0.6933 - binary_accuracy_inet_decision_function_fv_metric: 0.5092 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4985 - 4s/epoch - 118ms/step
+Epoch 3/500
+36/36 - 5s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5102 - val_loss: 0.6934 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4985 - 5s/epoch - 126ms/step
+Epoch 4/500
+36/36 - 5s - loss: 0.6927 - binary_accuracy_inet_decision_function_fv_metric: 0.5126 - val_loss: 0.6931 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4943 - 5s/epoch - 127ms/step
+Epoch 5/500
+36/36 - 5s - loss: 0.6893 - binary_accuracy_inet_decision_function_fv_metric: 0.5276 - val_loss: 0.6837 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5439 - 5s/epoch - 128ms/step
+Epoch 6/500
+36/36 - 5s - loss: 0.6767 - binary_accuracy_inet_decision_function_fv_metric: 0.5626 - val_loss: 0.6684 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5822 - 5s/epoch - 130ms/step
+Epoch 7/500
+36/36 - 5s - loss: 0.6658 - binary_accuracy_inet_decision_function_fv_metric: 0.5794 - val_loss: 0.6584 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5858 - 5s/epoch - 137ms/step
+Epoch 8/500
+36/36 - 5s - loss: 0.6630 - binary_accuracy_inet_decision_function_fv_metric: 0.5838 - val_loss: 0.6583 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5981 - 5s/epoch - 133ms/step
+Epoch 9/500
+36/36 - 5s - loss: 0.6639 - binary_accuracy_inet_decision_function_fv_metric: 0.5913 - val_loss: 0.6548 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6012 - 5s/epoch - 130ms/step
+Epoch 10/500
+36/36 - 4s - loss: 0.6577 - binary_accuracy_inet_decision_function_fv_metric: 0.5887 - val_loss: 0.6560 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5850 - 4s/epoch - 122ms/step
+Epoch 11/500
+36/36 - 5s - loss: 0.6592 - binary_accuracy_inet_decision_function_fv_metric: 0.5854 - val_loss: 0.6570 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5866 - 5s/epoch - 127ms/step
+Epoch 12/500
+36/36 - 4s - loss: 0.6592 - binary_accuracy_inet_decision_function_fv_metric: 0.5885 - val_loss: 0.6572 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5950 - 4s/epoch - 124ms/step
+Epoch 13/500
+36/36 - 5s - loss: 0.6550 - binary_accuracy_inet_decision_function_fv_metric: 0.5986 - val_loss: 0.6517 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6041 - 5s/epoch - 128ms/step
+Epoch 14/500
+36/36 - 4s - loss: 0.6510 - binary_accuracy_inet_decision_function_fv_metric: 0.6035 - val_loss: 0.6475 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6082 - 4s/epoch - 116ms/step
+Epoch 15/500
+36/36 - 5s - loss: 0.6456 - binary_accuracy_inet_decision_function_fv_metric: 0.6061 - val_loss: 0.6447 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6041 - 5s/epoch - 128ms/step
+Epoch 16/500
+36/36 - 4s - loss: 0.6409 - binary_accuracy_inet_decision_function_fv_metric: 0.6060 - val_loss: 0.6366 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6230 - 4s/epoch - 113ms/step
+Epoch 17/500
+36/36 - 4s - loss: 0.6334 - binary_accuracy_inet_decision_function_fv_metric: 0.6230 - val_loss: 0.6288 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6337 - 4s/epoch - 112ms/step
+Epoch 18/500
+36/36 - 4s - loss: 0.6274 - binary_accuracy_inet_decision_function_fv_metric: 0.6334 - val_loss: 0.6256 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6347 - 4s/epoch - 117ms/step
+Epoch 19/500
+36/36 - 4s - loss: 0.6208 - binary_accuracy_inet_decision_function_fv_metric: 0.6394 - val_loss: 0.6193 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6414 - 4s/epoch - 113ms/step
+Epoch 20/500
+36/36 - 4s - loss: 0.6123 - binary_accuracy_inet_decision_function_fv_metric: 0.6478 - val_loss: 0.6132 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6493 - 4s/epoch - 113ms/step
+Epoch 21/500
+36/36 - 4s - loss: 0.6058 - binary_accuracy_inet_decision_function_fv_metric: 0.6528 - val_loss: 0.6078 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6535 - 4s/epoch - 112ms/step
+Epoch 22/500
+36/36 - 4s - loss: 0.5999 - binary_accuracy_inet_decision_function_fv_metric: 0.6583 - val_loss: 0.6024 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6622 - 4s/epoch - 119ms/step
+Epoch 23/500
+36/36 - 4s - loss: 0.5929 - binary_accuracy_inet_decision_function_fv_metric: 0.6643 - val_loss: 0.5981 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6640 - 4s/epoch - 112ms/step
+Epoch 24/500
+36/36 - 4s - loss: 0.5891 - binary_accuracy_inet_decision_function_fv_metric: 0.6690 - val_loss: 0.5970 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6617 - 4s/epoch - 107ms/step
+Epoch 25/500
+36/36 - 4s - loss: 0.5834 - binary_accuracy_inet_decision_function_fv_metric: 0.6751 - val_loss: 0.5944 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6636 - 4s/epoch - 105ms/step
+Epoch 26/500
+36/36 - 4s - loss: 0.5785 - binary_accuracy_inet_decision_function_fv_metric: 0.6787 - val_loss: 0.5840 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6751 - 4s/epoch - 107ms/step
+Epoch 27/500
+36/36 - 4s - loss: 0.5721 - binary_accuracy_inet_decision_function_fv_metric: 0.6861 - val_loss: 0.5845 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6787 - 4s/epoch - 109ms/step
+Epoch 28/500
+36/36 - 4s - loss: 0.5644 - binary_accuracy_inet_decision_function_fv_metric: 0.6954 - val_loss: 0.5759 - val_binary_accuracy_inet_decision_function_fv_metric: 0.6878 - 4s/epoch - 108ms/step
+Epoch 29/500
+36/36 - 4s - loss: 0.5544 - binary_accuracy_inet_decision_function_fv_metric: 0.7042 - val_loss: 0.5653 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7005 - 4s/epoch - 110ms/step
+Epoch 30/500
+36/36 - 4s - loss: 0.5444 - binary_accuracy_inet_decision_function_fv_metric: 0.7119 - val_loss: 0.5656 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7033 - 4s/epoch - 112ms/step
+Epoch 31/500
+36/36 - 4s - loss: 0.5429 - binary_accuracy_inet_decision_function_fv_metric: 0.7177 - val_loss: 0.5525 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7197 - 4s/epoch - 111ms/step
+Epoch 32/500
+36/36 - 4s - loss: 0.5301 - binary_accuracy_inet_decision_function_fv_metric: 0.7322 - val_loss: 0.5453 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7262 - 4s/epoch - 113ms/step
+Epoch 33/500
+36/36 - 4s - loss: 0.5167 - binary_accuracy_inet_decision_function_fv_metric: 0.7439 - val_loss: 0.5187 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7451 - 4s/epoch - 119ms/step
+Epoch 34/500
+36/36 - 4s - loss: 0.5028 - binary_accuracy_inet_decision_function_fv_metric: 0.7562 - val_loss: 0.5074 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7590 - 4s/epoch - 114ms/step
+Epoch 35/500
+36/36 - 4s - loss: 0.4895 - binary_accuracy_inet_decision_function_fv_metric: 0.7673 - val_loss: 0.4825 - val_binary_accuracy_inet_decision_function_fv_metric: 0.7741 - 4s/epoch - 117ms/step
+Epoch 36/500
