@@ -3352,7 +3352,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                                                                     test_network, 
                                                                                                     X_train, 
                                                                                                     X_test, 
-                                                                                                    dataset_size_list=[10000, 'TRAIN_DATA'],
+                                                                                                    dataset_size_list=[10000, 'TRAINDATA'],
                                                                                                     config=config,
                                                                                                     distribution=distribution_training)
 
@@ -3402,7 +3402,6 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
             test_network.get_weights(), 
             model_history.history,
             distribution_parameter_list)
-
 
 
 
@@ -3610,7 +3609,6 @@ def evaluate_real_world_dataset(model,
     f1_score_list_data_random = []
     
     runtime_list = []
-    #print('WORKING??')    
     
     
 
@@ -3758,27 +3756,64 @@ def evaluate_real_world_dataset(model,
         
         result['dt_scores']['runtime'] = np.mean(runtime_list_result)
 
-    evaluation_result_dict['dt_scores']['soft_binary_crossentropy'] = np.mean(soft_binary_crossentropy_list, axis=0)
-    evaluation_result_dict['dt_scores']['binary_crossentropy'] = np.mean(binary_crossentropy_list, axis=0)
-    evaluation_result_dict['dt_scores']['accuracy'] = np.mean(accuracy_list, axis=0)
-    evaluation_result_dict['dt_scores']['f1_score'] = np.mean(f1_score_list, axis=0)
+    counter = 0
     
-    evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random'] = np.mean(soft_binary_crossentropy_list_data_random, axis=0)
-    evaluation_result_dict['dt_scores']['binary_crossentropy_data_random'] = np.mean(binary_crossentropy_list_data_random, axis=0)
-    evaluation_result_dict['dt_scores']['accuracy_data_random'] = np.mean(accuracy_list_data_random, axis=0)
-    evaluation_result_dict['dt_scores']['f1_score_data_random'] = np.mean(f1_score_list_data_random, axis=0)
-    
-    evaluation_result_dict['dt_scores']['soft_binary_crossentropy_std'] = np.std(soft_binary_crossentropy_list, axis=0)
-    evaluation_result_dict['dt_scores']['binary_crossentropy_std'] = np.std(binary_crossentropy_list, axis=0)
-    evaluation_result_dict['dt_scores']['accuracy_std'] = np.std(accuracy_list, axis=0)
-    evaluation_result_dict['dt_scores']['f1_score_std'] = np.std(f1_score_list, axis=0)
-    
-    evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.std(soft_binary_crossentropy_list_data_random, axis=0)
-    evaluation_result_dict['dt_scores']['binary_crossentropy_data_random_std'] = np.std(binary_crossentropy_list_data_random, axis=0)
-    evaluation_result_dict['dt_scores']['accuracy_data_random_std'] = np.std(accuracy_list_data_random, axis=0)
-    evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(f1_score_list_data_random, axis=0)    
-    
-    evaluation_result_dict['dt_scores']['runtime'] = np.mean(runtime_list, axis=0)    
+    if "TRAINDATA" in dataset_size_list:
+        counter += 1
+    if "STANDARDUNIFORM" in dataset_size_list:
+        counter += 1
+    if "STANDARDNORMAL" in dataset_size_list:
+        counter += 1   
+        
+    #print('counter', counter)
+    #print('soft_binary_crossentropy_list', soft_binary_crossentropy_list)
+    #print('np.mean(soft_binary_crossentropy_list, axis=0)', np.mean(soft_binary_crossentropy_list, axis=0))
+    #print('np.mean(soft_binary_crossentropy_list[:-counter], axis=0)', np.mean(soft_binary_crossentropy_list[:,:-counter], axis=0))
+        
+    if False:
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy'] = np.mean(np.array(soft_binary_crossentropy_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy'] = np.mean(np.array(binary_crossentropy_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['accuracy'] = np.mean(np.array(accuracy_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['f1_score'] = np.mean(np.array(f1_score_list)[:,:-counter], axis=0)
+
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random'] = np.mean(np.array(soft_binary_crossentropy_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy_data_random'] = np.mean(np.array(binary_crossentropy_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['accuracy_data_random'] = np.mean(np.array(accuracy_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['f1_score_data_random'] = np.mean(np.array(f1_score_list_data_random)[:,:-counter], axis=0)
+
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy_std'] = np.std(np.array(soft_binary_crossentropy_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy_std'] = np.std(np.array(binary_crossentropy_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['accuracy_std'] = np.std(np.array(accuracy_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['f1_score_std'] = np.std(np.array(f1_score_list)[:,:-counter], axis=0)
+
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.std(np.array(soft_binary_crossentropy_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy_data_random_std'] = np.std(np.array(binary_crossentropy_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['accuracy_data_random_std'] = np.std(np.array(accuracy_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(np.array(f1_score_list_data_random)[:,:-counter], axis=0)    
+
+        evaluation_result_dict['dt_scores']['runtime'] = np.mean(np.array(runtime_list)[:,:-counter], axis=0)    
+    else:
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy'] = np.mean(soft_binary_crossentropy_list, axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy'] = np.mean(binary_crossentropy_list, axis=0)
+        evaluation_result_dict['dt_scores']['accuracy'] = np.mean(accuracy_list, axis=0)
+        evaluation_result_dict['dt_scores']['f1_score'] = np.mean(f1_score_list, axis=0)
+
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random'] = np.mean(soft_binary_crossentropy_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy_data_random'] = np.mean(binary_crossentropy_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['accuracy_data_random'] = np.mean(accuracy_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['f1_score_data_random'] = np.mean(f1_score_list_data_random, axis=0)
+
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy_std'] = np.std(soft_binary_crossentropy_list, axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy_std'] = np.std(binary_crossentropy_list, axis=0)
+        evaluation_result_dict['dt_scores']['accuracy_std'] = np.std(accuracy_list, axis=0)
+        evaluation_result_dict['dt_scores']['f1_score_std'] = np.std(f1_score_list, axis=0)
+
+        evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.std(soft_binary_crossentropy_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['binary_crossentropy_data_random_std'] = np.std(binary_crossentropy_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['accuracy_data_random_std'] = np.std(accuracy_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(f1_score_list_data_random, axis=0)    
+
+        evaluation_result_dict['dt_scores']['runtime'] = np.mean(runtime_list, axis=0)           
     
     distances_dict = calculate_network_distance(mean=mean_train_parameters, 
                                                            std=std_train_parameters, 
@@ -4290,31 +4325,31 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
     if len(indices) > 1:
         data = np.array([
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['accuracy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['accuracy'], 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['accuracy'] for index in indices]), 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['accuracy_std'] for index in indices]), 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
                             ] for identifier in identifier_list],          
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['soft_binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['soft_binary_crossentropy'], 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['soft_binary_crossentropy'] for index in indices]), 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['soft_binary_crossentropy_std'] for index in indices]), 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
                             ] for identifier in identifier_list],
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['binary_crossentropy'], 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['binary_crossentropy'] for index in indices]), 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['binary_crossentropy_std'] for index in indices]), 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
                             ] for identifier in identifier_list], 
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['f1_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['f1_score'], 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['f1_score'] for index in indices]), 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['f1_score_std'] for index in indices]), 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
                             ] for identifier in identifier_list],        
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['runtime'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['runtime'] for index in indices]), 3),
                               np.nan,
                               np.round(np.mean([results_dict[identifier][index]['inet_scores']['runtime'] for index in indices]), 3),                              
@@ -4324,35 +4359,35 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
     else:
         data = np.array([
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['accuracy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['accuracy'], 3),
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_data_random']
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_std'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
                             ] for identifier in identifier_list],          
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['soft_binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['soft_binary_crossentropy'], 3),
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy_data_random']
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy_std'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
                             ] for identifier in identifier_list],
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['binary_crossentropy'], 3),
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy_data_random']
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy_std'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
                             ] for identifier in identifier_list], 
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['f1_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['f1_score'], 3),
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_data_random']
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_std'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
                             ] for identifier in identifier_list],        
                           [[
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['runtime'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime']
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime'], 3),
                               np.nan,
@@ -4414,7 +4449,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
     if len(indices) > 1:
         data = np.array([
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['accuracy'], 3),  
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['accuracy'], 3),  
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['accuracy'], 3),  
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['accuracy'], 3),                              
                               [np.round(np.mean([results_dict[identifier][index]['dt_scores']['accuracy_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
@@ -4422,7 +4457,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
                             ]) for identifier in identifier_list],          
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['soft_binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['soft_binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['soft_binary_crossentropy'], 3),                              
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['soft_binary_crossentropy'], 3),                              
                               [np.round(np.mean([results_dict[identifier][index]['dt_scores']['soft_binary_crossentropy_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
@@ -4430,7 +4465,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
                             ]) for identifier in identifier_list],
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['binary_crossentropy'], 3),                              
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['binary_crossentropy'], 3),                              
                               [np.round(np.mean([results_dict[identifier][index]['dt_scores']['binary_crossentropy_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
@@ -4438,7 +4473,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
                             ]) for identifier in identifier_list], 
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['f1_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['f1_score'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['f1_score'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['f1_score'], 3),                              
                               [np.round(np.mean([results_dict[identifier][index]['dt_scores']['f1_score_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
@@ -4446,7 +4481,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
                             ]) for identifier in identifier_list],        
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['runtime'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['runtime'], 3),                              
                               [np.round(np.mean([results_dict[identifier][index]['dt_scores']['runtime_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
@@ -4458,7 +4493,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
     else:
         data = np.array([
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['accuracy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['accuracy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['accuracy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['accuracy'], 3),                              
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['accuracy_data_random']
@@ -4466,7 +4501,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['accuracy'], 3)
                             ]) for identifier in identifier_list],          
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['soft_binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['soft_binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['soft_binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['soft_binary_crossentropy'], 3),                                                            
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['soft_binary_crossentropy_data_random']
@@ -4474,7 +4509,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['soft_binary_crossentropy'], 3)
                             ]) for identifier in identifier_list],
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['binary_crossentropy'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['binary_crossentropy'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['binary_crossentropy'], 3),                              
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['binary_crossentropy_data_random']
@@ -4482,7 +4517,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['binary_crossentropy'], 3)
                             ]) for identifier in identifier_list], 
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['f1_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['f1_score'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['f1_score'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['f1_score'], 3),               
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_data_random']
@@ -4490,7 +4525,7 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
                             ]) for identifier in identifier_list],        
                           [flatten_list([
-                              np.round(results_dict[identifier][dataset_size_list.index('TRAIN_DATA')]['dt_scores']['runtime'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['runtime'], 3),                              
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime']
@@ -4915,6 +4950,8 @@ def plot_decision_tree_from_model(dt_model, config):
 
 def evaluate_network_real_world_data_parallel(loss_function, metrics, test_network_parameter_array, X_train, X_test, dataset_size_list, config, verbosity=0, distribution=None):
         
+    from utilities.InterpretationNet import load_inet
+                
     model = load_inet(loss_function, metrics, config)
     
     test_network = network_parameters_to_network(test_network_parameter_array, config)
@@ -4925,7 +4962,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
     dt_distilled_list = []
     for i, dataset_size in enumerate(dataset_size_list):
 
-        if dataset_size == 'TRAIN_DATA': 
+        if dataset_size == 'TRAINDATA': 
             if isinstance(X_train, pd.DataFrame):
                 X_train = X_train.values
             if isinstance(X_test, pd.DataFrame):
@@ -5036,7 +5073,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
     dt_distilled_list = []
     for i, dataset_size in enumerate(dataset_size_list):
 
-        if dataset_size == 'TRAIN_DATA': 
+        if dataset_size == 'TRAINDATA': 
             if isinstance(X_train, pd.DataFrame):
                 X_train = X_train.values
             if isinstance(X_test, pd.DataFrame):

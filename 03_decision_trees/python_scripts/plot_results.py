@@ -143,8 +143,6 @@ def add_hline(latex: str, index: int) -> str:
 # In[3]:
 
 def plot_evaluation_results(timestr, parameter_grid):
-
-    os.makedirs(os.path.dirname("./evaluation_results/" + timestr + "/"), exist_ok=True)
     
     results_summary = pd.read_csv('./results_summary/' + timestr + '.csv', delimiter=';')
 
@@ -154,7 +152,7 @@ def plot_evaluation_results(timestr, parameter_grid):
     # ### Select columns
 
     # In[4]:
-    for parameter_setting in parameter_grid:
+    for evaluation_number, parameter_setting in enumerate(parameter_grid):
 
         parameter_setting = extend_inet_parameter_setting(parameter_setting)    
 
@@ -171,6 +169,7 @@ def plot_evaluation_results(timestr, parameter_grid):
                           'data_function_generation_type',
                           'data_categorical_indices',
 
+                          'data_max_distributions_per_class',
                           'data_exclude_linearly_seperable', 
                           'data_data_generation_filtering', 
                           'data_fixed_class_probability', 
@@ -190,6 +189,10 @@ def plot_evaluation_results(timestr, parameter_grid):
                           'i_net_interpretation_dataset_size',
                           'i_net_function_representation_type',
                           'i_net_data_reshape_version',
+            
+                          'i_net_separate_weight_bias',
+                          'i_net_normalize_lambda_nets',
+            
                           'i_net_nas',
                           'i_net_nas_trials',
 
@@ -291,9 +294,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         
         distribution_list_reduced = parameter_setting['distribution_list']#['uniform', 'normal', 'gamma', 'beta', 'poisson']
-        distribution_list_additional = ['TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL']
-        distribution_list = deepcopy(distribution_list_reduced)
-        distribution_list.extend(distribution_list_additional)        
+        distribution_list_additional = ['TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL']   
         
 
         config = {
@@ -306,13 +307,17 @@ def plot_evaluation_results(timestr, parameter_grid):
 
             'i_net_loss': 'binary_crossentropy', # 'binary_crossentropy', 'soft_binary_crossentropy'
 
+            'data_max_distributions_per_class': parameter_setting['max_distributions_per_class'], 
             'data_exclude_linearly_seperable': True,
             'data_data_generation_filtering':  parameter_setting['data_generation_filtering'], 
             'data_fixed_class_probability':  parameter_setting['fixed_class_probability'], 
             'data_weighted_data_generation':  parameter_setting['weighted_data_generation'], 
             'data_shift_distrib':  parameter_setting['shift_distrib'], 
 
-            #'data_noise_injected_level': 0, 
+            'i_net_separate_weight_bias': parameter_setting['separate_weight_bias'], 
+            'i_net_normalize_lambda_nets': parameter_setting['normalize_lambda_nets'], 
+            
+            'data_noise_injected_level': parameter_setting['noise_injected_level'], 
             #'data_data_noise': 0,
 
             #'data_number_of_variables': [unique_value], # [10]
@@ -321,9 +326,12 @@ def plot_evaluation_results(timestr, parameter_grid):
             'evaluation_number_of_random_evaluations_per_distribution': [parameter_setting['number_of_random_evaluations_per_distribution']],
         }      
         if config['data_distrib_by_feature']:
-            distribution_list = [distribution_list]
+            distribution_list_reduced = [distribution_list_reduced]
 
-        config['data_distribution_list'] = [str(distribution_list)]         
+        distribution_list = deepcopy(distribution_list_reduced)
+        distribution_list.extend(distribution_list_additional)        
+
+        config['data_distribution_list'] = [str(distribution_list_reduced)]        
 
 
 
@@ -337,8 +345,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         valid_scores_df = get_relevant_columns_by_config(config, results_summary_reduced)
         valid_scores_df = valid_scores_df[valid_columns]
-        valid_scores_df = valid_scores_df.sort_values(['dt_type', 'data_number_of_variables', 'technique'], ascending=[True, True, True])
-
+        valid_scores_df = valid_scores_df.sort_values(['dt_type', 'data_number_of_variables', 'technique'], ascending=[True, True, True])     
 
         # ## Real-World Dataset Selection
 
@@ -452,6 +459,11 @@ def plot_evaluation_results(timestr, parameter_grid):
 
                             flatten_list(['vanilla1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
                             flatten_list(['SDT-1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
+                            flatten_list(['vanilla1', 'distilled', 0, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]),
+                            flatten_list(['SDT-1', 'distilled', 0, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]),    
+                            flatten_list(['vanilla1', 'distilled', 0, 'STANDARDNORMAL', [np.nan for _ in range(len(columns)-4)]]),
+                            flatten_list(['SDT-1', 'distilled', 0, 'STANDARDNORMAL', [np.nan for _ in range(len(columns)-4)]]),               
+            
 
                           ])
 
@@ -472,7 +484,7 @@ def plot_evaluation_results(timestr, parameter_grid):
                             if (row['distrib'] in column_name.split('_') and 
                                 real_world_dataset_name in column_name and 
                                 score_name in column_name and 
-                                (('10000' in column_name and '100000' not in column_name) or ('TRAINDATA' in column_name and not any(dist in column_name for dist in distribution_list_reduced))) and 
+                                (('10000' in column_name and '100000' not in column_name) or (any(str(dist) in column_name for dist in distribution_list_additional) and not any(str(dist) in column_name for dist in distribution_list_reduced))) and 
                                 'std' not in column_name):
                                 try:
                                     row['enumerator'] = int(row['enumerator'])
@@ -613,8 +625,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         summary_row = pd.Series(data=np.dstack([np.mean(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].values, axis=0), np.std(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].values, axis=0)]).flatten(), name='Summary', index=real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.columns)
         real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended = real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.append(summary_row)
-
-
+        
         ######################
 
         columns = flatten_list([[column, column]  for column in real_world_scores_df_distrib_adjusted_mean_std_VANILLA.columns])
@@ -779,12 +790,12 @@ def plot_evaluation_results(timestr, parameter_grid):
                     row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
 
 
-        os.makedirs(os.path.dirname("./evaluation_results/" + timestr +"/"), exist_ok=True)
-        with open("./evaluation_results/" + timestr +"/latex_table_with_distilled_mean.tex", "a+") as f:
+        os.makedirs(os.path.dirname("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/"), exist_ok=True)
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
-        with open("./evaluation_results/" + timestr +"/latex_table.tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
@@ -874,7 +885,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
 
 
-        with open("./evaluation_results/" + timestr +"/latex_table_split.tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_split.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla distrib comparison')
@@ -1070,12 +1081,12 @@ def plot_evaluation_results(timestr, parameter_grid):
                 for best_distrib in best_distrib_key_list:
                     row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
 
-        with open("./evaluation_results/" + timestr +"/latex_table_with_distilled_mean.tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
 
-        with open("./evaluation_results/" + timestr +"/latex_table.tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
@@ -1163,7 +1174,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
 
 
-        with open("./evaluation_results/" + timestr +"/latex_table_split.tex", "w") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_split.tex", "w") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT distrib comparison')
@@ -1176,7 +1187,7 @@ def plot_evaluation_results(timestr, parameter_grid):
         # In[22]:
 
 
-        with open("./evaluation_results/" + timestr +"/latex_tables_complete.tex", "w") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_tables_complete.tex", "w") as f:
             f.write('\\newpage \n')
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
@@ -1299,7 +1310,7 @@ def plot_evaluation_results(timestr, parameter_grid):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr +'/real_workd_complete_by_technique_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 
         # In[27]:
@@ -1314,7 +1325,7 @@ def plot_evaluation_results(timestr, parameter_grid):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr +'/real_workd_complete_by_technique_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 
         # In[28]:
@@ -1329,7 +1340,7 @@ def plot_evaluation_results(timestr, parameter_grid):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr +'/real_workd_complete_by_technique_by_distrib_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_by_distrib_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 
         # In[29]:
@@ -1344,6 +1355,6 @@ def plot_evaluation_results(timestr, parameter_grid):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr +'/real_workd_complete_by_technique_by_distrib_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_by_distrib_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 

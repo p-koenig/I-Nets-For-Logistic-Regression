@@ -56,7 +56,7 @@ def main():
                 'distrib_by_feature': [True],
                 'max_distributions_per_class': [1],
                 'distribution_list': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], #[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
-                'distribution_list_eval': [[['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'uniform']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],
+                'distribution_list_eval': [['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],
                 'distrib_param_max': [5],
                 
                 'data_generation_filtering':  [False], 
@@ -64,10 +64,12 @@ def main():
                 'weighted_data_generation':  [False], 
                 'shift_distrib':  [False],        
                 
-                'separate_weight_bias': [True, False],
+                'separate_weight_bias': [False],
                 'normalize_lambda_nets': [True, False],
                                 
                 'noise_injected_level': [0],
+                
+                'random_evaluation_dataset_size': [500, 5000],
                 
             }
 
@@ -78,8 +80,6 @@ def main():
                 print(parameter_setting)
                 
             print('Possible Evaluations: ', len(parameter_grid))
-
-            timestr = time.strftime("%Y%m%d-%H%M%S")
                 
             Parallel(n_jobs=7, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
 

@@ -300,7 +300,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                         'number_of_random_evaluations_per_distribution': parameter_setting['number_of_random_evaluations_per_distribution'],
 
-                        'random_evaluation_dataset_size': 500, 
+                        'random_evaluation_dataset_size': parameter_setting['random_evaluation_dataset_size'],
                         'random_evaluation_dataset_distribution': 'uniform', 
 
                         'per_network_optimization_dataset_size': 5000,
@@ -928,7 +928,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 # In[ ]:
 
 
-                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAIN_DATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAIN_DATA']
+                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAINDATA']
                 dataset_size_list_print = []
                 for size in dataset_size_list:
                     if type(size) is int:

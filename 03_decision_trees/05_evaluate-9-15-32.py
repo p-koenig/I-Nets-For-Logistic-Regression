@@ -17,7 +17,7 @@ def sleep_minutes_function(minutes):
                 
 def main(): 
     
-    sleep_minutes = 250
+    sleep_minutes = 0
 
         
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -56,7 +56,7 @@ def main():
                 'distrib_by_feature': [True],
                 'max_distributions_per_class': [0, 1, 2],
                 'distribution_list': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], #[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#['uniform', 'normal', 'gamma', 'exponential', 'beta', 'binomial', 'poisson'], 
-                'distribution_list_eval': [[['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'uniform']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],
+                'distribution_list_eval': [['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],#[['uniform', 'gamma', 'poisson', 'exponential', 'weibull']],#[['uniform', 'normal', 'gamma', 'beta', 'poisson']],
                 'distrib_param_max': [5],
                 
                 'data_generation_filtering':  [False], 
@@ -69,6 +69,8 @@ def main():
                 
                 'noise_injected_level': [0, 0.2],
                                 
+                'random_evaluation_dataset_size': [500],
+                
                           
             }
 
@@ -79,10 +81,8 @@ def main():
                 print(parameter_setting)
                 
             print('Possible Evaluations: ', len(parameter_grid))
-
-            timestr = time.strftime("%Y%m%d-%H%M%S")
                 
-            Parallel(n_jobs=7, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
+            Parallel(n_jobs=3, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
 
             #for parameter_setting in parameter_grid:
                 #run_evaluation.remote(parameter_setting)
