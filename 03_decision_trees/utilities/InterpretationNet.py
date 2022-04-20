@@ -361,7 +361,9 @@ def interpretation_net_training(lambda_net_train_dataset,
     start = time.time() 
 
     model = load_inet(loss_function=loss_function, metrics=metrics, config=config)
-
+    if config['i_net']['data_reshape_version'] == 3: #autoencoder
+        encoder_model = load_encoder_model(config)
+    
     end = time.time()     
     inet_load_time = (end - start) 
     minutes, seconds = divmod(int(inet_load_time), 60)
@@ -423,7 +425,28 @@ def load_inet(loss_function, metrics, config):
         
     return model
 
- 
+def load_encoder_model(config): 
+    
+    from utilities.utility_functions import generate_paths
+    
+    dt_string =  ('_depth' + str(config['function_family']['maximum_depth']) +
+              '_beta' + str(config['function_family']['beta']) +
+              '_decisionSpars' +  str(config['function_family']['decision_sparsity']) + 
+              '_' + str(config['function_family']['dt_type']))
+    
+    paths_dict = generate_paths(config, path_type = 'interpretation_net')
+    if config['i_net']['nas']:
+        path = './data/saved_models/' + 'encoder_model_' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string         
+        #path = './data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + '_' + paths_dict['path_identifier_lambda_net_data'] + dt_string         
+    else:
+        path = './data/saved_models/' + 'encoder_model_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])
+
+        
+        #path = './data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version'])        
+        
+    encoder_model = tf.keras.models.load_model(path) # #, compile=False
+    
+    return encoder_model
     
 def generate_inet_labels_learned(lambda_net, config, config_adjusted):
     
@@ -519,7 +542,7 @@ def generate_inet_train_data(lambda_net_dataset, config, encoder_model=None):
         else:        
             y_data = np.zeros_like(lambda_net_dataset.target_function_parameters_array)
         
-    if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
+    if config['i_net']['data_reshape_version'] == 0 or config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
         print('RESTRUCTURING DATA')
         X_data, X_data_flat = restructure_data_cnn_lstm(X_data, config, subsequences=None)
     elif config['i_net']['data_reshape_version'] == 3: #autoencoder
@@ -566,9 +589,8 @@ def train_inet(lambda_net_train_dataset,
     else:
         X_test = None
         X_test_flat = None
-        y_test = None
-    
-    
+        y_test = None         
+            
     if config['i_net']['separate_weight_bias']:
         print('separate_weight_bias')
         lambda_network_layers_complete = flatten_list([config['data']['number_of_variables'], config['lambda_net']['lambda_network_layers']])
@@ -1075,8 +1097,12 @@ def train_inet(lambda_net_train_dataset,
                 history = auto_model.tuner.oracle.get_best_trials(min(config['i_net']['nas_trials'], 5))
                 model = auto_model.export_model()
                 
-                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string , save_format='tf')         
+                model.save('./data/saved_models/' + config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string , save_format='tf')   
                 
+                if encoder_model is not None:
+                    encoder_model.save('./data/saved_models/' + 'encoder_model_' +  config['i_net']['nas_type'] + '_' + str(config['i_net']['nas_trials']) + '_' + str(config['i_net']['data_reshape_version']) + dt_string , save_format='tf')
+
+
         else: 
             
             
@@ -1474,7 +1500,11 @@ def train_inet(lambda_net_train_dataset,
             
             
             
-            model.save('./data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')            
+            model.save('./data/saved_models/' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
+            if encoder_model is not None:
+                encoder_model.save('./data/saved_models/' + 'encoder_model_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')        
+
+            
             #model.save('./data/saved_models/'  + '_' + paths_dict['path_identifier_interpretation_net'] + dt_string + '_reshape' + str(config['i_net']['data_reshape_version']), save_format='tf')
                 
     else:
@@ -1620,19 +1650,22 @@ def autoencode_data(X_data, config, encoder_model=None):
     class AutoEncoders(Model):
 
         def __init__(self, num_features, reduction_size):
-
             super().__init__()
             self.encoder = Sequential(
                 [
                   Dense(num_features//2, activation="relu"),
-                  Dense(reduction_size*2, activation="relu"),
+                  #Dense(min(reduction_size*4, num_features//2), activation="relu"),
+                  #Dense(min(reduction_size*2, num_features//2), activation="relu"),
+                  Dense(min(reduction_size*3, num_features//2), activation="relu"),
                   Dense(reduction_size, activation="relu", name='sequential')
                 ]
             )
 
             self.decoder = Sequential(
                 [
-                  Dense(reduction_size*2, activation="relu"),
+                  #Dense(min(reduction_size*2, num_features//2), activation="relu"),
+                  #Dense(min(reduction_size*4, num_features//2), activation="relu"),
+                  Dense(min(reduction_size*3, num_features//2), activation="relu"),
                   Dense(num_features//2, activation="relu"),
                   Dense(num_features, activation="linear")
                 ]
@@ -1646,7 +1679,7 @@ def autoencode_data(X_data, config, encoder_model=None):
     
     if encoder_model is None:
         
-        encoder_model = AutoEncoders(num_features=X_data.shape[1], reduction_size=5*config['data']['number_of_variables']*config['function_family']['maximum_depth'])
+        encoder_model = AutoEncoders(num_features=X_data.shape[1], reduction_size=2*config['data']['number_of_variables']*(2**config['function_family']['maximum_depth'])) #5
 
         encoder_model.compile(
             loss='mae',
@@ -1658,13 +1691,13 @@ def autoencode_data(X_data, config, encoder_model=None):
             X_data[100:], 
             X_data[100:], 
             epochs=250,
-            batch_size=256, 
+            batch_size=128, 
             validation_data=(X_data[:100], X_data[:100]),
             callbacks=return_callbacks_from_string('early_stopping'),
             verbose=2,
             workers=1,
             use_multiprocessing=False,
-                    )
+             )
     
     encoder_layer = encoder_model.encoder#auto_encoder.get_layer('sequential')
     X_data = encoder_layer.predict(X_data)    
@@ -1674,10 +1707,12 @@ def autoencode_data(X_data, config, encoder_model=None):
 def restructure_data_cnn_lstm(X_data, config, subsequences=None):
     import multiprocessing
     import psutil
+    
+    from utilities.utility_functions import generate_base_model, shape_flat_network_parameters
     #version == 0: one sequence for biases and one sequence for weights per layer (padded to maximum size)
     #version == 1: each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer (no. columns == number of paths and no. rows = number of layers/length of path)
     #version == 2:each path from input bias to output bias combines in one sequence for biases and one sequence for weights per layer + transpose matrices  (no. columns == number of layers/length of path and no. rows = number of paths )
-    
+        
     base_model = generate_base_model(config)
        
     X_data_flat = X_data

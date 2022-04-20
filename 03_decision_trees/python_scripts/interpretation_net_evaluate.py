@@ -156,23 +156,64 @@ def run_evaluation(enumerator, timestr, parameter_setting):
         parameter_setting['function_representation_type'] = 3
     elif parameter_setting['dt_setting'] == 2:
         parameter_setting['dt_type'] = 'SDT'
+        parameter_setting['decision_sparsity'] = 1      
+        parameter_setting['function_representation_type'] = 3
+    elif parameter_setting['dt_setting'] == 3:
+        parameter_setting['dt_type'] = 'SDT'
         parameter_setting['decision_sparsity'] = -1      
+        parameter_setting['function_representation_type'] = 1    
+        
+    elif parameter_setting['dt_setting'] == 4:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 2
+    elif parameter_setting['dt_setting'] == 5:
+        parameter_setting['dt_type'] = 'SDT'
+        parameter_setting['decision_sparsity'] = 1      
+        parameter_setting['function_representation_type'] = 2   
+    elif parameter_setting['dt_setting'] == 6:
+        parameter_setting['dt_type'] = 'SDT'
+        parameter_setting['decision_sparsity'] = -1      
+        parameter_setting['function_representation_type'] = 2           
+        
+    elif parameter_setting['dt_setting'] == 7:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
         parameter_setting['function_representation_type'] = 1
-    
+    elif parameter_setting['dt_setting'] == 8:
+        parameter_setting['dt_type'] = 'SDT'
+        parameter_setting['decision_sparsity'] = 1      
+        parameter_setting['function_representation_type'] = 1       
+    elif parameter_setting['dt_setting'] == 9:
+        parameter_setting['dt_type'] = 'SDT'
+        parameter_setting['decision_sparsity'] = -1      
+        parameter_setting['function_representation_type'] = 3    
+        
+    if 'distribution' not in parameter_setting['function_generation_type'] or 'trained' in parameter_setting['function_generation_type']:
+        if parameter_setting['dt_setting'] in [1,4,7]:
+            parameter_setting['dt_type_train'] = 'vanilla'
+            parameter_setting['maximum_depth_train'] = 3
+            parameter_setting['decision_sparsity_train'] = 1        
+        elif parameter_setting['dt_setting'] in [2,5,8]:
+            parameter_setting['dt_type_train'] = 'SDT'
+            parameter_setting['maximum_depth_train'] = 3
+            parameter_setting['decision_sparsity_train'] = 1    
+        elif parameter_setting['dt_setting'] in [3,6,9]:
+            parameter_setting['dt_type_train'] = 'SDT'
+            parameter_setting['maximum_depth_train'] = 3
+            parameter_setting['decision_sparsity_train'] = -1              
+    else:
+        parameter_setting['dt_type_train'] = 'vanilla'
+        parameter_setting['maximum_depth_train'] = 3
+        parameter_setting['decision_sparsity_train'] = 1
+
+    #parameter_setting['dt_type_train'] = 'SDT'
+    #parameter_setting['maximum_depth_train'] = 3
+    #parameter_setting['decision_sparsity_train'] = -1            
+                
     #filename = './running_evaluations/04_interpretation_net_script-' + str(parameter_setting['dt_type']) + str(parameter_setting['decision_sparsity']) + '_n' + str(parameter_setting['number_of_variables']) + '_d' + str(parameter_setting['maximum_depth']) +  '.txt'
        
-    if False:
-        parameter_setting_name = ''
-        for i, (key, value) in enumerate(parameter_setting.items()):
-            parameter_setting_name += (key + str(value))
-            if i % 5 == 0:
-                parameter_setting_name += '/'
-            else:
-                parameter_setting_name += '-'
-
-        filename = './running_evaluations/script_results/04_interpretation_net_script-' + parameter_setting_name  +  '.txt'
-    else: 
-        filename = './running_evaluations/script_results/04_interpretation_net_script-' + timestr + '/' + 'trial' + str(enumerator).zfill(4) + parameter_setting['dt_type'] + 'n' + str(parameter_setting['number_of_variables']) + '.txt'
+    filename = './running_evaluations/script_results/04_interpretation_net_script-' + timestr + '/' + 'trial' + str(enumerator).zfill(4) + parameter_setting['dt_type'] + 'n' + str(parameter_setting['number_of_variables']) + '.txt'
     
     parameter_setting = extend_inet_parameter_setting(parameter_setting)
     
@@ -203,15 +244,16 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'use_distribution_list': True,
                         'random_parameters_distribution': True, ##MAKEPATH DIFFERENT FILES
                         'max_distributions_per_class': parameter_setting['max_distributions_per_class'], # None; 0; int >= 1  
-                        'exclude_linearly_seperable': True,
+                        'exclude_linearly_seperable': parameter_setting['exclude_linearly_seperable'], 
                         'data_generation_filtering':  parameter_setting['data_generation_filtering'], 
                         'fixed_class_probability':  parameter_setting['fixed_class_probability'], 
+                        'balanced_data':  parameter_setting['balanced_data'], 
                         'weighted_data_generation':  parameter_setting['weighted_data_generation'], 
                         'shift_distrib':  parameter_setting['shift_distrib'], 
 
-                        'dt_type_train': 'vanilla', # (None, 'vanilla', 'SDT')
-                        'maximum_depth_train': 3, #None or int
-                        'decision_sparsity_train': 1, #None or int
+                        'dt_type_train': parameter_setting['dt_type_train'],#'vanilla', # (None, 'vanilla', 'SDT')
+                        'maximum_depth_train': parameter_setting['maximum_depth_train'],#3, #None or int
+                        'decision_sparsity_train': parameter_setting['decision_sparsity_train'],#1, #None or int
 
                         'function_generation_type': parameter_setting['function_generation_type'],# 'make_classification_distribution', 'make_classification_distribution_trained', 'distribution', 'distribution_trained', 'make_classification', 'make_classification_trained', 'random_decision_tree', 'random_decision_tree_trained'
                         
@@ -239,9 +281,11 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'epochs_lambda': 1000,
                         'early_stopping_lambda': True, 
                         'early_stopping_min_delta_lambda': 1e-3,
+                        'restore_best_weights': parameter_setting['restore_best_weights'],
+                        
                         'batch_lambda': 64,
                         'dropout_lambda': 0,
-                        'lambda_network_layers': [128],
+                        'lambda_network_layers': parameter_setting['lambda_network_layers'],
                         'use_batchnorm_lambda': False,
 
                         'optimizer_lambda': 'adam',
@@ -287,8 +331,11 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'optimize_decision_function': True, #False
                         'function_value_loss': True, #False
 
-                        'data_reshape_version': None, #default to 2 options:(None, 0,1 2,3) #3=autoencoder dimensionality reduction
+                        'data_reshape_version': parameter_setting['data_reshape_version'], #default to 2 options:(None, 0,1 2,3) #3=autoencoder dimensionality reduction
 
+                        'resampling_strategy': parameter_setting['resampling_strategy'],#'ADASYN', #'SMOTE', None
+                        'resampling_threshold': parameter_setting['resampling_threshold'],#0.2,
+                                                
                         'nas': False,
                         'nas_type': 'SEQUENTIAL', #options:(None, 'SEQUENTIAL', 'CNN', 'LSTM', 'CNN-LSTM', 'CNN-LSTM-parallel')      
                         'nas_trials': 60,
@@ -730,9 +777,10 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 else:
                     network_parameters = np.array([lambda_net_dataset_valid.network_parameters_array[index]])
 
-                if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
+                if config['i_net']['data_reshape_version'] == 0 or config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
                     network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
                 elif config['i_net']['data_reshape_version'] == 3: #autoencoder
+                    encoder_model = load_encoder_model(config)
                     network_parameters, network_parameters_flat, _ = autoencode_data(network_parameters, config, encoder_model)    
                 dt_parameters = model.predict(network_parameters)[0]
 
@@ -804,8 +852,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                                                                                identifier='train',
                                                                                mean_train_parameters=mean_train_parameters,
                                                                                std_train_parameters=std_train_parameters,
-                                                                               network_parameters_train_array=lambda_net_dataset_train.network_parameters_array,
-                                                                               encoder_model=encoder_model)
+                                                                               network_parameters_train_array=lambda_net_dataset_train.network_parameters_array)
 
 
                 (inet_evaluation_result_dict_valid, 
@@ -819,8 +866,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                                                                                mean_train_parameters=mean_train_parameters,
                                                                                std_train_parameters=std_train_parameters,
                                                                                network_parameters_train_array=lambda_net_dataset_train.network_parameters_array,
-                                                                               distances_dict=distances_dict,
-                                                                               encoder_model=encoder_model)
+                                                                               distances_dict=distances_dict)
 
 
                 # ## Test Data Evaluation (+ Distribution Evaluation)
@@ -870,7 +916,6 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                                                                                                            max_distributions_per_class=max_distributions_per_class,#max_distributions_per_class,
                                                                                                            flip_percentage=noise_injected_level, #0.1,#
                                                                                                            data_noise=data_noise, #0.1,#
-                                                                                                           #encoder_model=encoder_model,                
                                                                                                            random_parameters = random_parameters_distribution, #random_parameters_distribution
                                                                                                            verbose=0,
                                                                                                            backend='loky',#sequential
@@ -887,8 +932,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                                                                                    mean_train_parameters=mean_train_parameters,
                                                                                    std_train_parameters=std_train_parameters,
                                                                                    network_parameters_train_array=lambda_net_dataset_train.network_parameters_array,
-                                                                                   distances_dict=distances_dict,
-                                                                                   encoder_model=encoder_model)
+                                                                                   distances_dict=distances_dict)
 
                     print_results_synthetic_evaluation(inet_evaluation_result_dict_mean_train, 
                                                        inet_evaluation_result_dict_mean_valid, 

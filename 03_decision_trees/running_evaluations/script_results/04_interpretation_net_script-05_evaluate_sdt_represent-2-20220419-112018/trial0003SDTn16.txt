@@ -1,0 +1,1155 @@
+{'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'dt_setting': 6, 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 6, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'number_of_variables': 16, 'random_evaluation_dataset_size': 500, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False, 'dt_type': 'SDT', 'decision_sparsity': -1, 'function_representation_type': 2, 'dt_type_train': 'vanilla', 'maximum_depth_train': 3, 'decision_sparsity_train': 1, 'dense_layers': [1792, 512, 512], 'dropout': [0, 0, 0.5], 'hidden_activation': 'sigmoid', 'optimizer': 'adam', 'learning_rate': 0.001}
+lNetSize5000_numLNets10000_var16_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_randClassProb_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42/inet_dense1792-512-512_drop0-0-0.5e500b256_adam_funcRep2_reshapeNone
+lNetSize5000_numLNets10000_var16_class2_distribution_xMax1_xMin0_xDistuniform_dNoise0_randParamDist_maxDistClass1_distribParamMax5_randClassProb_exLinSepun-no-ga-be-po_depth3_beta1_decisionSpars1_vanilla_fullyGrown/128_e1000ES0.001_b64_drop0_adam_binary_crossentropy_fixedInit1-seed42
+Num GPUs Available:  0
+Num XLA-GPUs Available:  0
+(9000, 2442)
+(1000, 2442)
+----------------------------------------------- TRAINING INTERPRETATION NET -----------------------------------------------
+network_parameters_structure [(16, 128), (128,), (128, 1), (1,)]
+Epoch 1/500
+36/36 - 215s - loss: 0.7618 - binary_accuracy_inet_decision_function_fv_metric: 0.5006 - val_loss: 0.7027 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 215s/epoch - 6s/step
+Epoch 2/500
+36/36 - 23s - loss: 0.7047 - binary_accuracy_inet_decision_function_fv_metric: 0.5011 - val_loss: 0.6944 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 23s/epoch - 637ms/step
+Epoch 3/500
+36/36 - 22s - loss: 0.6961 - binary_accuracy_inet_decision_function_fv_metric: 0.5018 - val_loss: 0.6935 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 22s/epoch - 616ms/step
+Epoch 4/500
+36/36 - 22s - loss: 0.6944 - binary_accuracy_inet_decision_function_fv_metric: 0.5037 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 22s/epoch - 616ms/step
+Epoch 5/500
+36/36 - 23s - loss: 0.6939 - binary_accuracy_inet_decision_function_fv_metric: 0.5041 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 23s/epoch - 642ms/step
+Epoch 6/500
+36/36 - 22s - loss: 0.6935 - binary_accuracy_inet_decision_function_fv_metric: 0.5052 - val_loss: 0.6934 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 22s/epoch - 618ms/step
+Epoch 7/500
+36/36 - 22s - loss: 0.6934 - binary_accuracy_inet_decision_function_fv_metric: 0.5058 - val_loss: 0.6934 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 22s/epoch - 621ms/step
+Epoch 8/500
+36/36 - 23s - loss: 0.6933 - binary_accuracy_inet_decision_function_fv_metric: 0.5062 - val_loss: 0.6933 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 23s/epoch - 625ms/step
+Epoch 9/500
+36/36 - 22s - loss: 0.6932 - binary_accuracy_inet_decision_function_fv_metric: 0.5065 - val_loss: 0.6934 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 22s/epoch - 620ms/step
+Epoch 10/500
+36/36 - 22s - loss: 0.6931 - binary_accuracy_inet_decision_function_fv_metric: 0.5080 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4989 - 22s/epoch - 614ms/step
+Epoch 11/500
+36/36 - 23s - loss: 0.6930 - binary_accuracy_inet_decision_function_fv_metric: 0.5084 - val_loss: 0.6932 - val_binary_accuracy_inet_decision_function_fv_metric: 0.4991 - 23s/epoch - 629ms/step
+Epoch 12/500
+36/36 - 22s - loss: 0.6929 - binary_accuracy_inet_decision_function_fv_metric: 0.5097 - val_loss: 0.6931 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5014 - 22s/epoch - 619ms/step
+Epoch 13/500
+36/36 - 22s - loss: 0.6929 - binary_accuracy_inet_decision_function_fv_metric: 0.5101 - val_loss: 0.6931 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5014 - 22s/epoch - 613ms/step
+Epoch 14/500
+36/36 - 22s - loss: 0.6928 - binary_accuracy_inet_decision_function_fv_metric: 0.5115 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5069 - 22s/epoch - 616ms/step
+Epoch 15/500
+36/36 - 22s - loss: 0.6927 - binary_accuracy_inet_decision_function_fv_metric: 0.5130 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5097 - 22s/epoch - 610ms/step
+Epoch 16/500
+36/36 - 22s - loss: 0.6926 - binary_accuracy_inet_decision_function_fv_metric: 0.5133 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5115 - 22s/epoch - 621ms/step
+Epoch 17/500
+36/36 - 22s - loss: 0.6925 - binary_accuracy_inet_decision_function_fv_metric: 0.5145 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5114 - 22s/epoch - 616ms/step
+Epoch 18/500
+36/36 - 23s - loss: 0.6925 - binary_accuracy_inet_decision_function_fv_metric: 0.5156 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5120 - 23s/epoch - 626ms/step
+Epoch 19/500
+36/36 - 22s - loss: 0.6925 - binary_accuracy_inet_decision_function_fv_metric: 0.5155 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5125 - 22s/epoch - 618ms/step
+Epoch 20/500
+36/36 - 22s - loss: 0.6924 - binary_accuracy_inet_decision_function_fv_metric: 0.5155 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5132 - 22s/epoch - 613ms/step
+Epoch 21/500
+36/36 - 22s - loss: 0.6924 - binary_accuracy_inet_decision_function_fv_metric: 0.5159 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5115 - 22s/epoch - 616ms/step
+Epoch 22/500
+36/36 - 23s - loss: 0.6924 - binary_accuracy_inet_decision_function_fv_metric: 0.5167 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5131 - 23s/epoch - 630ms/step
+Epoch 23/500
+36/36 - 22s - loss: 0.6924 - binary_accuracy_inet_decision_function_fv_metric: 0.5164 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 22s/epoch - 624ms/step
+Epoch 24/500
+36/36 - 24s - loss: 0.6923 - binary_accuracy_inet_decision_function_fv_metric: 0.5167 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5131 - 24s/epoch - 667ms/step
+Epoch 25/500
+36/36 - 23s - loss: 0.6923 - binary_accuracy_inet_decision_function_fv_metric: 0.5170 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5129 - 23s/epoch - 637ms/step
+Epoch 26/500
+36/36 - 22s - loss: 0.6923 - binary_accuracy_inet_decision_function_fv_metric: 0.5174 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5136 - 22s/epoch - 620ms/step
+Epoch 27/500
+36/36 - 28s - loss: 0.6923 - binary_accuracy_inet_decision_function_fv_metric: 0.5176 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5126 - 28s/epoch - 791ms/step
+Epoch 28/500
+36/36 - 30s - loss: 0.6923 - binary_accuracy_inet_decision_function_fv_metric: 0.5176 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5134 - 30s/epoch - 837ms/step
+Epoch 29/500
+36/36 - 28s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5178 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5127 - 28s/epoch - 773ms/step
+Epoch 30/500
+36/36 - 23s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5178 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5123 - 23s/epoch - 633ms/step
+Epoch 31/500
+36/36 - 29s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5182 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5129 - 29s/epoch - 805ms/step
+Epoch 32/500
+36/36 - 31s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5183 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5137 - 31s/epoch - 851ms/step
+Epoch 33/500
+36/36 - 30s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5184 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5131 - 30s/epoch - 825ms/step
+Epoch 34/500
+36/36 - 30s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5184 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5132 - 30s/epoch - 829ms/step
+Epoch 35/500
+36/36 - 30s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5182 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5131 - 30s/epoch - 845ms/step
+Epoch 36/500
+36/36 - 30s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5184 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5131 - 30s/epoch - 838ms/step
+Epoch 37/500
+36/36 - 30s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5185 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5125 - 30s/epoch - 846ms/step
+Epoch 38/500
+36/36 - 31s - loss: 0.6922 - binary_accuracy_inet_decision_function_fv_metric: 0.5186 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5126 - 31s/epoch - 851ms/step
+Epoch 39/500
+36/36 - 30s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5188 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5125 - 30s/epoch - 832ms/step
+Epoch 40/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5189 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5123 - 31s/epoch - 856ms/step
+Epoch 41/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5188 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5130 - 31s/epoch - 867ms/step
+Epoch 42/500
+36/36 - 32s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5188 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5131 - 32s/epoch - 882ms/step
+Epoch 43/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5190 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5129 - 31s/epoch - 863ms/step
+Epoch 44/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5191 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5127 - 31s/epoch - 866ms/step
+Epoch 45/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5191 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5125 - 31s/epoch - 863ms/step
+Epoch 46/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5192 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5127 - 31s/epoch - 854ms/step
+Epoch 47/500
+36/36 - 32s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5192 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5127 - 32s/epoch - 883ms/step
+Epoch 48/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5193 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5129 - 31s/epoch - 853ms/step
+Epoch 49/500
+36/36 - 31s - loss: 0.6921 - binary_accuracy_inet_decision_function_fv_metric: 0.5195 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5129 - 31s/epoch - 866ms/step
+Epoch 50/500
+36/36 - 31s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5194 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 31s/epoch - 865ms/step
+Epoch 51/500
+36/36 - 31s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5194 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5130 - 31s/epoch - 866ms/step
+Epoch 52/500
+36/36 - 32s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5195 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 32s/epoch - 891ms/step
+Epoch 53/500
+36/36 - 30s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5196 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 30s/epoch - 847ms/step
+Epoch 54/500
+36/36 - 33s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5196 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5127 - 33s/epoch - 915ms/step
+Epoch 55/500
+36/36 - 33s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5197 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5130 - 33s/epoch - 928ms/step
+Epoch 56/500
+36/36 - 32s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5198 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5130 - 32s/epoch - 894ms/step
+Epoch 57/500
+36/36 - 33s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5197 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5132 - 33s/epoch - 915ms/step
+Epoch 58/500
+36/36 - 33s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5197 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5133 - 33s/epoch - 917ms/step
+Epoch 59/500
+36/36 - 31s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5199 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5134 - 31s/epoch - 860ms/step
+Epoch 60/500
+36/36 - 31s - loss: 0.6920 - binary_accuracy_inet_decision_function_fv_metric: 0.5198 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5136 - 31s/epoch - 872ms/step
+Epoch 61/500
+36/36 - 22s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5199 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5133 - 22s/epoch - 615ms/step
+Epoch 62/500
+36/36 - 22s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5200 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5134 - 22s/epoch - 617ms/step
+Epoch 63/500
+36/36 - 23s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5200 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5133 - 23s/epoch - 628ms/step
+Epoch 64/500
+36/36 - 23s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5200 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5135 - 23s/epoch - 635ms/step
+Epoch 65/500
+36/36 - 23s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5200 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 23s/epoch - 632ms/step
+Epoch 66/500
+36/36 - 22s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5201 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 22s/epoch - 624ms/step
+Epoch 67/500
+36/36 - 28s - loss: 0.6919 - binary_accuracy_inet_decision_function_fv_metric: 0.5202 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5133 - 28s/epoch - 779ms/step
+Epoch 68/500
+36/36 - 29s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5201 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5127 - 29s/epoch - 805ms/step
+Epoch 69/500
+36/36 - 26s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5202 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 26s/epoch - 710ms/step
+Epoch 70/500
+36/36 - 26s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5202 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5126 - 26s/epoch - 721ms/step
+Epoch 71/500
+36/36 - 30s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5201 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5124 - 30s/epoch - 838ms/step
+Epoch 72/500
+36/36 - 27s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5203 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5128 - 27s/epoch - 754ms/step
+Epoch 73/500
+36/36 - 26s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5203 - val_loss: 0.6930 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5121 - 26s/epoch - 709ms/step
+Epoch 74/500
+36/36 - 23s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5204 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5129 - 23s/epoch - 645ms/step
+Epoch 75/500
+36/36 - 28s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5202 - val_loss: 0.6929 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5125 - 28s/epoch - 764ms/step
+Epoch 76/500
+36/36 - 28s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5202 - val_loss: 0.6928 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5132 - 28s/epoch - 771ms/step
+Epoch 77/500
+36/36 - 28s - loss: 0.6918 - binary_accuracy_inet_decision_function_fv_metric: 0.5200 - val_loss: 0.6927 - val_binary_accuracy_inet_decision_function_fv_metric: 0.5135 - 28s/epoch - 775ms/step
+Training Time: 0:37:59
+---------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------ LOADING MODELS -----------------------------------------------------
+Loading Time: 0:00:21
+Model: "model_3"
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input (InputLayer)             [(None, 2305)]       0           []                               
+                                                                                                  
+ hidden1_1792 (Dense)           (None, 1792)         4132352     ['input[0][0]']                  
+                                                                                                  
+ activation1_sigmoid (Activatio  (None, 1792)        0           ['hidden1_1792[0][0]']           
+ n)                                                                                               
+                                                                                                  
+ hidden2_512 (Dense)            (None, 512)          918016      ['activation1_sigmoid[0][0]']    
+                                                                                                  
+ activation2_sigmoid (Activatio  (None, 512)         0           ['hidden2_512[0][0]']            
+ n)                                                                                               
+                                                                                                  
+ hidden3_512 (Dense)            (None, 512)          262656      ['activation2_sigmoid[0][0]']    
+                                                                                                  
+ activation3_sigmoid (Activatio  (None, 512)         0           ['hidden3_512[0][0]']            
+ n)                                                                                               
+                                                                                                  
+ dropout3_0.5 (Dropout)         (None, 512)          0           ['activation3_sigmoid[0][0]']    
+                                                                                                  
+ output_coeff_112 (Dense)       (None, 112)          57456       ['dropout3_0.5[0][0]']           
+                                                                                                  
+ output_identifier1_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier1_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier1_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier1_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier1_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier1_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier1_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier1_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier2_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier2_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier3_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier3_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier4_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier4_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier5_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier5_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier6_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier6_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var1_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var2_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var3_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var4_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var5_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var6_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var7_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var8_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var9_16 (De  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ nse)                                                                                             
+                                                                                                  
+ output_identifier7_var10_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var11_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var12_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var13_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var14_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var15_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_identifier7_var16_16 (D  (None, 16)          8208        ['dropout3_0.5[0][0]']           
+ ense)                                                                                            
+                                                                                                  
+ output_bias_7 (Dense)          (None, 7)            3591        ['dropout3_0.5[0][0]']           
+                                                                                                  
+ output_leaf_nodes_16 (Dense)   (None, 16)           8208        ['dropout3_0.5[0][0]']           
+                                                                                                  
+ output_combined (Concatenate)  (None, 1927)         0           ['output_coeff_112[0][0]',       
+                                                                  'output_identifier1_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier1_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier1_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier1_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier1_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier1_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier1_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier1_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier2_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier2_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier3_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier3_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier4_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier4_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier5_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier5_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier6_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier6_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var1_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var2_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var3_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var4_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var5_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var6_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var7_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var8_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var9_16[0][0
+                                                                 ]',                              
+                                                                  'output_identifier7_var10_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var11_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var12_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var13_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var14_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var15_16[0][
+                                                                 0]',                             
+                                                                  'output_identifier7_var16_16[0][
+                                                                 0]',                             
+                                                                  'output_bias_7[0][0]',          
+                                                                  'output_leaf_nodes_16[0][0]']   
+                                                                                                  
+==================================================================================================
+Total params: 6,301,575
+Trainable params: 6,301,575
+Non-trainable params: 0
+__________________________________________________________________________________________________
+UPDATE4
+  0%|          | 0/10 [00:00<?, ?it/s]
+UPDATE4
+  0%|          | 0/10 [00:00<?, ?it/s]
+I-Net Performance by Network:  [0.546 0.494 0.54  0.448 0.488 0.582 0.494 0.52  0.494 0.538]
+Distilled Mean Performance by Network:  [0.996 0.716 1.    0.878 0.992 0.892 0.97  0.52  0.506 0.912]
+Distilled Max Performance by Network:  [0.996 0.716 1.    0.878 0.992 0.892 0.97  0.52  0.506 0.912]
+Median I-Net: 0.507
+Median DT Distilled: 0.902
+                                                   Acc Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                     0.969   
+
+                                                   Acc Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                      0.969   
+
+                                                   Acc Distilled  Acc I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.838      0.514   
+
+                                                   Soft BC Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                         0.398   
+
+                                                   Soft BC Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                          0.413   
+
+                                                   Soft BC Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']              0.515   
+
+                                                   Soft BC I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.693   
+
+                                                   BC Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                    0.099   
+
+                                                   BC Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                     0.095   
+
+                                                   BC Distilled  BC I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']         0.584     0.692   
+
+                                                   F1 Score Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                          0.967   
+
+                                                   F1 Score Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                           0.719   
+
+                                                   F1 Score Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']               0.727   
+
+                                                   F1 Score I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']           0.194   
+
+                                                   Runtime Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                        55.610   
+
+                                                   Runtime Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                         55.610   
+
+                                                   Runtime Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']             55.610   
+
+                                                   Runtime I-Net  
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          3.169  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             1110.890   
+valid                                                             1112.245   
+test                                                              1109.796   
+Adult                                                                  NaN   
+Titanic                                                                NaN   
+Absenteeism                                                        504.213   
+Loan House                                                             NaN   
+Loan Credit                                                            NaN   
+Medical Insurance                                                      NaN   
+Bank Marketing                                                         NaN   
+Cervical Cancer                                                    258.253   
+Brest Cancer Wisconsin                                                 NaN   
+Wisconsin Diagnostic Breast Cancer                                     NaN   
+Wisconsin Prognostic Breast Cancer                                     NaN   
+Abalone                                                                NaN   
+Car                                                                    NaN   
+
+                                    Average Distance to Initialization  \
+train                                                          275.639   
+valid                                                          273.266   
+test                                                           262.867   
+Adult                                                              NaN   
+Titanic                                                            NaN   
+Absenteeism                                                    103.003   
+Loan House                                                         NaN   
+Loan Credit                                                        NaN   
+Medical Insurance                                                  NaN   
+Bank Marketing                                                     NaN   
+Cervical Cancer                                                 20.209   
+Brest Cancer Wisconsin                                             NaN   
+Wisconsin Diagnostic Breast Cancer                                 NaN   
+Wisconsin Prognostic Breast Cancer                                 NaN   
+Abalone                                                            NaN   
+Car                                                                NaN   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           430.839   
+valid                                                           425.894   
+test                                                            413.624   
+Adult                                                               NaN   
+Titanic                                                             NaN   
+Absenteeism                                                     301.999   
+Loan House                                                          NaN   
+Loan Credit                                                         NaN   
+Medical Insurance                                                   NaN   
+Bank Marketing                                                      NaN   
+Cervical Cancer                                                 274.290   
+Brest Cancer Wisconsin                                              NaN   
+Wisconsin Diagnostic Breast Cancer                                  NaN   
+Wisconsin Prognostic Breast Cancer                                  NaN   
+Abalone                                                             NaN   
+Car                                                                 NaN   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     273.858   
+test                                                                      256.591   
+Adult                                                                         NaN   
+Titanic                                                                       NaN   
+Absenteeism                                                               142.392   
+Loan House                                                                    NaN   
+Loan Credit                                                                   NaN   
+Medical Insurance                                                             NaN   
+Bank Marketing                                                                NaN   
+Cervical Cancer                                                           104.522   
+Brest Cancer Wisconsin                                                        NaN   
+Wisconsin Diagnostic Breast Cancer                                            NaN   
+Wisconsin Prognostic Breast Cancer                                            NaN   
+Abalone                                                                       NaN   
+Car                                                                           NaN   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    4.345   
+valid                                                                    4.372   
+test                                                                     3.654   
+Adult                                                                      NaN   
+Titanic                                                                    NaN   
+Absenteeism                                                              3.441   
+Loan House                                                                 NaN   
+Loan Credit                                                                NaN   
+Medical Insurance                                                          NaN   
+Bank Marketing                                                             NaN   
+Cervical Cancer                                                          3.475   
+Brest Cancer Wisconsin                                                     NaN   
+Wisconsin Diagnostic Breast Cancer                                         NaN   
+Wisconsin Prognostic Breast Cancer                                         NaN   
+Abalone                                                                    NaN   
+Car                                                                        NaN   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    2.403  
+test                                                                     1.571  
+Adult                                                                      NaN  
+Titanic                                                                    NaN  
+Absenteeism                                                              0.335  
+Loan House                                                                 NaN  
+Loan Credit                                                                NaN  
+Medical Insurance                                                          NaN  
+Bank Marketing                                                             NaN  
+Cervical Cancer                                                          0.272  
+Brest Cancer Wisconsin                                                     NaN  
+Wisconsin Diagnostic Breast Cancer                                         NaN  
+Wisconsin Prognostic Breast Cancer                                         NaN  
+Abalone                                                                    NaN  
+Car                                                                        NaN  
+Original Data Shape:  (32561, 28)
+Original Data Shape:  (891, 9)
+Original Data Shape:  (740, 15)
+Original Data Shape:  (614, 16)
+(523, 16) (523,)
+(30, 16) (30,)
+(61, 16) (61,)
+True Ratio:  0.6864244741873805
+Training Network:  3.205829381942749
+Evaluate Network:  1068.4200248718262
+Evaluate Network Complete:  1072.3105177879333
+Original Data Shape:  (63999, 32)
+Original Data Shape:  (1338, 9)
+Original Data Shape:  (45211, 29)
+Original Data Shape:  (858, 15)
+Original Data Shape:  (699, 9)
+Original Data Shape:  (569, 10)
+Original Data Shape:  (198, 10)
+Original Data Shape:  (4177, 10)
+Original Data Shape:  (1728, 21)
+            Acc Distilled (Train Data)  Acc Distilled  Acc Distilled STD  \
+Loan House                       1.000          0.508              0.000   
+
+            Acc I-Net  Soft BC Distilled (Train Data)  Soft BC Distilled  \
+Loan House      0.131                           0.518              0.751   
+
+            Soft BC Distilled STD  Soft BC I-Net  BC Distilled (Train Data)  \
+Loan House                  0.000          0.696                      0.013   
+
+            BC Distilled  BC Distilled STD  BC I-Net  \
+Loan House         1.573             0.000     0.702   
+
+            F1 Score Distilled (Train Data)  F1 Score Distilled  \
+Loan House                            1.000               0.459   
+
+            F1 Score Distilled STD  F1 Score I-Net  \
+Loan House                   0.000           0.000   
+
+            Runtime Distilled (Train Data)  Runtime Distilled  \
+Loan House                          10.481             77.830   
+
+            Runtime Distilled STD  Runtime I-Net  
+Loan House                    NaN          0.988  
+            Acc Distilled (Train Data)  Acc Distilled (Standard Uniform)  \
+Loan House                       1.000                             1.000   
+
+            Acc Distilled (Standard Normal)  \
+Loan House                            0.131   
+
+            Acc Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              0.508                   
+
+            STD Acc Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              0.394                       
+
+            Acc I-Net  Soft BC Distilled (Train Data)  \
+Loan House      0.131                           0.518   
+
+            Soft BC Distilled (Standard Uniform)  \
+Loan House                                 0.522   
+
+            Soft BC Distilled (Standard Normal)  \
+Loan House                                0.786   
+
+            Soft BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              0.751                       
+
+            STD Soft BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              0.182                           
+
+            Soft BC I-Net  BC Distilled (Train Data)  \
+Loan House          0.696                      0.013   
+
+            BC Distilled (Standard Uniform)  BC Distilled (Standard Normal)  \
+Loan House                            0.058                           1.404   
+
+            BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              1.573                  
+
+            STD BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              1.481                      
+
+            BC I-Net  F1 Score Distilled (Train Data)  \
+Loan House     0.702                            1.000   
+
+            F1 Score Distilled (Standard Uniform)  \
+Loan House                                  1.000   
+
+            F1 Score Distilled (Standard Normal)  \
+Loan House                                 0.000   
+
+            F1 Score Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              0.459                        
+
+            STD F1 Score Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                              0.467                            
+
+            F1 Score I-Net  Runtime Distilled (Train Data)  \
+Loan House           0.000                          10.481   
+
+            Runtime Distilled (Standard Uniform)  \
+Loan House                                57.954   
+
+            Runtime Distilled (Standard Normal)  \
+Loan House                              193.253   
+
+            Runtime Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                             77.830                       
+
+            STD Runtime Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Loan House                                             50.776                           
+
+            Runtime I-Net  
+Loan House          0.988  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             1110.890   
+valid                                                             1112.245   
+test                                                              1109.796   
+Adult                                                                  NaN   
+Titanic                                                                NaN   
+Absenteeism                                                            NaN   
+Loan House                                                         523.609   
+Loan Credit                                                            NaN   
+Medical Insurance                                                      NaN   
+Bank Marketing                                                         NaN   
+Cervical Cancer                                                        NaN   
+Brest Cancer Wisconsin                                                 NaN   
+Wisconsin Diagnostic Breast Cancer                                     NaN   
+Wisconsin Prognostic Breast Cancer                                     NaN   
+Abalone                                                                NaN   
+Car                                                                    NaN   
+
+                                    Average Distance to Initialization  \
+train                                                          275.639   
+valid                                                          273.266   
+test                                                           262.867   
+Adult                                                              NaN   
+Titanic                                                            NaN   
+Absenteeism                                                        NaN   
+Loan House                                                     108.532   
+Loan Credit                                                        NaN   
+Medical Insurance                                                  NaN   
+Bank Marketing                                                     NaN   
+Cervical Cancer                                                    NaN   
+Brest Cancer Wisconsin                                             NaN   
+Wisconsin Diagnostic Breast Cancer                                 NaN   
+Wisconsin Prognostic Breast Cancer                                 NaN   
+Abalone                                                            NaN   
+Car                                                                NaN   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           430.839   
+valid                                                           425.894   
+test                                                            413.624   
+Adult                                                               NaN   
+Titanic                                                             NaN   
+Absenteeism                                                         NaN   
+Loan House                                                      304.919   
+Loan Credit                                                         NaN   
+Medical Insurance                                                   NaN   
+Bank Marketing                                                      NaN   
+Cervical Cancer                                                     NaN   
+Brest Cancer Wisconsin                                              NaN   
+Wisconsin Diagnostic Breast Cancer                                  NaN   
+Wisconsin Prognostic Breast Cancer                                  NaN   
+Abalone                                                             NaN   
+Car                                                                 NaN   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     273.858   
+test                                                                      256.591   
+Adult                                                                         NaN   
+Titanic                                                                       NaN   
+Absenteeism                                                                   NaN   
+Loan House                                                                139.087   
+Loan Credit                                                                   NaN   
+Medical Insurance                                                             NaN   
+Bank Marketing                                                                NaN   
+Cervical Cancer                                                               NaN   
+Brest Cancer Wisconsin                                                        NaN   
+Wisconsin Diagnostic Breast Cancer                                            NaN   
+Wisconsin Prognostic Breast Cancer                                            NaN   
+Abalone                                                                       NaN   
+Car                                                                           NaN   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    4.345   
+valid                                                                    4.372   
+test                                                                     3.654   
+Adult                                                                      NaN   
+Titanic                                                                    NaN   
+Absenteeism                                                                NaN   
+Loan House                                                               3.378   
+Loan Credit                                                                NaN   
+Medical Insurance                                                          NaN   
+Bank Marketing                                                             NaN   
+Cervical Cancer                                                            NaN   
+Brest Cancer Wisconsin                                                     NaN   
+Wisconsin Diagnostic Breast Cancer                                         NaN   
+Wisconsin Prognostic Breast Cancer                                         NaN   
+Abalone                                                                    NaN   
+Car                                                                        NaN   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    2.403  
+test                                                                     1.571  
+Adult                                                                      NaN  
+Titanic                                                                    NaN  
+Absenteeism                                                                NaN  
+Loan House                                                               0.348  
+Loan Credit                                                                NaN  
+Medical Insurance                                                          NaN  
+Bank Marketing                                                             NaN  
+Cervical Cancer                                                            NaN  
+Brest Cancer Wisconsin                                                     NaN  
+Wisconsin Diagnostic Breast Cancer                                         NaN  
+Wisconsin Prognostic Breast Cancer                                         NaN  
+Abalone                                                                    NaN  
+Car                                                                        NaN  

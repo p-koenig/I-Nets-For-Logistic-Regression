@@ -181,6 +181,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
                           'lambda_net_lambda_network_layers',
                           'lambda_net_optimizer_lambda',
+                          'lambda_net_restore_best_weights',
 
                           'i_net_dense_layers',
                           'i_net_dropout',
@@ -188,10 +189,13 @@ def plot_evaluation_results(timestr, parameter_grid):
                           'i_net_loss',
                           'i_net_interpretation_dataset_size',
                           'i_net_function_representation_type',
-                          'i_net_data_reshape_version',
             
                           'i_net_separate_weight_bias',
                           'i_net_normalize_lambda_nets',
+                          'i_net_data_reshape_version',
+            
+                          'i_net_resampling_strategy',
+                          'i_net_resampling_threshold',
             
                           'i_net_nas',
                           'i_net_nas_trials',
@@ -200,6 +204,7 @@ def plot_evaluation_results(timestr, parameter_grid):
                           'evaluation_eval_data_description_eval_data_noise_injected_level',
 
                           'evaluation_number_of_random_evaluations_per_distribution',
+                          'evaluation_random_evaluation_dataset_size',
                          ]
 
         
@@ -273,12 +278,12 @@ def plot_evaluation_results(timestr, parameter_grid):
 
 
         # In[10]:
-
-
+        
         results_summary_reduced = pd.concat([
                                              results_summary_inet, 
                                              results_summary_dt_distilled, 
                                             ]).reset_index(drop=True)
+        
         results_summary_reduced_columns = results_summary_reduced.columns
 
 
@@ -294,7 +299,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         
         distribution_list_reduced = parameter_setting['distribution_list']#['uniform', 'normal', 'gamma', 'beta', 'poisson']
-        distribution_list_additional = ['TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL']   
+        distribution_list_additional = ['STANDARDUNIFORM', 'STANDARDNORMAL', 'TRAINDATA']   
         
 
         config = {
@@ -307,8 +312,11 @@ def plot_evaluation_results(timestr, parameter_grid):
 
             'i_net_loss': 'binary_crossentropy', # 'binary_crossentropy', 'soft_binary_crossentropy'
 
-            'data_max_distributions_per_class': parameter_setting['max_distributions_per_class'], 
-            'data_exclude_linearly_seperable': True,
+            'data_function_generation_type': parameter_setting['function_generation_type'], 
+            
+            'data_max_distributions_per_class': parameter_setting['max_distributions_per_class'],
+            
+            'data_exclude_linearly_seperable': parameter_setting['exclude_linearly_seperable'], 
             'data_data_generation_filtering':  parameter_setting['data_generation_filtering'], 
             'data_fixed_class_probability':  parameter_setting['fixed_class_probability'], 
             'data_weighted_data_generation':  parameter_setting['weighted_data_generation'], 
@@ -316,6 +324,13 @@ def plot_evaluation_results(timestr, parameter_grid):
 
             'i_net_separate_weight_bias': parameter_setting['separate_weight_bias'], 
             'i_net_normalize_lambda_nets': parameter_setting['normalize_lambda_nets'], 
+            'i_net_data_reshape_version': str(parameter_setting['data_reshape_version']), 
+            
+            'i_net_resampling_strategy': str(parameter_setting['resampling_strategy']), 
+            'i_net_resampling_threshold': parameter_setting['resampling_threshold'], 
+            
+            'lambda_net_lambda_network_layers': str(parameter_setting['lambda_network_layers']), 
+            'lambda_net_restore_best_weights': parameter_setting['restore_best_weights'], 
             
             'data_noise_injected_level': parameter_setting['noise_injected_level'], 
             #'data_data_noise': 0,
@@ -324,6 +339,7 @@ def plot_evaluation_results(timestr, parameter_grid):
             'function_family_maximum_depth': [parameter_setting['maximum_depth']], # [3, 4, 5]
 
             'evaluation_number_of_random_evaluations_per_distribution': [parameter_setting['number_of_random_evaluations_per_distribution']],
+            'evaluation_random_evaluation_dataset_size':  parameter_setting['random_evaluation_dataset_size'], 
         }      
         if config['data_distrib_by_feature']:
             distribution_list_reduced = [distribution_list_reduced]
@@ -351,7 +367,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         # In[13]:
 
-        if True:
+        if False:
             real_world_datasets = {
                                     'Adult': 28,#65,
                                     'Titanic': 9,
@@ -370,19 +386,19 @@ def plot_evaluation_results(timestr, parameter_grid):
             real_world_datasets = dict(sorted(real_world_datasets.items(), key=lambda item: item[1]))
         elif True:
             real_world_datasets = {
-                                'Adult': 28,#65,
-                                'Titanic': 9,
+                                    #'Adult': 28,#65,
+                                    'Titanic': 9,
                                     'Absenteeism': 15,
                                     'Loan House': 16,#17,
                                     #'Loan Credit': 32,
-                                'Medical Insurance': 9,#6,
-                                    'Bank Marketing': 29,#17,
-                                'Cervical Cancer': 15,
+                                    'Medical Insurance': 9,#6,
+                                    #'Bank Marketing': 29,#17,
+                                    'Cervical Cancer': 15,
                                     'Brest Cancer Wisconsin': 9,
-                                    #'Wisconsin Diagnostic Breast Cancer': 10,
+                                    'Wisconsin Diagnostic Breast Cancer': 10,
                                     #'Wisconsin Prognostic Breast Cancer': 10,
                                     #'Abalone': 10,
-                                    ##'Car': 21,
+                                    #'Car': 21,
                                    }
             real_world_datasets = dict(sorted(real_world_datasets.items(), key=lambda item: item[1]))
         else:
@@ -415,9 +431,9 @@ def plot_evaluation_results(timestr, parameter_grid):
         real_world_identifier_columns = ['dt_type', 'data_number_of_variables', 'technique']
         real_world_columns = flatten_list([real_world_identifier_columns, real_world_scores_columns])
 
-        print(results_summary_reduced.shape)
+        print('results_summary_reduced.shape', results_summary_reduced.shape)
         real_world_scores_df = get_relevant_columns_by_config(config, results_summary_reduced)
-        print(real_world_scores_df.shape)
+        print('real_world_scores_df.shape', real_world_scores_df.shape)
         real_world_scores_df = real_world_scores_df[real_world_columns]
         real_world_scores_df = real_world_scores_df.sort_values(['dt_type', 'data_number_of_variables', 'technique'], ascending=[True, True, True])
         #real_world_scores_df.head(20)
@@ -425,9 +441,8 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         # In[15]:
 
-
         columns = flatten_list(['dt_type', 'technique', 'enumerator', 'distrib', [[real_world_dataset_name + ' ' + score_name for real_world_dataset_name in real_world_datasets.keys()] for score_name in score_names_list]])
-        #print(np.array(columns).shape)
+        #print(np.araray(columns).shape)
         #columns = np.hstack([columns for i in range(5)])
         #print(np.array(columns).shape)
 
@@ -446,7 +461,7 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         empty_data_distilled = np.array([np.vstack([
                      [flatten_list(['vanilla1', 'distilled', i, str(distrib), [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)],
-                     #[flatten_list(['SDT1',  'distilled', 0, str(distrib), [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)]
+                     [flatten_list(['SDT1',  'distilled', i, str(distrib), [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)],
                      [flatten_list(['SDT-1',  'distilled', i, str(distrib), [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)]
                     ]) for distrib in distribution_list_reduced] )
 
@@ -454,17 +469,18 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         empty_data_inet = np.array([ 
                             flatten_list(['vanilla1', 'inet', np.nan, 'inet', [np.nan for _ in range(len(columns)-4)]]),
-                            #flatten_list(['SDT1', 'inet', 'inet', [np.nan for _ in range(len(columns)-4)]]),
+                            flatten_list(['SDT1', 'inet', np.nan, 'inet', [np.nan for _ in range(len(columns)-4)]]),
                             flatten_list(['SDT-1', 'inet', np.nan, 'inet', [np.nan for _ in range(len(columns)-4)]]),
 
                             flatten_list(['vanilla1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
+                            flatten_list(['SDT1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
                             flatten_list(['SDT-1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
                             flatten_list(['vanilla1', 'distilled', 0, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]),
-                            flatten_list(['SDT-1', 'distilled', 0, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]),    
+                            flatten_list(['SDT1', 'distilled', 0, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]), 
+                            flatten_list(['SDT-1', 'distilled', 0, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]), 
                             flatten_list(['vanilla1', 'distilled', 0, 'STANDARDNORMAL', [np.nan for _ in range(len(columns)-4)]]),
-                            flatten_list(['SDT-1', 'distilled', 0, 'STANDARDNORMAL', [np.nan for _ in range(len(columns)-4)]]),               
-            
-
+                            flatten_list(['SDT1', 'distilled', 0, 'STANDARDNORMAL', [np.nan for _ in range(len(columns)-4)]]),       
+                            flatten_list(['SDT-1', 'distilled', 0, 'STANDARDNORMAL', [np.nan for _ in range(len(columns)-4)]]),       
                           ])
 
         empty_data = np.vstack([empty_data_inet, empty_data_distilled])
@@ -599,7 +615,6 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         # In[18]:
 
-
         real_world_scores_df_distrib_adjusted_mean_std_VANILLA = real_world_scores_df_distrib_adjusted_mean_std.query('dt_type == "vanilla1"')
         real_world_scores_df_distrib_adjusted_mean_std_VANILLA = real_world_scores_df_distrib_adjusted_mean_std_VANILLA.drop('dt_type', axis=1)
         real_world_scores_df_distrib_adjusted_mean_std_VANILLA = real_world_scores_df_distrib_adjusted_mean_std_VANILLA.drop('technique', axis=1)
@@ -625,7 +640,10 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         summary_row = pd.Series(data=np.dstack([np.mean(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].values, axis=0), np.std(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].values, axis=0)]).flatten(), name='Summary', index=real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.columns)
         real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended = real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.append(summary_row)
-        
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.head(100))
+
+
         ######################
 
         columns = flatten_list([[column, column]  for column in real_world_scores_df_distrib_adjusted_mean_std_VANILLA.columns])
@@ -690,24 +708,25 @@ def plot_evaluation_results(timestr, parameter_grid):
             threshold = 0.05
 
             inet_scores = real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.loc[:,'inet mean'].values
-            distilled_scores = real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].iloc[:,2:]
+            #distilled_scores = real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].iloc[:,2:]
             distilled_scores = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.iloc[:,::2].iloc[:,2:])
             try:
                 distilled_scores = distilled_scores.drop('TRAINDATA mean', axis=1)
             except:
                 pass
-            try:
-                distilled_scores = distilled_scores.drop('STANDARDUNIFORM mean', axis=1)
-            except:
-                pass
-            try:
-                distilled_scores = distilled_scores.drop('STANDARDNORMAL mean', axis=1)
-            except:
-                pass
+            #try:
+            #    distilled_scores = distilled_scores.drop('STANDARDUNIFORM mean', axis=1)
+            #except:
+            #    pass
+            #try:
+            #    distilled_scores = distilled_scores.drop('STANDARDNORMAL mean', axis=1)
+            #except:
+            #    pass
+
             distilled_max_scores = np.max(distilled_scores.values, axis=1)
             best_distrib_index_by_dataset = np.argmax(distilled_scores.values, axis=1)
-            best_distrib_index_by_dataset = best_distrib_index_by_dataset + 2
-            best_distrib_name_by_dataset_name = [[dataset_name ,' '.join(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.columns[::2][best_distrib_index].split(' ')[:-1])] for dataset_name, best_distrib_index in zip(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.index, best_distrib_index_by_dataset)][:-1]
+            best_distrib_column_name_by_dataset = [distilled_scores.iloc[:,index].name for index in best_distrib_index_by_dataset]
+            best_distrib_name_by_dataset_name = [[dataset_name ,' '.join(best_distrib_index.split(' ')[:-1])] for dataset_name, best_distrib_index in zip(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.index, best_distrib_column_name_by_dataset)][:-1]
 
             ttest_by_dataset_VANILLA_less = []
             ttest_by_dataset_VANILLA_greater = []       
@@ -719,8 +738,12 @@ def plot_evaluation_results(timestr, parameter_grid):
                 considered_column_inet = real_world_scores_df_distrib_adjusted.query('technique == "' + 'inet' + '"' + '&' + 'dt_type == "' + 'vanilla1' + '"')
                 considered_result_inet = considered_column_inet.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values[0]
 
-                ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
-                ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
+                if len(considered_results_distilled) > 1:
+                    ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
+                    ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
+                else:
+                    ttest_p_value_less = 1 if considered_result_inet < considered_results_distilled[0] else 0
+                    ttest_p_value_greater = 1 if considered_result_inet > considered_results_distilled[0] else 0
 
                 identifier_best = 'inet' if considered_result_inet > np.mean(considered_results_distilled) else best_distrib_name
 
@@ -790,16 +813,21 @@ def plot_evaluation_results(timestr, parameter_grid):
                     row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
 
 
-        os.makedirs(os.path.dirname("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/"), exist_ok=True)
+        os.makedirs(os.path.dirname("./evaluation_results/" + timestr + '-'+ str(evaluation_number)  +"/"), exist_ok=True)
         with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
+            f.write('\n\n')
+
         with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
+            f.write('\n\n')
 
+
+        
 
 
         # In[19]:
@@ -889,14 +917,318 @@ def plot_evaluation_results(timestr, parameter_grid):
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla distrib comparison')
-
+            f.write('\n\n')
+            
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_with_best_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla distrib inet')    
-
+            f.write('\n\n')
 
 
         # In[20]:
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1 = real_world_scores_df_distrib_adjusted_mean_std.query('dt_type == "SDT1"')
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1 = real_world_scores_df_distrib_adjusted_mean_std_SDT1.drop('dt_type', axis=1)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1 = real_world_scores_df_distrib_adjusted_mean_std_SDT1.drop('technique', axis=1)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1.index = real_world_scores_df_distrib_adjusted_mean_std_SDT1['distrib']
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1 = real_world_scores_df_distrib_adjusted_mean_std_SDT1.drop('distrib', axis=1)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1 = real_world_scores_df_distrib_adjusted_mean_std_SDT1.T
+
+        data = []
+        for i in range(real_world_scores_df_distrib_adjusted_mean_std_SDT1.shape[0]//2):
+            row_mean = real_world_scores_df_distrib_adjusted_mean_std_SDT1.iloc[i*2].values
+            row_std = real_world_scores_df_distrib_adjusted_mean_std_SDT1.iloc[i*2+1].values
+
+            row_values_mean_std = np.dstack([row_mean, row_std]).flatten()
+            data.append(row_values_mean_std)
+
+        columns = flatten_list([ [column + ' mean', column + ' std']  for column in real_world_scores_df_distrib_adjusted_mean_std_SDT1.columns])
+
+        index = real_world_scores_df_distrib_adjusted.columns[4:]
+        index = [name.replace(' accuracy', '') for name in index]
+        index = [index + ' (n='+  str(real_world_datasets[index]) + ')' for index in index]
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended = pd.DataFrame(data=data, columns=columns, index=index)
+
+        summary_row = pd.Series(data=np.dstack([np.mean(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.iloc[:,::2].values, axis=0), np.std(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.iloc[:,::2].values, axis=0)]).flatten(), name='Summary', index=real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.columns)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.append(summary_row)
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.head(100))
+
+
+        ######################
+
+        columns = flatten_list([[column, column]  for column in real_world_scores_df_distrib_adjusted_mean_std_SDT1.columns])
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.columns = columns
+
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex * 100
+
+        #combiner = lambda s1, s2: '$' + np.round(s1, 2).astype(str) + ' \pm ' + np.round(s2, 2).astype(str) + '$'
+        #combiner = lambda s1, s2: '$' + np.round(s1, 2).apply(lambda x: '{:.2f}'.format(x)).apply(lambda x: ' ' + x if float(x) < 100 else '  ' + x if float(x) < 10 else x)  + ' \pm ' + np.round(s2, 2).apply(lambda x: '{:.2f}'.format(x)).apply(lambda x: ' ' + x if float(x) < 10 else x) + '$' 
+        #combiner = lambda s1, s2: '$' + np.round(s1, 2).apply(lambda x: '{:.2f}'.format(x)).apply(lambda x: '\phantom{0}' + x if float(x) < 100 else '\phantom{00}' + x if float(x) < 10 else x)  + ' \pm ' + np.round(s2, 2).apply(lambda x: '{:.2f}'.format(x)).apply(lambda x: '\phantom{0}' + x if float(x) < 10 else x) + '$' 
+        combiner = lambda s1, s2: np.round(s1, 2).apply(lambda x: '{:.2f}'.format(x)).astype(str).apply(lambda x: '\phantom{0}' + x if float(x) < 100 else '\phantom{00}' + x if float(x) < 10 else x) + ' $\pm$ ' + np.round(s2, 2).apply(lambda x: '{:.2f}'.format(x)).apply(lambda x: '\phantom{0}' + x if float(x) < 10 else x) 
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.iloc[:,::2].combine(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.iloc[:,1::2], combiner)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.drop('distilled', axis=1)
+
+        if number_of_random_evaluations_per_distribution == 0:
+            for i, row in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.iterrows():
+                distrib_mean = {}
+                for distrib in distribution_list_reduced:
+                    distrib_mean[str(distrib)] = float(row[str(distrib)].split(' ')[0].split('}')[-1])
+                #best_distrib = max(distrib_mean, key=distrib_mean.get)
+                max_value = max(distrib_mean.values())
+                best_distrib_key_list = [key for key, value in distrib_mean.items() if value == max_value]
+
+                mean_inet = float(row['inet'].split(' ')[0].split('}')[-1])
+                if mean_inet == max_value:
+                    row['inet'] = '\\bftab' + row['inet']
+                    for best_distrib in best_distrib_key_list:
+                        row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)]
+                elif mean_inet > max_value:
+                    row['inet'] = '\\bftab' + row['inet']
+                else:
+                    for best_distrib in best_distrib_key_list:
+                        row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)]
+
+            for i, row in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.iterrows():    
+                mean_inet = float(row['inet'].split(' ')[0].split('}')[-1])
+                mean_distilled = float(row['distilled'].split(' ')[0].split('}')[-1])
+                if mean_inet == mean_distilled:
+                    row['inet'] = '\\bftab' + row['inet']
+                    row['distilled'] = '\\bftab' + row['distilled']
+                elif mean_inet > mean_distilled:
+                    row['inet'] = '\\bftab' + row['inet']
+                else:
+                    row['distilled'] = '\\bftab' + row['distilled']
+
+                distrib_mean = {}
+                for distrib in distribution_list_reduced:
+                    distrib_mean[str(distrib)] = float(row[str(distrib)].split(' ')[0].split('}')[-1])
+                #best_distrib = max(distrib_mean, key=distrib_mean.get)
+                max_value = max(distrib_mean.values())
+                best_distrib_key_list = [key for key, value in distrib_mean.items() if value == max_value]
+
+                for best_distrib in best_distrib_key_list:
+                    row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
+        else:
+            threshold = 0.05
+
+            inet_scores = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.loc[:,'inet mean'].values
+            distilled_scores = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.iloc[:,::2].iloc[:,2:]
+            distilled_scores = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.iloc[:,::2].iloc[:,2:])
+            try:
+                distilled_scores = distilled_scores.drop('TRAINDATA mean', axis=1)
+            except:
+                pass
+            #try:
+            #    distilled_scores = distilled_scores.drop('STANDARDUNIFORM mean', axis=1)
+            #except:
+            #    pass
+            #try:
+            #    distilled_scores = distilled_scores.drop('STANDARDNORMAL mean', axis=1)
+            #except:
+            #    pass
+            distilled_max_scores = np.max(distilled_scores.values, axis=1)
+            best_distrib_index_by_dataset = np.argmax(distilled_scores.values, axis=1)
+            best_distrib_column_name_by_dataset = [distilled_scores.iloc[:,index].name for index in best_distrib_index_by_dataset]
+            best_distrib_name_by_dataset_name = [[dataset_name ,' '.join(best_distrib_index.split(' ')[:-1])] for dataset_name, best_distrib_index in zip(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.index, best_distrib_column_name_by_dataset)][:-1]
+
+
+            ttest_by_dataset_SDT1_less = []
+            ttest_by_dataset_SDT1_greater = []       
+            for dataset_name, best_distrib_name in best_distrib_name_by_dataset_name:
+                #print(dataset_name, best_distrib_name)
+                considered_columns_distilled = real_world_scores_df_distrib_adjusted.query('technique == "' + 'distilled' + '"' + '&' + 'dt_type == "' + 'SDT1' + '"' + '&' + 'distrib == "' + best_distrib_name + '"')
+                considered_results_distilled = considered_columns_distilled.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values
+
+                considered_column_inet = real_world_scores_df_distrib_adjusted.query('technique == "' + 'inet' + '"' + '&' + 'dt_type == "' + 'SDT1' + '"')
+                considered_result_inet = considered_column_inet.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values[0]
+
+                if len(considered_results_distilled) > 1:
+                    ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
+                    ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
+                else:
+                    ttest_p_value_less = 1 if considered_result_inet < considered_results_distilled[0] else 0
+                    ttest_p_value_greater = 1 if considered_result_inet > considered_results_distilled[0] else 0
+
+                identifier_best = 'inet' if considered_result_inet > np.mean(considered_results_distilled) else best_distrib_name
+
+                ttest_by_dataset_SDT1_less.append([dataset_name, identifier_best, ttest_p_value_less, ('mean distilled' + identifier_best, np.mean(considered_results_distilled)), ('std distilled' + identifier_best, np.std(considered_results_distilled))])    
+                ttest_by_dataset_SDT1_greater.append([dataset_name, identifier_best, ttest_p_value_greater, ('mean distilled' + identifier_best, np.mean(considered_results_distilled)), ('std distilled' + identifier_best, np.std(considered_results_distilled))])    
+
+            for ttest_less, ttest_greater in zip(ttest_by_dataset_SDT1_less, ttest_by_dataset_SDT1_greater):
+                (dataset_name_less, identifier_best_less, p_value_less, mean_distilled_less, std_distilled_less) = ttest_less
+                (dataset_name_greater, identifier_best_greater, p_value_greater, mean_distilled_greater, std_distilled_greater) = ttest_greater
+
+                if p_value_greater < threshold:
+                    real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.loc[dataset_name_greater, str(identifier_best_greater)] = '\\bftab' + real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.loc[dataset_name_greater, str(identifier_best_greater)]
+                if p_value_less < threshold:
+                    real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.loc[dataset_name_less, 'inet'] = '\\bftab' + real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.loc[dataset_name_less, 'inet']
+
+            ttest_by_dataset_SDT1_less = []
+            ttest_by_dataset_SDT1_greater = []    
+            for dataset_name in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.index[:-1]:
+                considered_results_distilled = []
+                for distrib in distribution_list_reduced:
+                    considered_columns_distilled_distrib = real_world_scores_df_distrib_adjusted.query('technique == "' + 'distilled' + '"' + '&' + 'dt_type == "' + 'SDT1' + '"' + '&' + 'distrib == "' + str(distrib) + '"')
+                    considered_results_distilled_distrib = considered_columns_distilled_distrib.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values
+                    considered_results_distilled.append(considered_results_distilled_distrib)
+                considered_results_distilled = np.hstack(considered_results_distilled)
+
+                considered_column_inet = real_world_scores_df_distrib_adjusted.query('technique == "' + 'inet' + '"' + '&' + 'dt_type == "' + 'SDT1' + '"')
+                considered_result_inet = considered_column_inet.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values[0]    
+
+                ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
+                ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
+
+                identifier_best = 'inet' if considered_result_inet > np.mean(considered_results_distilled) else 'distilled'
+
+                ttest_by_dataset_SDT1_less.append([dataset_name, identifier_best, ttest_p_value_less, ('mean distilled' + identifier_best, np.mean(considered_results_distilled)), ('std distilled' + identifier_best, np.std(considered_results_distilled))])    
+                ttest_by_dataset_SDT1_greater.append([dataset_name, identifier_best, ttest_p_value_greater, ('mean distilled' + identifier_best, np.mean(considered_results_distilled)), ('std distilled' + identifier_best, np.std(considered_results_distilled))])    
+
+            for ttest_less, ttest_greater in zip(ttest_by_dataset_SDT1_less, ttest_by_dataset_SDT1_greater):
+                (dataset_name_less, identifier_best_less, p_value_less, mean_distilled_less, std_distilled_less) = ttest_less
+                (dataset_name_greater, identifier_best_greater, p_value_greater, mean_distilled_greater, std_distilled_greater) = ttest_greater
+
+                if p_value_greater < threshold:
+                    real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.loc[dataset_name_greater, str(identifier_best_greater)] = '\\bftab' + real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.loc[dataset_name_greater, str(identifier_best_greater)]
+                if p_value_less < threshold:
+                    real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.loc[dataset_name_less, 'inet'] = '\\bftab' + real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.loc[dataset_name_less, 'inet']
+
+
+            for i, row in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.iterrows():    
+                distrib_mean = {}
+                for distrib in distribution_list_reduced:
+                    distrib_mean[str(distrib)] = float(row[str(distrib)].split(' ')[0].split('}')[-1])
+                #best_distrib = max(distrib_mean, key=distrib_mean.get)
+                max_value = max(distrib_mean.values())
+                best_distrib_key_list = [key for key, value in distrib_mean.items() if value == max_value]
+
+                for best_distrib in best_distrib_key_list:
+                    row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
+
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean.tex", "a+") as f:
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1')
+            f.write('\n\n')
+
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table.tex", "a+") as f:
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1')
+            f.write('\n\n')
+
+        
+        
+        
+
+        
+        
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended).iloc[:,4:]
+
+        best_distrib = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib.columns[np.argmax(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib.loc['Summary'].iloc[:len(distribution_list_reduced)*2].values[::2])*2]
+        best_distrib = ' '.join(best_distrib.split(' ')[:-1])
+
+        best_distrib_columns = []
+        for column in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib.columns:
+            if str(best_distrib) in column:
+                best_distrib_columns.append(column)
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib = pd.concat([real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.iloc[:,:2], real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.loc[:,best_distrib_columns]], axis=1)
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib.head(100))
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib.head(100))
+
+
+        combiner = lambda s1, s2: np.round(s1, 2).apply(lambda x: '{:.2f}'.format(x)).astype(str).apply(lambda x: '\phantom{0}' + x if float(x) < 100 else '\phantom{00}' + x if float(x) < 10 else x) + ' $\pm$ ' + np.round(s2, 2).apply(lambda x: '{:.2f}'.format(x)).apply(lambda x: '\phantom{0}' + x if float(x) < 10 else x) 
+
+        columns = [' '.join(column.split(' ')[:-1])  for column in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib.columns]
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.columns = columns
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex * 100
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.iloc[:,::2].combine(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.iloc[:,1::2], combiner)
+
+
+        columns = [' '.join(column.split(' ')[:-1])  for column in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib.columns]
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.columns = columns
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex * 100
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.iloc[:,::2].combine(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.iloc[:,1::2], combiner)
+
+
+
+        threshold = 0.05
+
+        ttest_by_dataset_SDT1_less = []
+        ttest_by_dataset_SDT1_greater = []
+        for dataset_name in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib.index[:-1]:
+            considered_columns_distilled = real_world_scores_df_distrib_adjusted.query('technique == "' + 'distilled' + '"' + '&' + 'dt_type == "' + 'SDT1' + '"' + '&' + 'distrib == "' + str(best_distrib) + '"')
+            considered_results_distilled = considered_columns_distilled.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values
+
+
+            considered_column_inet = real_world_scores_df_distrib_adjusted.query('technique == "' + 'inet' + '"' + '&' + 'dt_type == "' + 'SDT1' + '"')
+            considered_result_inet = considered_column_inet.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values[0]    
+
+            ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
+            ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
+
+
+            identifier_best = 'inet' if considered_result_inet > np.mean(considered_results_distilled) else best_distrib
+
+            ttest_by_dataset_SDT1_less.append([dataset_name, identifier_best, ttest_p_value_less, ('mean ' + identifier_best, np.mean(considered_results_distilled)), ('std ' + identifier_best, np.std(considered_results_distilled))])    
+            ttest_by_dataset_SDT1_greater.append([dataset_name, identifier_best, ttest_p_value_greater, ('mean ' + identifier_best, np.mean(considered_results_distilled)), ('std ' + identifier_best, np.std(considered_results_distilled))])    
+
+        for ttest_less, ttest_greater in zip(ttest_by_dataset_SDT1_less, ttest_by_dataset_SDT1_greater):
+            (dataset_name_less, identifier_best_less, p_value_less, mean_distilled_less, std_distilled_less) = ttest_less
+            (dataset_name_greater, identifier_best_greater, p_value_greater, mean_distilled_greater, std_distilled_greater) = ttest_greater
+            #print(p_value_less, p_value_greater)
+            #print(mean_distilled_less, std_distilled_less)
+
+            if p_value_greater < threshold:
+                real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.loc[dataset_name_greater, str(best_distrib)] = '\\bftab' + real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.loc[dataset_name_greater, str(best_distrib)]
+            if p_value_less < threshold:
+                real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.loc[dataset_name_less, 'inet'] = '\\bftab' + real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.loc[dataset_name_less, 'inet']
+
+        for i, row in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.iterrows():    
+            distrib_mean = {}
+            for distrib in distribution_list_reduced:
+                distrib_mean[str(distrib)] = float(row[str(distrib)].split(' ')[0].split('}')[-1])
+            #best_distrib = max(distrib_mean, key=distrib_mean.get)
+            max_value = max(distrib_mean.values())
+            best_distrib_key_list = [key for key, value in distrib_mean.items() if value == max_value]
+
+            for best_distrib in best_distrib_key_list:
+                row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
+
+
+
+
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_split.tex", "w") as f:
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1 distrib comparison')
+            f.write('\n\n')
+
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1 distrib inet')   
+            f.write('\n\n')
+
+
+        
+        
+        
+        
+        
+
 
 
         real_world_scores_df_distrib_adjusted_mean_std_SDT = real_world_scores_df_distrib_adjusted_mean_std.query('dt_type == "SDT-1"')
@@ -925,6 +1257,7 @@ def plot_evaluation_results(timestr, parameter_grid):
         summary_row = pd.Series(data=np.dstack([np.mean(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.iloc[:,::2].values, axis=0), np.std(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.iloc[:,::2].values, axis=0)]).flatten(), name='Summary', index=real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.columns)
         real_world_scores_df_distrib_adjusted_mean_std_SDT_extended = real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.append(summary_row)
 
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.head(100))
 
 
         ######################
@@ -996,20 +1329,18 @@ def plot_evaluation_results(timestr, parameter_grid):
                 distilled_scores = distilled_scores.drop('TRAINDATA mean', axis=1)
             except:
                 pass
-            try:
-                distilled_scores = distilled_scores.drop('STANDARDUNIFORM mean', axis=1)
-            except:
-                pass
-            try:
-                distilled_scores = distilled_scores.drop('STANDARDNORMAL mean', axis=1)
-            except:
-                pass
+            #try:
+            #    distilled_scores = distilled_scores.drop('STANDARDUNIFORM mean', axis=1)
+            #except:
+            #    pass
+            #try:
+            #    distilled_scores = distilled_scores.drop('STANDARDNORMAL mean', axis=1)
+            #except:
+            #    pass
             distilled_max_scores = np.max(distilled_scores.values, axis=1)
             best_distrib_index_by_dataset = np.argmax(distilled_scores.values, axis=1)
-            best_distrib_index_by_dataset = best_distrib_index_by_dataset + 2
-            best_distrib_name_by_dataset_name = [[dataset_name ,' '.join(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.columns[::2][best_distrib_index].split(' ')[:-1])] for dataset_name, best_distrib_index in zip(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.index, best_distrib_index_by_dataset)][:-1]
-
-
+            best_distrib_column_name_by_dataset = [distilled_scores.iloc[:,index].name for index in best_distrib_index_by_dataset]
+            best_distrib_name_by_dataset_name = [[dataset_name ,' '.join(best_distrib_index.split(' ')[:-1])] for dataset_name, best_distrib_index in zip(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.index, best_distrib_column_name_by_dataset)][:-1]
 
             ttest_by_dataset_SDT_less = []
             ttest_by_dataset_SDT_greater = []       
@@ -1021,9 +1352,12 @@ def plot_evaluation_results(timestr, parameter_grid):
                 considered_column_inet = real_world_scores_df_distrib_adjusted.query('technique == "' + 'inet' + '"' + '&' + 'dt_type == "' + 'SDT-1' + '"')
                 considered_result_inet = considered_column_inet.loc[:, ' '.join(dataset_name.split(' ')[:-1]) + ' accuracy'].values[0]
 
-                ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
-                ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
-
+                if len(considered_results_distilled) > 1:
+                    ttest_statistics_less, ttest_p_value_less  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='less')
+                    ttest_statistics_greater, ttest_p_value_greater  = scipy.stats.ttest_1samp(considered_results_distilled, considered_result_inet, alternative='greater')
+                else:
+                    ttest_p_value_less = 1 if considered_result_inet < considered_results_distilled[0] else 0
+                    ttest_p_value_greater = 1 if considered_result_inet > considered_results_distilled[0] else 0
 
                 identifier_best = 'inet' if considered_result_inet > np.mean(considered_results_distilled) else best_distrib_name
 
@@ -1085,12 +1419,18 @@ def plot_evaluation_results(timestr, parameter_grid):
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
+            f.write('\n\n')
 
         with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table.tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
+            f.write('\n\n')
 
+
+        
+        
+        
 
 
         # In[21]:
@@ -1178,51 +1518,77 @@ def plot_evaluation_results(timestr, parameter_grid):
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT distrib comparison')
+            f.write('\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_with_best_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT distrib inet')    
-
+            f.write('\n\n')
 
         # In[22]:
-
 
         with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_tables_complete.tex", "w") as f:
             f.write('\\newpage \n')
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla distrib comparison')
+            f.write('\n\n')
+
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1 distrib comparison')   
+            f.write('\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT distrib comparison')   
+            f.write('\n\n')    
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_with_best_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
-            write_latex_table_bottom(f, 'vanilla distrib inet')     
+            write_latex_table_bottom(f, 'vanilla distrib inet')    
+            f.write('\n\n')
+
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_with_best_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1 distrib inet')            
+            f.write('\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_with_best_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT distrib inet')            
-            f.write('\\newpage \n')
+            f.write('\\newpage \n\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
+            f.write('\n\n')
+
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1')    
+            f.write('\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')    
-            f.write('\\newpage \n')
+            f.write('\\newpage \n\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
+            f.write('\n\n')
+
+            write_latex_table_top(f)
+            f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
+            write_latex_table_bottom(f, 'SDT1')
+            f.write('\n\n')
 
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
             f.write('\\newpage \n')
+
 
 
 
@@ -1244,6 +1610,20 @@ def plot_evaluation_results(timestr, parameter_grid):
         print(tabulate(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_rename.iloc[:,::2].round(decimals=2), headers='keys', tablefmt='psql'))
 
         new_columns = []
+        for column in real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.columns:
+            if '[' in column:
+                new_column = 'combined ' + column.split(' ')[-1]
+                new_columns.append(new_column)
+            else:
+                new_columns.append(column)
+
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_rename = deepcopy(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended)
+        real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_rename.columns = new_columns
+
+        print('SDT1 Results:\n')
+        print(tabulate(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_rename.iloc[:,::2].round(decimals=2), headers='keys', tablefmt='psql'))
+
+        new_columns = []
         for column in real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.columns:
             if '[' in column:
                 new_column = 'combined ' + column.split(' ')[-1]
@@ -1256,7 +1636,6 @@ def plot_evaluation_results(timestr, parameter_grid):
 
         print('SDT Results:\n')
         print(tabulate(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_rename.iloc[:,::2].round(decimals=2), headers='keys', tablefmt='psql'))
-
 
         # In[24]:
 
@@ -1273,6 +1652,10 @@ def plot_evaluation_results(timestr, parameter_grid):
 
 
         # # Tables
+        #display(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.head(100))
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex.head(100))
+        #display(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex_with_distilled_mean.head(100))
 
 
         inet_scores = real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended.loc[:,'inet mean']
@@ -1284,6 +1667,33 @@ def plot_evaluation_results(timestr, parameter_grid):
         ttest = scipy.stats.ttest_ind(inet_scores, distilled_scores, equal_var=False)
         print(ttest)
 
+        #ttest_summary, ttest_results = rp.ttest(inet_scores, distilled_scores)
+        #display(ttest_results)
+        #display(ttest_summary)
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.head(100))
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.head(100))
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.head(100))
+
+        inet_scores = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.loc[:,'inet mean']
+        distilled_scores = real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended.loc[:,'distilled mean']
+
+        ttest_equal_var = scipy.stats.ttest_ind(inet_scores, distilled_scores)
+        print(ttest_equal_var)
+
+        ttest = scipy.stats.ttest_ind(inet_scores, distilled_scores, equal_var=False)
+        print(ttest)
+
+        #ttest_summary, ttest_results = rp.ttest(inet_scores, distilled_scores)
+        #display(ttest_results)
+        #display(ttest_summary)
+
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.head(100))
+
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex.head(100))
+        #display(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex_with_distilled_mean.head(100))
 
         inet_scores = real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.loc[:,'inet mean']
         distilled_scores = real_world_scores_df_distrib_adjusted_mean_std_SDT_extended.loc[:,'distilled mean']
@@ -1294,7 +1704,9 @@ def plot_evaluation_results(timestr, parameter_grid):
         ttest = scipy.stats.ttest_ind(inet_scores, distilled_scores, equal_var=False)
         print(ttest)
 
-
+        #ttest_summary, ttest_results = rp.ttest(inet_scores, distilled_scores)
+        #display(ttest_results)
+        #display(ttest_summary)
 
         # # Plots
 

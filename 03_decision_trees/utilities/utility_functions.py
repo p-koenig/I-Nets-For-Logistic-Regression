@@ -310,6 +310,14 @@ def generate_paths(config, path_type='interpretation_net'):
     except:
         pass   
     
+    balanced_data_str = ''
+    try:
+        data_generation_shift_str = '_noBalance' if not config['data']['balanced_data'] else ''
+    except:
+        pass       
+    
+    
+    
     data_generation_distrib_str = ''
     #print(config['data']['distribution_list'])
     #print(config['data']['distribution_list'][0])
@@ -346,6 +354,7 @@ def generate_paths(config, path_type='interpretation_net'):
                                   max_distributions_per_class_string +       
                                   distrib_param_max_str +
                                   fixed_class_probability_str +
+                                  data_generation_shift_str +
                                   weighted_data_generation_str +
                                   data_generation_filtering_str +
                                   data_generation_linearly_separable_str +
@@ -2620,7 +2629,6 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                data_noise=0.0,
                                                                verbose=0,
                                                                random_parameters=None,
-                                                               #encoder_model=encoder_model,
                                                                backend='loky'):
 
         
@@ -2640,7 +2648,6 @@ def distribution_evaluation_interpretation_net_synthetic_data(loss_function,
                                                                                                                max_distributions_per_class = max_distributions_per_class,
                                                                                                                flip_percentage=flip_percentage,
                                                                                                                data_noise=data_noise,
-                                                                                                               #encoder_model=encoder_model,
                                                                                                                verbose=verbose,
                                                                                                                random_parameters=random_parameters) for i in range(config['i_net']['test_size'])) 
 
@@ -2908,6 +2915,8 @@ def generate_dataset_from_distributions(distribution_list,
                         'seed_shuffeling': seed,
                     }
                 }
+                
+                
             else:
                 distribution_parameter = {
                     distribution_name: {
@@ -2940,7 +2949,14 @@ def generate_dataset_from_distributions(distribution_list,
             y_data[feature_weights_reduced >= threshold] = 1
             y_data[feature_weights_reduced < threshold] = 0     
         else:
-            y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+            if config['data']['balanced_data']:
+                y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+            else:
+                ratio = np.random.uniform(0.25, 0.75)
+                total_samples = samples_class_0 + samples_class_1
+                samples_class_0_y_data = int(np.floor(samples_class_0 * ratio))
+                samples_class_1_y_data = total_samples - samples_class_0_y_data
+                y_data = np.hstack([[0]*samples_class_0_y_data, [1]*samples_class_1_y_data])            
                     
         idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
         y_data[idx] = (y_data[idx] + 1) % 2              
@@ -2991,7 +3007,15 @@ def generate_dataset_from_distributions(distribution_list,
                 #print(X_data[:,:3])
                 X_data, normalizer_list = normalize_real_world_data(X_data)
                 #print(X_data[:,:3])
-                y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+                if config['data']['balanced_data']:
+                    y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+                else:
+                    ratio = np.random.uniform(0.25, 0.75)
+                    total_samples = samples_class_0 + samples_class_1
+                    samples_class_0_y_data = int(np.floor(samples_class_0 * ratio))
+                    samples_class_1_y_data = total_samples - samples_class_0_y_data
+                    y_data = np.hstack([[0]*samples_class_0_y_data, [1]*samples_class_1_y_data])                
+                
 
                 idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
                 y_data[idx] = (y_data[idx] + 1) % 2  
@@ -3185,7 +3209,14 @@ def generate_dataset_from_distributions(distribution_list,
                     y_data[feature_weights_reduced >= threshold] = 1
                     y_data[feature_weights_reduced < threshold] = 0     
                 else:
-                    y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+                    if config['data']['balanced_data']:
+                        y_data = np.hstack([[0]*samples_class_0, [1]*samples_class_1])
+                    else:
+                        ratio = np.random.uniform(0.25, 0.75)
+                        total_samples = samples_class_0 + samples_class_1
+                        samples_class_0_y_data = int(np.floor(samples_class_0 * ratio))
+                        samples_class_1_y_data = total_samples - samples_class_0_y_data
+                        y_data = np.hstack([[0]*samples_class_0_y_data, [1]*samples_class_1_y_data])
 
                 idx = np.random.choice(y_data.shape[0], int(y_data.shape[0]*flip_percentage), replace=False)
                 y_data[idx] = (y_data[idx] + 1) % 2  
@@ -3282,12 +3313,10 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                         random_parameters=None,
                                                         flip_percentage=0.0,
                                                         data_noise=0.0,
-                                                        #encoder_model=encoder_model,
                                                         verbose=0
                                                         ):
     from utilities.InterpretationNet import load_inet
     model = load_inet(loss_function, metrics, config)
-    #encoder_model = load_encoder_model(loss_function, metrics, config)
     if 'make_class' in config['data']['function_generation_type']:
         
         np.random.seed(data_seed)
@@ -3352,7 +3381,7 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
                                                                                                     test_network, 
                                                                                                     X_train, 
                                                                                                     X_test, 
-                                                                                                    dataset_size_list=[10000, 'TRAINDATA'],
+                                                                                                    dataset_size_list=[10000, 'TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'],
                                                                                                     config=config,
                                                                                                     distribution=distribution_training)
 
@@ -3565,7 +3594,10 @@ def evaluate_real_world_dataset(model,
                                       seed=config['computation']['RANDOM_SEED'],
                                       verbose=1)
 
-    X_train, y_train = rebalance_data(X_train, y_train)
+    X_train, y_train = rebalance_data(X_train, 
+                                      y_train, 
+                                      balance_ratio=config['i_net']['resampling_threshold'], 
+                                      strategy=config['i_net']['resampling_strategy'])
 
     if config_train_network == None:
         config_train_network = config
@@ -4055,10 +4087,9 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
                                                std_train_parameters,
                                                network_parameters_train_array,
                                                distances_dict={},
-                                               encoder_model=None,
                                                verbosity=0):
     
-    from utilities.InterpretationNet import autoencode_data
+    from utilities.InterpretationNet import autoencode_data, load_encoder_model, restructure_data_cnn_lstm
             
     def print_results_synthetic_evaluation_single(inet_evaluation_result_dict_mean):
         tab = PrettyTable()
@@ -4089,12 +4120,13 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         print(tab)       
 
     number = min(min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1)), 50)
-
+    print('UPDATE4')
     start_inet = time.time() 
     network_parameters = np.array(network_parameters_array[:number])
-    if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
+    if config['i_net']['data_reshape_version'] == 0 or config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
         network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
     elif config['i_net']['data_reshape_version'] == 3: #autoencoder
+        encoder_model = load_encoder_model(config)
         network_parameters, network_parameters_flat, _ = autoencode_data([network_parameters], config, encoder_model)    
     dt_inet_list = model.predict(network_parameters)  
 
@@ -4794,13 +4826,18 @@ def split_train_test_valid(X_data, y_data, valid_frac=0.05, test_frac=0.1, seed=
     
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
-def rebalance_data(X_train, y_train, balance_ratio=0.2, strategy=None, seed=42):#, strategy='SMOTE'
+def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy=None, seed=42):#, strategy='SMOTE'
     true_labels = len(y_train[y_train >= 0.5 ]) 
     false_labels = len(y_train[y_train < 0.5 ]) 
 
     true_ratio = true_labels/(true_labels+false_labels)
+    false_ratio = false_labels/(false_labels+true_labels)
+    
+    min_ratio = min(true_ratio, false_ratio)
 
-    if true_ratio <= balance_ratio or (1-true_ratio) >= balance_ratio:
+    print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
+    
+    if min_ratio <= balance_ratio:
         from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 
         if strategy == 'SMOTE':
@@ -4833,11 +4870,11 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, ve
     test_network = generate_lambda_net_from_config(config, seed=config['computation']['RANDOM_SEED'])
 
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', 
-                                                      patience=50, 
+                                                      patience=10, 
                                                       min_delta=0.0001, 
                                                       verbose=0, 
                                                       mode='min', 
-                                                      restore_best_weights=True#True
+                                                      restore_best_weights=config['lambda_net']['restore_best_weights'],#True
                                                      )
         
     model_history = test_network.fit(X_train,
@@ -4873,16 +4910,17 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, ve
                     
     
 def make_inet_prediction(model, test_network, config):
-    from utilities.InterpretationNet import autoencode_data
+    from utilities.InterpretationNet import autoencode_data, load_encoder_model, restructure_data_cnn_lstm
     
     test_network_parameters = shaped_network_parameters_to_array(test_network.get_weights(), config)
 
     start_inet = time.time() 
-
+    
     network_parameters = np.array([test_network_parameters])
-    if config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
+    if config['i_net']['data_reshape_version'] == 0 or config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
         network_parameters, network_parameters_flat = restructure_data_cnn_lstm(network_parameters, config, subsequences=None)
     elif config['i_net']['data_reshape_version'] == 3: #autoencoder
+        encoder_model = load_encoder_model(config)  
         network_parameters, network_parameters_flat, _ = autoencode_data([network_parameters], config, encoder_model)    
     dt_inet = model.predict(network_parameters)[0]    
 
@@ -4967,6 +5005,9 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
                 X_train = X_train.values
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
+            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
+            
             results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
                                                                                dt_inet,
                                                                                X_test, 
@@ -4979,7 +5020,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
         elif dataset_size == 'STANDARDUNIFORM': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -4993,7 +5034,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
         elif dataset_size == 'STANDARDNORMAL': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5077,7 +5118,10 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
             if isinstance(X_train, pd.DataFrame):
                 X_train = X_train.values
             if isinstance(X_test, pd.DataFrame):
-                X_test = X_test.values            
+                X_test = X_test.values   
+                
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
+                
             results, dt_distilled = evaluate_interpretation_net_prediction_single_sample(test_network_parameters, 
                                                                                dt_inet,
                                                                                X_test, 
@@ -5089,7 +5133,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
         elif dataset_size == 'STANDARDUNIFORM': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5104,7 +5148,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
         elif dataset_size == 'STANDARDNORMAL': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5874,6 +5918,7 @@ def plot_decision_area_evaluation(X_train,
                                     random_data_labels,
                                     network,
                                     tree_train_data,
+                                    tree_uniform_data,
                                     tree_random_data,
                                     inet_dt_params,
                                     column_names,
@@ -5930,21 +5975,26 @@ def plot_decision_area_evaluation(X_train,
 
     preds_tree_inet = np.round(tree_inet.predict(X_test))
     acc_inet_tree = accuracy_score(preds_network, preds_tree_inet)
-
+    
+    
+    preds_tree_sklearn_uniform_data = np.round(tree_uniform_data.predict(X_test))
+    acc_inet_sklearn_uniform_data = accuracy_score(preds_network, preds_tree_sklearn_uniform_data)
+    
     print('Considered Columns:\t\t', '   '.join(list(column_names[feature_index])))
     print('Performance Network:\t\t', acc_network)
     print('Fidelity DT Sklearn Train Data:\t', acc_inet_sklearn_train_data)
     print('Fidelity DT Sklearn Random:\t', acc_inet_sklearn_random)
+    print('Fidelity DT Sklearn Uniform Data:\t\t', acc_inet_sklearn_uniform_data)  
     print('Fidelity DT I-Net:\t\t', acc_inet_tree)
 
 
     #gs = gridspec.GridSpec(2, 2)
-    gs = gridspec.GridSpec(1, 4)
+    gs = gridspec.GridSpec(1, 5)
 
     fig = plt.figure(figsize=(40,10))
 
-    labels = ['Neual Network', 'Distilled DT (Train Data)', 'Distilled DT (Random Data)', 'Distilled DT (I-Net)'] 
-    for i, (clf, lab) in enumerate(zip([network, tree_train_data, tree_random_data, tree_inet],
+    labels = ['Neual Network', 'Distilled DT (Train Data)', 'Distilled DT (Random Data)', 'Distilled DT (U(0,1))', 'Distilled DT (I-Net)'] 
+    for i, (clf, lab) in enumerate(zip([network, tree_train_data, tree_random_data, tree_uniform_data, tree_inet],
                              labels)):
 
         #ax = plt.subplot(gs[i//2, i%2])
@@ -6154,6 +6204,7 @@ def plot_decision_area_evaluation_all_distrib(X_train,
                                             random_data_labels_dict,                                              
                                             network,
                                             tree_train_data,
+                                            tree_uniform_data,
                                             tree_random_data_list,
                                             inet_dt_params,
                                             column_names,
@@ -6214,6 +6265,10 @@ def plot_decision_area_evaluation_all_distrib(X_train,
         acc_inet_sklearn_random = accuracy_score(preds_network, preds_tree_sklearn_random)
         print('Fidelity DT Distilled (' + str(distrib) + '):   \t', acc_inet_sklearn_random)
 
+    preds_tree_sklearn_uniform_data = np.round(tree_uniform_data.predict(X_test))
+    acc_inet_sklearn_uniform_data = accuracy_score(preds_network, preds_tree_sklearn_uniform_data)
+    print('Fidelity DT Sklearn Uniform Data:\t\t', acc_inet_sklearn_uniform_data)          
+        
     preds_tree_inet = np.round(tree_inet.predict(X_test))
     acc_inet_tree = accuracy_score(preds_network, preds_tree_inet)
 
@@ -6222,13 +6277,13 @@ def plot_decision_area_evaluation_all_distrib(X_train,
 
 
     #gs = gridspec.GridSpec(2, 2)
-    gs = gridspec.GridSpec(1, 3+len(distrib_list))
+    gs = gridspec.GridSpec(1, 3+len(distrib_list)+1)
 
     fig = plt.figure(figsize=((3+len(distrib_list))*10,10))
 
-    labels = flatten_list(['Neual Network', 'Distilled DT (Train Data)', ['Distilled DT (' + str(distrib) + ')' for distrib in distrib_list], 'Distilled DT (I-Net)'])
+    labels = flatten_list(['Neual Network', 'Distilled DT (Train Data)', ['Distilled DT (' + str(distrib) + ')' for distrib in distrib_list], ['Distilled DT (U(0,1))' for distrib in distrib_list],  'Distilled DT (I-Net)'])
     counter = 0
-    for i, (clf, lab) in enumerate(zip(flatten_list([network, tree_train_data, tree_random_data_list, tree_inet]),
+    for i, (clf, lab) in enumerate(zip(flatten_list([network, tree_train_data, tree_random_data_list, tree_uniform_data, tree_inet]),
                              labels)):
         if 'Distilled DT' in lab and 'Train Data' not in lab and 'I-Net' not in lab and random_data_dict is not None and False:
             #ax = plt.subplot(gs[i//2, i%2])
