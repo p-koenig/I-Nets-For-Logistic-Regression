@@ -35,6 +35,7 @@ def main():
                 'n_jobs': [7],   
                 'force_evaluate_real_world': [False],
                 'number_of_random_evaluations_per_distribution': [10],
+                'optimize_sampling': [False],
                 
                 'dt_setting': [3, 2, 1], # 1=vanilla; 2=SDT1; 3=SDT-1  ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
                 'inet_setting': [1], 
@@ -42,10 +43,13 @@ def main():
                 
                 'maximum_depth': [3],
                 'number_of_variables':[
+                                               3,
                                                9, 
                                                10, 
+                                               13, 
                                                15, 
                                                16, 
+                                               23,
                                                28,
                                                29,
                                                32,
@@ -74,8 +78,9 @@ def main():
                 'noise_injected_level': [0],
                 
                 'resampling_strategy': [None], #'ADASYN', 'SMOTE',, None
-                'resampling_threshold': [0.25],   
+                'resampling_threshold': [0.1],   
                 'restore_best_weights': [True],
+                'patience_lambda': [10],
                 
                 'random_evaluation_dataset_size': [500],
                 
@@ -87,16 +92,11 @@ def main():
             print(evaluation_grid)
             
             parameter_grid = list(ParameterGrid(evaluation_grid))
-            
-            #for parameter_setting in parameter_grid:
-                #print(parameter_setting)
                 
             print('Possible Evaluations: ', len(parameter_grid))
                 
-            Parallel(n_jobs=7, backend='multiprocessing', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
+            Parallel(n_jobs=7, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
 
-            #for parameter_setting in parameter_grid:
-                #run_evaluation.remote(parameter_setting)
             print('COMPUTATION FINISHED')    
                         
             for i in range(len(parameter_grid)):
@@ -105,18 +105,12 @@ def main():
                 #print(parameter_grid[i])
             
             parameter_grid = [ii for n,ii in enumerate(parameter_grid) if ii not in parameter_grid[:n]]
-            #parameter_grid = list(set(parameter_grid))
             
             print('Possible Evaluations Types: ', len(parameter_grid)) 
                 
-            #inet_setting_parameters = [extend_inet_parameter_setting({'inet_setting': inet_setting_value}) for inet_setting_value in evaluation_grid['inet_setting']]
-                        
-            #structure_list = [inet_setting['dense_layers'] for inet_setting in inet_setting_parameters]
-            #dropout_list = [inet_setting['dropout'] for inet_setting in inet_setting_parameters]
                 
-            plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid)            
-            
-            
+            plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid, score_string='accuracy')   
+            plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid, score_string='f1_score')   
             
 if __name__ == "__main__": 
 

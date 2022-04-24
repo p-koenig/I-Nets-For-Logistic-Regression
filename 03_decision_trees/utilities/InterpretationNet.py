@@ -42,7 +42,7 @@ from tensorflow.python.util import nest
 import random 
 
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Lambda
+from tensorflow.keras.layers import Dense, Dropout, Lambda, Activation
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
@@ -563,7 +563,21 @@ def train_inet(lambda_net_train_dataset,
               config,
               callback_names):
     
-    from utilities.utility_functions import unstack_array_to_list
+    from utilities.utility_functions import unstack_array_to_list    
+    from keras.utils.generic_utils import get_custom_objects
+    from keras import backend as K
+    
+    def scaled_softmax_double(x):
+        x = 1/(1+K.exp(5*x))
+        return x                        
+
+    def scaled_softmax_half(x):
+        x = 1/(1+K.exp(x/5))
+        return x                                  
+
+    get_custom_objects().update({'scaled_softmax_double': Activation(scaled_softmax_double)})     
+    get_custom_objects().update({'scaled_softmax_half': Activation(scaled_softmax_half)})     
+
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
@@ -658,7 +672,7 @@ def train_inet(lambda_net_train_dataset,
                 metrics.append(inet_target_function_fv_metric_wrapper(config, metric))  
                 metrics.append(inet_decision_function_fv_metric_wrapper(random_model, network_parameters_structure, config, metric, use_distribution_list=use_distribution_list))  
     else:
-        if config['i_net']['function_representation_type'] == 3:
+        if config['i_net']['function_representation_type'] >= 3:
             if config['i_net']['optimize_decision_function']:
                 
                 loss_function = inet_decision_function_fv_loss_wrapper_parameters(config)
@@ -1324,7 +1338,7 @@ def train_inet(lambda_net_train_dataset,
                             outputs_list.append(outputs_identifer)    
 
                 
-            elif config['i_net']['function_representation_type'] == 3:                
+            elif config['i_net']['function_representation_type'] >= 3:                
                 if config['function_family']['dt_type'] == 'SDT':
                     
                     outputs_coeff_neurons = internal_node_num_*config['data']['number_of_variables']
@@ -1375,10 +1389,88 @@ def train_inet(lambda_net_train_dataset,
                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
                     else:
-                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
-                                                              activation='sigmoid', 
-                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
-                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                        
+                        if config['i_net']['function_representation_type'] == 4:
+                            from keras import backend as K
+                            def linear_clip(x):
+                                #x = tf.keras.activations.linear(x)
+                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
+                                return  x
+
+                            def scaled_softmax_double(x):
+                                x = 1/(1+K.exp(2*x))
+                                return x                        
+
+                            def scaled_softmax_half(x):
+                                x = 1/(1+K.exp(x/5))
+                                return x      
+
+                            def tanh_softmax(x):
+                                x = tf.keras.activations.tanh(x)
+                                x = (x+1)/2
+                                return  x                            
+
+                            def gelu(x):
+                                return tf.keras.activations.gelu(x, approximate=False)
+                            
+                            def gcu(x):
+                                x = x*tf.math.cos(x)
+                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
+                                return x
+                            
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(scaled_softmax_double)})                            
+
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                            
+                        elif config['i_net']['function_representation_type'] == 5:
+                            from keras import backend as K
+                            def linear_clip(x):
+                                #x = tf.keras.activations.linear(x)
+                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
+                                return  x
+
+                            def scaled_softmax_double(x):
+                                x = 1/(1+K.exp(5*x))
+                                return x                        
+
+                            def scaled_softmax_half(x):
+                                x = 1/(1+K.exp(x/5))
+                                return x      
+
+                            def tanh_softmax(x):
+                                x = tf.keras.activations.tanh(x)
+                                x = (x+1)/2
+                                return  x                            
+
+                            def gelu(x):
+                                return tf.keras.activations.gelu(x, approximate=False)
+                            
+                            def gcu(x):
+                                x = x*tf.math.cos(x)
+                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
+                                return x
+                            
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(scaled_softmax_double)})                            
+
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                            
+                            
+                            
+                            
+                            
+                        elif config['i_net']['function_representation_type'] == 3:
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='sigmoid', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                     outputs_list = [outputs_coeff]
                     
                     
@@ -1400,8 +1492,16 @@ def train_inet(lambda_net_train_dataset,
                                                                       name=output_name)(hidden)                            
                         outputs_list.append(outputs_identifer)    
 
-       
-                          
+ 
+                
+        
+                
+        
+        
+          
+        
+        
+        
             if config['function_family']['dt_type'] == 'SDT':
                 outputs_bias_neurons = internal_node_num_
                 if config['i_net']['additional_hidden']:

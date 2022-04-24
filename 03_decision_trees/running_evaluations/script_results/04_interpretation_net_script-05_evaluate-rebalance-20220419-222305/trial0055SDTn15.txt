@@ -240,3 +240,463 @@ Total params: 5,203,177
 Trainable params: 5,203,177
 Non-trainable params: 0
 __________________________________________________________________________________________________
+UPDATE4
+  0%|          | 0/10 [00:00<?, ?it/s]
+UPDATE4
+  0%|          | 0/10 [00:00<?, ?it/s]
+I-Net Performance by Network:  [0.75  0.502 0.54  0.66  0.524 0.588 0.476 0.52  0.464 0.786]
+Distilled Mean Performance by Network:  [0.55  0.488 0.574 0.534 0.51  0.412 0.436 0.52  0.506 0.542]
+Distilled Max Performance by Network:  [0.55  0.488 0.574 0.534 0.51  0.412 0.436 0.52  0.506 0.542]
+Median I-Net: 0.532
+Median DT Distilled: 0.515
+                                                   Acc Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                     0.655   
+
+                                                   Acc Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                      0.839   
+
+                                                   Acc Distilled  Acc I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.507      0.581   
+
+                                                   Soft BC Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                         0.621   
+
+                                                   Soft BC Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                          0.497   
+
+                                                   Soft BC Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']              0.717   
+
+                                                   Soft BC I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.665   
+
+                                                   BC Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                    0.569   
+
+                                                   BC Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                     0.339   
+
+                                                   BC Distilled  BC I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']         0.897     0.653   
+
+                                                   F1 Score Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                          0.655   
+
+                                                   F1 Score Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                           0.179   
+
+                                                   F1 Score Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']               0.171   
+
+                                                   F1 Score I-Net  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']           0.420   
+
+                                                   Runtime Distilled Train Data  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                        19.986   
+
+                                                   Runtime Distilled Data Random  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']                         19.986   
+
+                                                   Runtime Distilled  \
+['uniform', 'normal', 'gamma', 'beta', 'poisson']             19.986   
+
+                                                   Runtime I-Net  
+['uniform', 'normal', 'gamma', 'beta', 'poisson']          0.120  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             1064.024   
+valid                                                             1108.136   
+test                                                              1065.423   
+Adult                                                                  NaN   
+Titanic                                                                NaN   
+Absenteeism                                                            NaN   
+Loan House                                                             NaN   
+Loan Credit                                                            NaN   
+Medical Insurance                                                      NaN   
+Bank Marketing                                                         NaN   
+Cervical Cancer                                                        NaN   
+Brest Cancer Wisconsin                                                 NaN   
+Wisconsin Diagnostic Breast Cancer                                 758.785   
+Wisconsin Prognostic Breast Cancer                                 321.620   
+Abalone                                                            673.754   
+Car                                                                    NaN   
+
+                                    Average Distance to Initialization  \
+train                                                          282.562   
+valid                                                          289.806   
+test                                                           263.756   
+Adult                                                              NaN   
+Titanic                                                            NaN   
+Absenteeism                                                        NaN   
+Loan House                                                         NaN   
+Loan Credit                                                        NaN   
+Medical Insurance                                                  NaN   
+Bank Marketing                                                     NaN   
+Cervical Cancer                                                    NaN   
+Brest Cancer Wisconsin                                             NaN   
+Wisconsin Diagnostic Breast Cancer                             208.976   
+Wisconsin Prognostic Breast Cancer                              75.340   
+Abalone                                                        189.216   
+Car                                                                NaN   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           432.940   
+valid                                                           436.088   
+test                                                            410.470   
+Adult                                                               NaN   
+Titanic                                                             NaN   
+Absenteeism                                                         NaN   
+Loan House                                                          NaN   
+Loan Credit                                                         NaN   
+Medical Insurance                                                   NaN   
+Bank Marketing                                                      NaN   
+Cervical Cancer                                                     NaN   
+Brest Cancer Wisconsin                                              NaN   
+Wisconsin Diagnostic Breast Cancer                              332.921   
+Wisconsin Prognostic Breast Cancer                              258.405   
+Abalone                                                         335.452   
+Car                                                                 NaN   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     291.513   
+test                                                                      254.678   
+Adult                                                                         NaN   
+Titanic                                                                       NaN   
+Absenteeism                                                                   NaN   
+Loan House                                                                    NaN   
+Loan Credit                                                                   NaN   
+Medical Insurance                                                             NaN   
+Bank Marketing                                                                NaN   
+Cervical Cancer                                                               NaN   
+Brest Cancer Wisconsin                                                        NaN   
+Wisconsin Diagnostic Breast Cancer                                        181.019   
+Wisconsin Prognostic Breast Cancer                                         78.905   
+Abalone                                                                   167.546   
+Car                                                                           NaN   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    4.754   
+valid                                                                    4.835   
+test                                                                     3.830   
+Adult                                                                      NaN   
+Titanic                                                                    NaN   
+Absenteeism                                                                NaN   
+Loan House                                                                 NaN   
+Loan Credit                                                                NaN   
+Medical Insurance                                                          NaN   
+Bank Marketing                                                             NaN   
+Cervical Cancer                                                            NaN   
+Brest Cancer Wisconsin                                                     NaN   
+Wisconsin Diagnostic Breast Cancer                                       4.028   
+Wisconsin Prognostic Breast Cancer                                       4.061   
+Abalone                                                                  4.095   
+Car                                                                        NaN   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    2.716  
+test                                                                     1.792  
+Adult                                                                      NaN  
+Titanic                                                                    NaN  
+Absenteeism                                                                NaN  
+Loan House                                                                 NaN  
+Loan Credit                                                                NaN  
+Medical Insurance                                                          NaN  
+Bank Marketing                                                             NaN  
+Cervical Cancer                                                            NaN  
+Brest Cancer Wisconsin                                                     NaN  
+Wisconsin Diagnostic Breast Cancer                                       0.703  
+Wisconsin Prognostic Breast Cancer                                       0.313  
+Abalone                                                                  0.843  
+Car                                                                        NaN  
+Original Data Shape:  (32561, 28)
+Original Data Shape:  (891, 9)
+Original Data Shape:  (740, 15)
+(629, 15) (629,)
+(37, 15) (37,)
+(74, 15) (74,)
+True Ratio:  0.3799682034976153
+Training Network:  1.7030034065246582
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+Evaluate Network:  249.82014346122742
+Evaluate Network Complete:  251.7033188343048
+Original Data Shape:  (614, 16)
+Original Data Shape:  (63999, 32)
+Original Data Shape:  (1338, 9)
+Original Data Shape:  (45211, 29)
+Original Data Shape:  (858, 15)
+(731, 15) (731,)
+(42, 15) (42,)
+(85, 15) (85,)
+True Ratio:  0.06703146374829001
+True Ratio:  0.5065123010130246
+Training Network:  1.2432961463928223
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+  0%|          | 0/50 [00:00<?, ?it/s]
+Evaluate Network:  297.602498292923
+Evaluate Network Complete:  298.99477076530457
+Original Data Shape:  (699, 9)
+Original Data Shape:  (569, 10)
+Original Data Shape:  (198, 10)
+Original Data Shape:  (4177, 10)
+Original Data Shape:  (1728, 21)
+                 Acc Distilled (Train Data)  Acc Distilled  Acc Distilled STD  \
+Absenteeism                           0.703          0.703              0.000   
+Cervical Cancer                       0.765          0.264              0.000   
+
+                 Acc I-Net  Soft BC Distilled (Train Data)  Soft BC Distilled  \
+Absenteeism          0.568                           0.670              0.685   
+Cervical Cancer      0.776                           0.705              0.768   
+
+                 Soft BC Distilled STD  Soft BC I-Net  \
+Absenteeism                      0.000          0.693   
+Cervical Cancer                  0.000          0.693   
+
+                 BC Distilled (Train Data)  BC Distilled  BC Distilled STD  \
+Absenteeism                          0.613         0.819             0.000   
+Cervical Cancer                      0.540         1.870             0.000   
+
+                 BC I-Net  F1 Score Distilled (Train Data)  \
+Absenteeism         0.689                            0.000   
+Cervical Cancer     0.672                            0.333   
+
+                 F1 Score Distilled  F1 Score Distilled STD  F1 Score I-Net  \
+Absenteeism                   0.000                   0.000           0.484   
+Cervical Cancer               0.368                   0.000           0.000   
+
+                 Runtime Distilled (Train Data)  Runtime Distilled  \
+Absenteeism                               3.444             19.375   
+Cervical Cancer                           6.752             23.806   
+
+                 Runtime Distilled STD  Runtime I-Net  
+Absenteeism                        NaN          0.095  
+Cervical Cancer                    NaN          0.132  
+                 Acc Distilled (Train Data)  Acc Distilled (Standard Uniform)  \
+Absenteeism                           0.703                             0.703   
+Cervical Cancer                       0.765                             0.224   
+
+                 Acc Distilled (Standard Normal)  \
+Absenteeism                                0.703   
+Cervical Cancer                            0.212   
+
+                 Acc Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.703                   
+Cervical Cancer                                              0.264                   
+
+                 STD Acc Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.000                       
+Cervical Cancer                                              0.118                       
+
+                 Acc I-Net  Soft BC Distilled (Train Data)  \
+Absenteeism          0.568                           0.670   
+Cervical Cancer      0.776                           0.705   
+
+                 Soft BC Distilled (Standard Uniform)  \
+Absenteeism                                     0.669   
+Cervical Cancer                                 0.738   
+
+                 Soft BC Distilled (Standard Normal)  \
+Absenteeism                                    0.699   
+Cervical Cancer                                0.714   
+
+                 Soft BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.685                       
+Cervical Cancer                                              0.768                       
+
+                 STD Soft BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.010                           
+Cervical Cancer                                              0.021                           
+
+                 Soft BC I-Net  BC Distilled (Train Data)  \
+Absenteeism              0.693                      0.613   
+Cervical Cancer          0.693                      0.540   
+
+                 BC Distilled (Standard Uniform)  \
+Absenteeism                                0.648   
+Cervical Cancer                            1.187   
+
+                 BC Distilled (Standard Normal)  \
+Absenteeism                               0.981   
+Cervical Cancer                           0.955   
+
+                 BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.819                  
+Cervical Cancer                                              1.870                  
+
+                 STD BC Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.133                      
+Cervical Cancer                                              0.362                      
+
+                 BC I-Net  F1 Score Distilled (Train Data)  \
+Absenteeism         0.689                            0.000   
+Cervical Cancer     0.672                            0.333   
+
+                 F1 Score Distilled (Standard Uniform)  \
+Absenteeism                                      0.000   
+Cervical Cancer                                  0.365   
+
+                 F1 Score Distilled (Standard Normal)  \
+Absenteeism                                     0.000   
+Cervical Cancer                                 0.350   
+
+                 F1 Score Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.000                        
+Cervical Cancer                                              0.368                        
+
+                 STD F1 Score Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  0.000                            
+Cervical Cancer                                              0.066                            
+
+                 F1 Score I-Net  Runtime Distilled (Train Data)  \
+Absenteeism               0.484                           3.444   
+Cervical Cancer           0.000                           6.752   
+
+                 Runtime Distilled (Standard Uniform)  \
+Absenteeism                                    18.177   
+Cervical Cancer                                18.850   
+
+                 Runtime Distilled (Standard Normal)  \
+Absenteeism                                   24.143   
+Cervical Cancer                               24.088   
+
+                 Runtime Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                 19.375                       
+Cervical Cancer                                             23.806                       
+
+                 STD Runtime Distilled (['uniform', 'normal', 'gamma', 'beta', 'poisson'])  \
+Absenteeism                                                  6.134                           
+Cervical Cancer                                              8.257                           
+
+                 Runtime I-Net  
+Absenteeism              0.095  
+Cervical Cancer          0.132  
+                                    Average Z-Score (Sample to Train Data)  \
+train                                                             1064.024   
+valid                                                             1108.136   
+test                                                              1065.423   
+Adult                                                                  NaN   
+Titanic                                                                NaN   
+Absenteeism                                                        504.213   
+Loan House                                                             NaN   
+Loan Credit                                                            NaN   
+Medical Insurance                                                      NaN   
+Bank Marketing                                                         NaN   
+Cervical Cancer                                                    254.193   
+Brest Cancer Wisconsin                                                 NaN   
+Wisconsin Diagnostic Breast Cancer                                     NaN   
+Wisconsin Prognostic Breast Cancer                                     NaN   
+Abalone                                                                NaN   
+Car                                                                    NaN   
+
+                                    Average Distance to Initialization  \
+train                                                          282.562   
+valid                                                          289.806   
+test                                                           263.756   
+Adult                                                              NaN   
+Titanic                                                            NaN   
+Absenteeism                                                    103.003   
+Loan House                                                         NaN   
+Loan Credit                                                        NaN   
+Medical Insurance                                                  NaN   
+Bank Marketing                                                     NaN   
+Cervical Cancer                                                 18.817   
+Brest Cancer Wisconsin                                             NaN   
+Wisconsin Diagnostic Breast Cancer                                 NaN   
+Wisconsin Prognostic Breast Cancer                                 NaN   
+Abalone                                                            NaN   
+Car                                                                NaN   
+
+                                    Average Mean Distance to Train Data  \
+train                                                           432.940   
+valid                                                           436.088   
+test                                                            410.470   
+Adult                                                               NaN   
+Titanic                                                             NaN   
+Absenteeism                                                     301.999   
+Loan House                                                          NaN   
+Loan Credit                                                         NaN   
+Medical Insurance                                                   NaN   
+Bank Marketing                                                      NaN   
+Cervical Cancer                                                 274.269   
+Brest Cancer Wisconsin                                              NaN   
+Wisconsin Diagnostic Breast Cancer                                  NaN   
+Wisconsin Prognostic Breast Cancer                                  NaN   
+Abalone                                                             NaN   
+Car                                                                 NaN   
+
+                                    Average Distance to closest Train Data Sample  \
+train                                                                       0.000   
+valid                                                                     291.513   
+test                                                                      254.678   
+Adult                                                                         NaN   
+Titanic                                                                       NaN   
+Absenteeism                                                               142.392   
+Loan House                                                                    NaN   
+Loan Credit                                                                   NaN   
+Medical Insurance                                                             NaN   
+Bank Marketing                                                                NaN   
+Cervical Cancer                                                           104.579   
+Brest Cancer Wisconsin                                                        NaN   
+Wisconsin Diagnostic Breast Cancer                                            NaN   
+Wisconsin Prognostic Breast Cancer                                            NaN   
+Abalone                                                                       NaN   
+Car                                                                           NaN   
+
+                                    Average Biggest Distance for Single Neuron  \
+train                                                                    4.754   
+valid                                                                    4.835   
+test                                                                     3.830   
+Adult                                                                      NaN   
+Titanic                                                                    NaN   
+Absenteeism                                                              3.441   
+Loan House                                                                 NaN   
+Loan Credit                                                                NaN   
+Medical Insurance                                                          NaN   
+Bank Marketing                                                             NaN   
+Cervical Cancer                                                          3.475   
+Brest Cancer Wisconsin                                                     NaN   
+Wisconsin Diagnostic Breast Cancer                                         NaN   
+Wisconsin Prognostic Breast Cancer                                         NaN   
+Abalone                                                                    NaN   
+Car                                                                        NaN   
+
+                                    Minimum Biggest Distance for Single Neuron  
+train                                                                    0.000  
+valid                                                                    2.716  
+test                                                                     1.792  
+Adult                                                                      NaN  
+Titanic                                                                    NaN  
+Absenteeism                                                              0.335  
+Loan House                                                                 NaN  
+Loan Credit                                                                NaN  
+Medical Insurance                                                          NaN  
+Bank Marketing                                                             NaN  
+Cervical Cancer                                                          0.271  
+Brest Cancer Wisconsin                                                     NaN  
+Wisconsin Diagnostic Breast Cancer                                         NaN  
+Wisconsin Prognostic Breast Cancer                                         NaN  
+Abalone                                                                    NaN  
+Car                                                                        NaN  

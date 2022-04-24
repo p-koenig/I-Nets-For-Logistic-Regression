@@ -1,0 +1,139 @@
+{'n_jobs': [7], 'force_evaluate_real_world': [False], 'number_of_random_evaluations_per_distribution': [10], 'dt_setting': [10], 'inet_setting': [1], 'dataset_size': [10000], 'maximum_depth': [3], 'number_of_variables': [3, 9, 10, 13, 15, 16, 23, 28, 29, 32], 'function_generation_type': ['distribution'], 'distrib_by_feature': [True], 'max_distributions_per_class': [1], 'distribution_list': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], 'distribution_list_eval': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], 'distrib_param_max': [5], 'exclude_linearly_seperable': [True], 'data_generation_filtering': [False], 'fixed_class_probability': [False], 'balanced_data': [True], 'weighted_data_generation': [False], 'shift_distrib': [False], 'separate_weight_bias': [False], 'normalize_lambda_nets': [False], 'data_reshape_version': [None], 'noise_injected_level': [0], 'resampling_strategy': [None], 'resampling_threshold': [0.2], 'restore_best_weights': [True], 'patience_lambda': [50], 'random_evaluation_dataset_size': [500], 'lambda_network_layers': [[128]]}
+Possible Evaluations:  10
+[Parallel(n_jobs=10)]: Using backend LokyBackend with 10 concurrent workers.
+[Parallel(n_jobs=10)]: Done   1 tasks      | elapsed: 27.2min
+[Parallel(n_jobs=10)]: Done   2 out of  10 | elapsed: 34.3min remaining: 137.1min
+[Parallel(n_jobs=10)]: Done   3 out of  10 | elapsed: 36.0min remaining: 84.1min
+[Parallel(n_jobs=10)]: Done   4 out of  10 | elapsed: 41.5min remaining: 62.3min
+[Parallel(n_jobs=10)]: Done   5 out of  10 | elapsed: 42.3min remaining: 42.3min
+[Parallel(n_jobs=10)]: Done   6 out of  10 | elapsed: 48.2min remaining: 32.2min
+[Parallel(n_jobs=10)]: Done   7 out of  10 | elapsed: 50.8min remaining: 21.8min
+[Parallel(n_jobs=10)]: Done   8 out of  10 | elapsed: 50.9min remaining: 12.7min
+[Parallel(n_jobs=10)]: Done  10 out of  10 | elapsed: 52.9min remaining:    0.0s
+[Parallel(n_jobs=10)]: Done  10 out of  10 | elapsed: 52.9min finished
+COMPUTATION FINISHED
+Possible Evaluations Types:  1
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 7, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'resampling_strategy': None, 'resampling_threshold': 0.2, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+results_summary_reduced.shape (20, 3007)
+real_world_scores_df.shape (20, 3007)
+(42, 19)
+[[9.33300000e-01 0.00000000e+00 1.00000000e+00 0.00000000e+00
+  1.00000000e+00 0.00000000e+00 1.00000000e+00 0.00000000e+00
+  1.00000000e+00 0.00000000e+00 9.66700000e-01 0.00000000e+00]
+ [3.93300000e-01 0.00000000e+00 7.11200000e-01 1.71600000e-01
+  7.11200000e-01 1.71600000e-01 8.20200000e-01 0.00000000e+00
+  8.87600000e-01 0.00000000e+00 9.66300000e-01 0.00000000e+00]
+ [7.66900000e-01 0.00000000e+00 8.71400000e-01 7.42000000e-02
+  8.71400000e-01 7.42000000e-02 7.74400000e-01 0.00000000e+00
+  7.74400000e-01 0.00000000e+00 9.62400000e-01 0.00000000e+00]
+ [9.27500000e-01 0.00000000e+00 8.36200000e-01 1.30900000e-01
+  8.36200000e-01 1.30900000e-01 3.18800000e-01 0.00000000e+00
+  3.18800000e-01 0.00000000e+00 9.71000000e-01 0.00000000e+00]
+ [7.50000000e-01 0.00000000e+00 5.64300000e-01 1.76500000e-01
+  5.64300000e-01 1.76500000e-01 2.85700000e-01 0.00000000e+00
+  2.85700000e-01 0.00000000e+00 9.10700000e-01 0.00000000e+00]
+ [9.47400000e-01 0.00000000e+00 6.73700000e-01 4.06900000e-01
+  6.73700000e-01 4.06900000e-01 9.47400000e-01 0.00000000e+00
+  5.26000000e-02 0.00000000e+00 9.47400000e-01 0.00000000e+00]
+ [7.72200000e-01 0.00000000e+00 4.93500000e-01 2.06300000e-01
+  4.93500000e-01 2.06300000e-01 7.81800000e-01 0.00000000e+00
+  2.73400000e-01 0.00000000e+00 8.63300000e-01 0.00000000e+00]
+ [8.00000000e-01 0.00000000e+00 7.46700000e-01 9.45000000e-02
+  7.46700000e-01 9.45000000e-02 8.00000000e-01 0.00000000e+00
+  8.33300000e-01 0.00000000e+00 7.66700000e-01 0.00000000e+00]
+ [4.32400000e-01 0.00000000e+00 6.43200000e-01 1.39900000e-01
+  6.43200000e-01 1.39900000e-01 8.78400000e-01 0.00000000e+00
+  7.83800000e-01 0.00000000e+00 9.32400000e-01 0.00000000e+00]
+ [8.23500000e-01 0.00000000e+00 7.00000000e-01 2.59500000e-01
+  7.00000000e-01 2.59500000e-01 7.17600000e-01 0.00000000e+00
+  8.35300000e-01 0.00000000e+00 8.47100000e-01 0.00000000e+00]
+ [1.00000000e+00 0.00000000e+00 7.70500000e-01 2.44100000e-01
+  7.70500000e-01 2.44100000e-01 9.34400000e-01 0.00000000e+00
+  2.62300000e-01 0.00000000e+00 1.00000000e+00 0.00000000e+00]
+ [8.75700000e-01 0.00000000e+00 6.97300000e-01 3.24600000e-01
+  6.97300000e-01 3.24600000e-01 8.85000000e-01 0.00000000e+00
+  8.77700000e-01 0.00000000e+00 9.80300000e-01 0.00000000e+00]
+ [2.62900000e-01 0.00000000e+00 7.98000000e-01 4.00000000e-04
+  7.98000000e-01 4.00000000e-04 7.98200000e-01 0.00000000e+00
+  7.98200000e-01 0.00000000e+00 9.32400000e-01 0.00000000e+00]
+ [3.48400000e-01 0.00000000e+00 8.61400000e-01 1.46000000e-02
+  8.61400000e-01 1.46000000e-02 8.18800000e-01 0.00000000e+00
+  7.99800000e-01 0.00000000e+00 9.12000000e-01 0.00000000e+00]
+ [8.43100000e-01 0.00000000e+00 1.55600000e-01 0.00000000e+00
+  1.55600000e-01 0.00000000e+00 1.55600000e-01 0.00000000e+00
+  1.55600000e-01 0.00000000e+00 9.11700000e-01 0.00000000e+00]
+ [7.25106667e-01 2.33392252e-01 7.01533333e-01 1.90118734e-01
+  7.01533333e-01 1.90118734e-01 7.27753333e-01 2.49628836e-01
+  5.95900000e-01 3.12887611e-01 9.24693333e-01 5.87292484e-02]]
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------+
+|                                           |   inet mean |   distilled mean |   combined mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |   TRAINDATA mean |
+|-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------|
+| Haberman (n=3)                            |        0.93 |             1    |            1    |                   1    |                  1    |             0.97 |
+| Titanic (n=9)                             |        0.39 |             0.71 |            0.71 |                   0.82 |                  0.89 |             0.97 |
+| Medical Insurance (n=9)                   |        0.77 |             0.87 |            0.87 |                   0.77 |                  0.77 |             0.96 |
+| Brest Cancer Wisconsin (n=9)              |        0.93 |             0.84 |            0.84 |                   0.32 |                  0.32 |             0.97 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.75 |             0.56 |            0.56 |                   0.29 |                  0.29 |             0.91 |
+| Wisconsin Prognostic Breast Cancer (n=10) |        0.95 |             0.67 |            0.67 |                   0.95 |                  0.05 |             0.95 |
+| Abalone (n=10)                            |        0.77 |             0.49 |            0.49 |                   0.78 |                  0.27 |             0.86 |
+| Heart Disease (n=13)                      |        0.8  |             0.75 |            0.75 |                   0.8  |                  0.83 |             0.77 |
+| Absenteeism (n=15)                        |        0.43 |             0.64 |            0.64 |                   0.88 |                  0.78 |             0.93 |
+| Cervical Cancer (n=15)                    |        0.82 |             0.7  |            0.7  |                   0.72 |                  0.84 |             0.85 |
+| Loan House (n=16)                         |        1    |             0.77 |            0.77 |                   0.93 |                  0.26 |             1    |
+| Credit Card (n=23)                        |        0.88 |             0.7  |            0.7  |                   0.88 |                  0.88 |             0.98 |
+| Adult (n=28)                              |        0.26 |             0.8  |            0.8  |                   0.8  |                  0.8  |             0.93 |
+| Bank Marketing (n=29)                     |        0.35 |             0.86 |            0.86 |                   0.82 |                  0.8  |             0.91 |
+| Loan Credit (n=32)                        |        0.84 |             0.16 |            0.16 |                   0.16 |                  0.16 |             0.91 |
+| Summary                                   |        0.73 |             0.7  |            0.7  |                   0.73 |                  0.6  |             0.92 |
++-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------+
+|                                           |   inet mean |   distilled mean |   combined mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |   TRAINDATA mean |
+|-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------|
+| Haberman (n=3)                            |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Titanic (n=9)                             |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Medical Insurance (n=9)                   |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Wisconsin Prognostic Breast Cancer (n=10) |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Abalone (n=10)                            |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Heart Disease (n=13)                      |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Absenteeism (n=15)                        |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Loan House (n=16)                         |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Credit Card (n=23)                        |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Adult (n=28)                              |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Bank Marketing (n=29)                     |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Loan Credit (n=32)                        |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Summary                                   |           0 |                0 |               0 |                      0 |                     0 |                0 |
++-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------+
+|                                           |   inet mean |   distilled mean |   combined mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |   TRAINDATA mean |
+|-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------|
+| Haberman (n=3)                            |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Titanic (n=9)                             |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Medical Insurance (n=9)                   |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Wisconsin Prognostic Breast Cancer (n=10) |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Abalone (n=10)                            |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Heart Disease (n=13)                      |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Absenteeism (n=15)                        |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Loan House (n=16)                         |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Credit Card (n=23)                        |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Adult (n=28)                              |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Bank Marketing (n=29)                     |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Loan Credit (n=32)                        |           0 |                0 |               0 |                      0 |                     0 |                0 |
+| Summary                                   |           0 |                0 |               0 |                      0 |                     0 |                0 |
++-------------------------------------------+-------------+------------------+-----------------+------------------------+-----------------------+------------------+
+Ttest_indResult(statistic=0.31323909892047475, pvalue=0.7562664769047954)
+Ttest_indResult(statistic=0.31323909892047475, pvalue=0.7563546855578365)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)

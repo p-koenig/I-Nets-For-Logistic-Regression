@@ -142,9 +142,24 @@ def extend_inet_parameter_setting(parameter_setting):
         parameter_setting['hidden_activation'] = 'relu'
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001 
+        
+        
+        
     elif parameter_setting['inet_setting'] == 9:
-        pass
-
+        parameter_setting['dense_layers'] = [1792, 512, 512]
+        parameter_setting['dropout'] = [0, 0, 0.5]  
+        parameter_setting['hidden_activation'] = 'scaled_softmax_double'
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001
+        
+    elif parameter_setting['inet_setting'] == 10:
+        parameter_setting['dense_layers'] = [1792, 512, 512]
+        parameter_setting['dropout'] = [0, 0, 0.5]  
+        parameter_setting['hidden_activation'] = 'scaled_softmax_half'
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001
+        
+        
     return parameter_setting
     
 def run_evaluation(enumerator, timestr, parameter_setting):
@@ -187,10 +202,15 @@ def run_evaluation(enumerator, timestr, parameter_setting):
     elif parameter_setting['dt_setting'] == 9:
         parameter_setting['dt_type'] = 'SDT'
         parameter_setting['decision_sparsity'] = -1      
-        parameter_setting['function_representation_type'] = 3    
+        parameter_setting['function_representation_type'] = 3  
+        
+    elif parameter_setting['dt_setting'] == 10:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 4
         
     if 'distribution' not in parameter_setting['function_generation_type'] or 'trained' in parameter_setting['function_generation_type']:
-        if parameter_setting['dt_setting'] in [1,4,7]:
+        if parameter_setting['dt_setting'] in [1,4,7,10]:
             parameter_setting['dt_type_train'] = 'vanilla'
             parameter_setting['maximum_depth_train'] = 3
             parameter_setting['decision_sparsity_train'] = 1        
@@ -282,6 +302,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'early_stopping_lambda': True, 
                         'early_stopping_min_delta_lambda': 1e-3,
                         'restore_best_weights': parameter_setting['restore_best_weights'],
+                        'patience_lambda': parameter_setting['patience_lambda'],
                         
                         'batch_lambda': 64,
                         'dropout_lambda': 0,
@@ -346,7 +367,9 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         #'inet_holdout_seed_evaluation': False,
 
                         'number_of_random_evaluations_per_distribution': parameter_setting['number_of_random_evaluations_per_distribution'],
-
+                        'optimize_sampling': parameter_setting['optimize_sampling'],
+                        
+                        
                         'random_evaluation_dataset_size': parameter_setting['random_evaluation_dataset_size'],
                         'random_evaluation_dataset_distribution': 'uniform', 
 
@@ -478,8 +501,8 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                   else (2 ** maximum_depth - 1) * decision_sparsity + (2 ** maximum_depth - 1) + ((2 ** maximum_depth - 1)  * decision_sparsity * number_of_variables) + (2 ** maximum_depth) * num_classes if function_representation_type == 2 and dt_type == 'SDT'
                   else ((2 ** maximum_depth - 1) * decision_sparsity) * 2 + (2 ** maximum_depth)  if function_representation_type == 1 and dt_type == 'vanilla'
                   else (2 ** maximum_depth - 1) * decision_sparsity + ((2 ** maximum_depth - 1)  * decision_sparsity * number_of_variables) + (2 ** maximum_depth) if function_representation_type == 2 and dt_type == 'vanilla'
-                  else ((2 ** maximum_depth - 1) * number_of_variables * 2) + (2 ** maximum_depth)  if function_representation_type == 3 and dt_type == 'vanilla'
-                  else ((2 ** maximum_depth - 1) * number_of_variables * 2) + (2 ** maximum_depth - 1) + (2 ** maximum_depth) * num_classes if function_representation_type == 3 and dt_type == 'SDT'
+                  else ((2 ** maximum_depth - 1) * number_of_variables * 2) + (2 ** maximum_depth)  if function_representation_type >= 3 and dt_type == 'vanilla'
+                  else ((2 ** maximum_depth - 1) * number_of_variables * 2) + (2 ** maximum_depth - 1) + (2 ** maximum_depth) * num_classes if function_representation_type >= 3 and dt_type == 'SDT'
                   else None
                                                                             )
 
@@ -2310,6 +2333,208 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
+                
+                
+
+
+
+                feature_names = [
+                   'age',#      
+                   'sex',#   
+                   'cp',#      
+                   'trestbps',#
+                   'chol',#    
+                   'fbs',#      
+                   'restecg',# 
+                   'thalach',#      
+                   'exang',#   
+                   'oldpeak',#      
+                   'slope',#
+                   'ca',#    
+                   'thal',#      
+                   'num',#     
+                                ]
+
+                heart_data = pd.read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data', names=feature_names, index_col=False) #, delimiter=' '
+                print(heart_data.shape)
+
+
+                nominal_features_heart = [
+                                        ]
+
+                ordinal_features_heart = [
+                                   ]
+
+
+                heart_data['age'][heart_data['age'] == '?'] = heart_data['age'].mode()[0]
+                heart_data['sex'][heart_data['sex'] == '?'] = heart_data['sex'].mode()[0]
+                heart_data['cp'][heart_data['cp'] == '?'] = heart_data['cp'].mode()[0]
+                heart_data['trestbps'][heart_data['trestbps'] == '?'] = heart_data['trestbps'].mode()[0]
+                heart_data['chol'][heart_data['chol'] == '?'] = heart_data['chol'].mode()[0]
+                heart_data['fbs'][heart_data['fbs'] == '?'] = heart_data['fbs'].mode()[0]
+                heart_data['restecg'][heart_data['restecg'] == '?'] = heart_data['restecg'].mode()[0]
+                heart_data['thalach'][heart_data['thalach'] == '?'] = heart_data['thalach'].mode()[0]
+                heart_data['exang'][heart_data['exang'] == '?'] = heart_data['exang'].mode()[0]
+                heart_data['oldpeak'][heart_data['oldpeak'] == '?'] = heart_data['oldpeak'].mode()[0]
+                heart_data['slope'][heart_data['slope'] == '?'] = heart_data['slope'].mode()[0]
+                heart_data['ca'][heart_data['ca'] == '?'] = heart_data['ca'].mode()[0]
+                heart_data['thal'][heart_data['thal'] == '?'] = heart_data['thal'].mode()[0]
+
+                X_data_heart = heart_data.drop(['num'], axis = 1)
+                y_data_heart = ((heart_data['num'] < 1) * 1)
+
+
+
+                identifier = 'Heart Disease'
+                identifier_list.append(identifier)
+
+                (distances_dict[identifier], 
+                 evaluation_result_dict[identifier], 
+                 results_dict[identifier], 
+                 dt_inet_dict[identifier], 
+                 dt_distilled_list_dict[identifier], 
+                 data_dict[identifier],
+                 normalizer_list_dict[identifier],
+                 test_network_list[identifier]) = evaluate_real_world_dataset(model,
+                                                                                dataset_size_list,
+                                                                                mean_train_parameters,
+                                                                                std_train_parameters,
+                                                                                lambda_net_dataset_train.network_parameters_array,
+                                                                                X_data_heart, 
+                                                                                y_data_heart, 
+                                                                                nominal_features = nominal_features_heart, 
+                                                                                ordinal_features = ordinal_features_heart,
+                                                                                config = config,
+                                                                                distribution_list_evaluation = config['data']['distribution_list_eval'],
+                                                                                config_train_network = None)
+                print_head = None
+                if verbosity > 0:
+                    print_results_different_data_sizes(results_dict[identifier], dataset_size_list_print)
+                    print_network_distances(distances_dict)
+
+                    dt_inet_plot = plot_decision_tree_from_parameters(dt_inet_dict[identifier], normalizer_list_dict[identifier], config)
+                    dt_distilled_plot = plot_decision_tree_from_model(dt_distilled_list_dict[identifier][-2], config)
+
+                    display(dt_inet_plot, dt_distilled_plot)
+
+                    print_head = data_dict[identifier]['X_train'].head()
+                print_head
+
+
+
+                credit_card_data = pd.read_csv('./real_world_datasets/UCI_Credit_Card/UCI_Credit_Card.csv', index_col=False) #, delimiter=' '
+                credit_card_data = credit_card_data.drop(['ID'], axis = 1)
+                print(credit_card_data.shape)
+
+                nominal_features_credit_card = [
+                                        ]
+
+                ordinal_features_credit_card = [
+                                   ]
+
+                X_data_credit_card = credit_card_data.drop(['default.payment.next.month'], axis = 1)
+                y_data_credit_card = ((credit_card_data['default.payment.next.month'] < 1) * 1)
+
+
+
+                identifier = 'Credit Card'
+                identifier_list.append(identifier)
+
+                (distances_dict[identifier], 
+                 evaluation_result_dict[identifier], 
+                 results_dict[identifier], 
+                 dt_inet_dict[identifier], 
+                 dt_distilled_list_dict[identifier], 
+                 data_dict[identifier],
+                 normalizer_list_dict[identifier],
+                 test_network_list[identifier]) = evaluate_real_world_dataset(model,
+                                                                                dataset_size_list,
+                                                                                mean_train_parameters,
+                                                                                std_train_parameters,
+                                                                                lambda_net_dataset_train.network_parameters_array,
+                                                                                X_data_credit_card, 
+                                                                                y_data_credit_card, 
+                                                                                nominal_features = nominal_features_credit_card, 
+                                                                                ordinal_features = ordinal_features_credit_card,
+                                                                                config = config,
+                                                                                distribution_list_evaluation = config['data']['distribution_list_eval'],
+                                                                                config_train_network = None)
+                print_head = None
+                if verbosity > 0:
+                    print_results_different_data_sizes(results_dict[identifier], dataset_size_list_print)
+                    print_network_distances(distances_dict)
+
+                    dt_inet_plot = plot_decision_tree_from_parameters(dt_inet_dict[identifier], normalizer_list_dict[identifier], config)
+                    dt_distilled_plot = plot_decision_tree_from_model(dt_distilled_list_dict[identifier][-2], config)
+
+                    display(dt_inet_plot, dt_distilled_plot)
+
+                    print_head = data_dict[identifier]['X_train'].head()
+                print_head
+
+
+                feature_names = [
+                   'age',#      
+                   'year',#   
+                   'nodes_detected',#      
+                   'survival',#     
+                                ]
+
+                haberman_data = pd.read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/haberman/haberman.data', names=feature_names, index_col=False) #, delimiter=' '
+                print(haberman_data.shape)
+
+
+                nominal_features_haberman = [
+                                        ]
+
+                ordinal_features_haberman = [
+                                   ]
+
+
+                X_data_haberman = haberman_data.drop(['survival'], axis = 1)
+                y_data_haberman = ((haberman_data['survival'] < 2) * 1)
+
+
+
+                identifier = 'Haberman'
+                identifier_list.append(identifier)
+
+                (distances_dict[identifier], 
+                 evaluation_result_dict[identifier], 
+                 results_dict[identifier], 
+                 dt_inet_dict[identifier], 
+                 dt_distilled_list_dict[identifier], 
+                 data_dict[identifier],
+                 normalizer_list_dict[identifier],
+                 test_network_list[identifier]) = evaluate_real_world_dataset(model,
+                                                                                dataset_size_list,
+                                                                                mean_train_parameters,
+                                                                                std_train_parameters,
+                                                                                lambda_net_dataset_train.network_parameters_array,
+                                                                                X_data_haberman, 
+                                                                                y_data_haberman, 
+                                                                                nominal_features = nominal_features_haberman, 
+                                                                                ordinal_features = ordinal_features_haberman,
+                                                                                config = config,
+                                                                                distribution_list_evaluation = config['data']['distribution_list_eval'],
+                                                                                config_train_network = None)
+                print_head = None
+                if verbosity > 0:
+                    print_results_different_data_sizes(results_dict[identifier], dataset_size_list_print)
+                    print_network_distances(distances_dict)
+
+                    dt_inet_plot = plot_decision_tree_from_parameters(dt_inet_dict[identifier], normalizer_list_dict[identifier], config)
+                    dt_distilled_plot = plot_decision_tree_from_model(dt_distilled_list_dict[identifier][-2], config)
+
+                    display(dt_inet_plot, dt_distilled_plot)
+
+                    print_head = data_dict[identifier]['X_train'].head()
+                print_head
+                
+                
+                
+                
+                
 
 
                 # # Plot and Save Results

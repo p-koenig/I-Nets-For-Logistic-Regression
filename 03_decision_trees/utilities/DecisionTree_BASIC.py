@@ -139,7 +139,7 @@ class SDT(nn.Module):
                                     self.output_dim,
                                     bias=False)
         
-        if False:
+        if True:
             if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
                 vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
 
@@ -683,8 +683,8 @@ class parameterDT():
     def __init__(self, parameter_array, config, normalizer_list=None):
         self.parameters = parameter_array
         self.config = config
-        self.normalizer_list = None
-        
+        self.normalizer_list = normalizer_list
+
         self.shaped_parameters = self.get_shaped_parameters(self.parameters)
         
     def predict(self, X_data):
@@ -769,7 +769,6 @@ class parameterDT():
 
     
     def get_shaped_parameters(self, flat_parameters, eager_execution=False):
-
         config = self.config
 
         input_dim = config['data']['number_of_variables']
@@ -845,7 +844,7 @@ class parameterDT():
             #tf.print(splits, leaf_classes)
             return splits, leaf_classes
 
-        elif config['i_net']['function_representation_type'] == 3:
+        elif config['i_net']['function_representation_type'] >= 3:
             split_values_num_params = config['data']['number_of_variables'] * internal_node_num_#config['function_family']['decision_sparsity']
             split_index_num_params = config['data']['number_of_variables'] * internal_node_num_
             leaf_classes_num_params = leaf_node_num_ #* config['data']['num_classes']

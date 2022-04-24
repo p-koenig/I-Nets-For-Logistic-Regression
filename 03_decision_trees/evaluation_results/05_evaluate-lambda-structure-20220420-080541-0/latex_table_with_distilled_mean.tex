@@ -1,0 +1,93 @@
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lllllll}
+\toprule
+{} &                                          inet &                           distilled & ['uniform', 'normal', 'gamma', 'beta', 'poisson'] &                         STANDARDUNIFORM &                          STANDARDNORMAL &                               TRAINDATA \\
+\midrule
+\textbf{Titanic (n=9)                            } &        \phantom{0}61.80 $\pm$ \phantom{0}0.00 &        \phantom{0}66.81 $\pm$ 20.99 &                \bftab\phantom{0}60.79 $\pm$ 20.03 &  \phantom{0}82.02 $\pm$ \phantom{0}0.00 &  \phantom{0}82.02 $\pm$ \phantom{0}0.00 &  \phantom{0}96.63 $\pm$ \phantom{0}0.00 \\
+\textbf{Medical Insurance (n=9)                  } &        \phantom{0}84.21 $\pm$ \phantom{0}0.00 &        \phantom{0}82.53 $\pm$ 15.84 &                \bftab\phantom{0}82.18 $\pm$ 17.37 &  \phantom{0}77.44 $\pm$ \phantom{0}0.00 &  \phantom{0}77.44 $\pm$ \phantom{0}0.00 &  \phantom{0}96.24 $\pm$ \phantom{0}0.00 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &        \phantom{0}88.41 $\pm$ \phantom{0}0.00 &        \phantom{0}73.36 $\pm$ 24.74 &                \bftab\phantom{0}80.00 $\pm$ 19.50 &  \phantom{0}31.88 $\pm$ \phantom{0}0.00 &  \phantom{0}31.88 $\pm$ \phantom{0}0.00 &  \phantom{0}89.86 $\pm$ \phantom{0}0.00 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}80.36 $\pm$ \phantom{0}0.00 &        \phantom{0}60.44 $\pm$ 24.48 &                \bftab\phantom{0}63.04 $\pm$ 22.76 &  \phantom{0}33.93 $\pm$ \phantom{0}0.00 &  \phantom{0}30.36 $\pm$ \phantom{0}0.00 &  \phantom{0}91.07 $\pm$ \phantom{0}0.00 \\
+\textbf{Absenteeism (n=15)                       } &        \phantom{0}50.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}68.61 $\pm$ 18.16 &                \bftab\phantom{0}62.97 $\pm$ 16.78 &  \phantom{0}89.19 $\pm$ \phantom{0}0.00 &  \phantom{0}79.73 $\pm$ \phantom{0}0.00 &  \phantom{0}93.24 $\pm$ \phantom{0}0.00 \\
+\textbf{Cervical Cancer (n=15)                   } &  \bftab\phantom{0}64.71 $\pm$ \phantom{0}0.00 &        \phantom{0}55.57 $\pm$ 21.84 &                \bftab\phantom{0}50.24 $\pm$ 19.35 &  \phantom{0}74.12 $\pm$ \phantom{0}0.00 &  \phantom{0}48.24 $\pm$ \phantom{0}0.00 &  \phantom{0}97.65 $\pm$ \phantom{0}0.00 \\
+\textbf{Loan House (n=16)                        } &        \phantom{0}39.34 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}90.67 $\pm$ 21.79 &                \bftab\phantom{0}87.87 $\pm$ 24.15 &            100.00 $\pm$ \phantom{0}0.00 &            100.00 $\pm$ \phantom{0}0.00 &            100.00 $\pm$ \phantom{0}0.00 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}66.98 $\pm$ 16.98 &        \phantom{0}71.14 $\pm$ 11.33 &                \bftab\phantom{0}69.58 $\pm$ 12.76 &            \phantom{0}69.80 $\pm$ 24.61 &            \phantom{0}64.24 $\pm$ 25.24 &  \phantom{0}94.96 $\pm$ \phantom{0}3.41 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results vanilla.}}
+\label{tab:eval-results}
+\end{table}
+
+
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lllllll}
+\toprule
+{} &                                          inet &                                     distilled & ['uniform', 'normal', 'gamma', 'beta', 'poisson'] &                         STANDARDUNIFORM &                          STANDARDNORMAL &                               TRAINDATA \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}61.80 $\pm$ \phantom{0}0.00 &                  \phantom{0}50.99 $\pm$ 16.88 &                \bftab\phantom{0}47.75 $\pm$ 14.70 &  \phantom{0}48.31 $\pm$ \phantom{0}0.00 &  \phantom{0}48.31 $\pm$ \phantom{0}0.00 &  \phantom{0}88.76 $\pm$ \phantom{0}0.00 \\
+\textbf{Medical Insurance (n=9)                  } &        \phantom{0}60.90 $\pm$ \phantom{0}0.00 &                  \phantom{0}55.81 $\pm$ 12.72 &                \bftab\phantom{0}57.82 $\pm$ 12.78 &  \phantom{0}42.11 $\pm$ \phantom{0}0.00 &  \phantom{0}42.11 $\pm$ \phantom{0}0.00 &  \phantom{0}63.16 $\pm$ \phantom{0}0.00 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \bftab\phantom{0}40.58 $\pm$ \phantom{0}0.00 &                  \phantom{0}35.56 $\pm$ 15.80 &      \bftab\phantom{0}30.87 $\pm$ \phantom{0}2.25 &  \phantom{0}31.88 $\pm$ \phantom{0}0.00 &  \phantom{0}31.88 $\pm$ \phantom{0}0.00 &  \phantom{0}89.86 $\pm$ \phantom{0}0.00 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \bftab\phantom{0}71.43 $\pm$ \phantom{0}0.00 &                  \phantom{0}46.15 $\pm$ 19.48 &                \bftab\phantom{0}46.96 $\pm$ 19.69 &  \phantom{0}30.36 $\pm$ \phantom{0}0.00 &  \phantom{0}30.36 $\pm$ \phantom{0}0.00 &  \phantom{0}69.64 $\pm$ \phantom{0}0.00 \\
+\textbf{Absenteeism (n=15)                       } &        \phantom{0}40.54 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}71.62 $\pm$ \phantom{0}0.00 &      \bftab\phantom{0}71.62 $\pm$ \phantom{0}0.00 &  \phantom{0}71.62 $\pm$ \phantom{0}0.00 &  \phantom{0}71.62 $\pm$ \phantom{0}0.00 &  \phantom{0}71.62 $\pm$ \phantom{0}0.00 \\
+\textbf{Cervical Cancer (n=15)                   } &        \phantom{0}38.82 $\pm$ \phantom{0}0.00 &        \phantom{0}41.45 $\pm$ \phantom{0}8.51 &      \bftab\phantom{0}40.35 $\pm$ \phantom{0}7.44 &  \phantom{0}36.47 $\pm$ \phantom{0}0.00 &  \phantom{0}38.82 $\pm$ \phantom{0}0.00 &  \phantom{0}60.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Loan House (n=16)                        } &        \phantom{0}13.11 $\pm$ \phantom{0}0.00 &                  \phantom{0}24.46 $\pm$ 26.62 &                \bftab\phantom{0}20.49 $\pm$ 22.13 &  \phantom{0}13.11 $\pm$ \phantom{0}0.00 &  \phantom{0}13.11 $\pm$ \phantom{0}0.00 &  \phantom{0}86.89 $\pm$ \phantom{0}0.00 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}46.74 $\pm$ 18.15 &                  \phantom{0}46.58 $\pm$ 13.98 &                \bftab\phantom{0}45.12 $\pm$ 15.61 &            \phantom{0}39.12 $\pm$ 16.74 &            \phantom{0}39.46 $\pm$ 16.71 &            \phantom{0}75.70 $\pm$ 11.67 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT1.}}
+\label{tab:eval-results}
+\end{table}
+
+
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{lllllll}
+\toprule
+{} &                                          inet &                               distilled & ['uniform', 'normal', 'gamma', 'beta', 'poisson'] &                         STANDARDUNIFORM &                          STANDARDNORMAL &                               TRAINDATA \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}96.63 $\pm$ \phantom{0}0.00 &  \phantom{0}88.25 $\pm$ \phantom{0}5.50 &      \bftab\phantom{0}86.97 $\pm$ \phantom{0}5.05 &  \phantom{0}91.01 $\pm$ \phantom{0}0.00 &  \phantom{0}87.64 $\pm$ \phantom{0}0.00 &  \phantom{0}98.88 $\pm$ \phantom{0}0.00 \\
+\textbf{Medical Insurance (n=9)                  } &  \bftab\phantom{0}96.99 $\pm$ \phantom{0}0.00 &            \phantom{0}85.43 $\pm$ 15.30 &                \bftab\phantom{0}83.08 $\pm$ 16.09 &  \phantom{0}99.25 $\pm$ \phantom{0}0.00 &  \phantom{0}81.20 $\pm$ \phantom{0}0.00 &  \phantom{0}99.25 $\pm$ \phantom{0}0.00 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &        \phantom{0}98.55 $\pm$ \phantom{0}0.00 &            \phantom{0}93.53 $\pm$ 17.92 &      \bftab\phantom{0}98.41 $\pm$ \phantom{0}2.29 &            100.00 $\pm$ \phantom{0}0.00 &  \phantom{0}31.88 $\pm$ \phantom{0}0.00 &            100.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &        \phantom{0}96.43 $\pm$ \phantom{0}0.00 &            \phantom{0}90.80 $\pm$ 17.91 &      \bftab\phantom{0}95.54 $\pm$ \phantom{0}4.54 &  \phantom{0}98.21 $\pm$ \phantom{0}0.00 &  \phantom{0}30.36 $\pm$ \phantom{0}0.00 &  \phantom{0}96.43 $\pm$ \phantom{0}0.00 \\
+\textbf{Absenteeism (n=15)                       } &  \bftab\phantom{0}95.95 $\pm$ \phantom{0}0.00 &            \phantom{0}83.16 $\pm$ 11.19 &                \bftab\phantom{0}81.49 $\pm$ 10.33 &  \phantom{0}97.30 $\pm$ \phantom{0}0.00 &  \phantom{0}71.62 $\pm$ \phantom{0}0.00 &  \phantom{0}97.30 $\pm$ \phantom{0}0.00 \\
+\textbf{Cervical Cancer (n=15)                   } &        \phantom{0}84.71 $\pm$ \phantom{0}0.00 &            \phantom{0}72.13 $\pm$ 24.83 &                \bftab\phantom{0}72.00 $\pm$ 24.34 &  \phantom{0}82.35 $\pm$ \phantom{0}0.00 &  \phantom{0}36.47 $\pm$ \phantom{0}0.00 &  \phantom{0}98.82 $\pm$ \phantom{0}0.00 \\
+\textbf{Loan House (n=16)                        } &        \phantom{0}98.36 $\pm$ \phantom{0}0.00 &            \phantom{0}86.38 $\pm$ 26.92 &                \bftab\phantom{0}82.46 $\pm$ 29.58 &            100.00 $\pm$ \phantom{0}0.00 &  \phantom{0}98.36 $\pm$ \phantom{0}0.00 &            100.00 $\pm$ \phantom{0}0.00 \\
+\midrule
+\textbf{Summary                                  } &        \phantom{0}95.37 $\pm$ \phantom{0}4.45 &  \phantom{0}85.67 $\pm$ \phantom{0}6.38 &      \bftab\phantom{0}85.71 $\pm$ \phantom{0}8.30 &  \phantom{0}95.45 $\pm$ \phantom{0}6.07 &            \phantom{0}62.50 $\pm$ 26.72 &  \phantom{0}98.67 $\pm$ \phantom{0}1.24 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT.}}
+\label{tab:eval-results}
+\end{table}
+
+

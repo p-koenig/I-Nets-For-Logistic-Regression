@@ -813,7 +813,7 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config, eager_execu
             #tf.print(splits, leaf_classes)
             return splits, leaf_classes
 
-    elif config['i_net']['function_representation_type'] == 3:
+    elif config['i_net']['function_representation_type'] >= 3:
         if config['function_family']['dt_type'] == 'SDT':    
             
             split_values_num_params = config['data']['number_of_variables'] * internal_node_num_#config['function_family']['decision_sparsity']
@@ -3388,10 +3388,22 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
 
         results_list_extended = results_list[0]
 
-        results_list_extended['dt_scores']['soft_binary_crossentropy_train_data'] = results_list[1]['dt_scores']['soft_binary_crossentropy']
-        results_list_extended['dt_scores']['binary_crossentropy_train_data'] = results_list[1]['dt_scores']['binary_crossentropy']
-        results_list_extended['dt_scores']['accuracy_train_data'] = results_list[1]['dt_scores']['accuracy']
-        results_list_extended['dt_scores']['f1_score_train_data'] = results_list[1]['dt_scores']['f1_score']
+        results_list_extended['dt_scores']['soft_binary_crossentropy_train_data'] = results_list[-3]['dt_scores']['soft_binary_crossentropy']
+        results_list_extended['dt_scores']['binary_crossentropy_train_data'] = results_list[-3]['dt_scores']['binary_crossentropy']
+        results_list_extended['dt_scores']['accuracy_train_data'] = results_list[-3]['dt_scores']['accuracy']
+        results_list_extended['dt_scores']['f1_score_train_data'] = results_list[-3]['dt_scores']['f1_score']
+        
+
+        results_list_extended['dt_scores']['soft_binary_crossentropy_uniform_data'] = results_list[-2]['dt_scores']['soft_binary_crossentropy']
+        results_list_extended['dt_scores']['binary_crossentropy_uniform_data'] = results_list[-2]['dt_scores']['binary_crossentropy']
+        results_list_extended['dt_scores']['accuracy_uniform_data'] = results_list[-2]['dt_scores']['accuracy']
+        results_list_extended['dt_scores']['f1_score_uniform_data'] = results_list[-2]['dt_scores']['f1_score']
+        
+
+        results_list_extended['dt_scores']['soft_binary_crossentropy_normal_data'] = results_list[-1]['dt_scores']['soft_binary_crossentropy']
+        results_list_extended['dt_scores']['binary_crossentropy_normal_data'] = results_list[-1]['dt_scores']['binary_crossentropy']
+        results_list_extended['dt_scores']['accuracy_normal_data'] = results_list[-1]['dt_scores']['accuracy']
+        results_list_extended['dt_scores']['f1_score_normal_data'] = results_list[-1]['dt_scores']['f1_score']        
 
         results_list = results_list_extended
         evaluation_result_dict = results_list
@@ -3454,6 +3466,7 @@ def evaluate_real_world_dataset(model,
     np.random.seed(config['computation']['RANDOM_SEED'])
     tf.random.set_seed(config['computation']['RANDOM_SEED'])
     
+    print('Original Data Shape (selected): ', X_data.shape)
     
     transformer = ColumnTransformer(transformers=[('cat', OneHotEncoder(), nominal_features)], remainder='passthrough', sparse_threshold=0)
     transformer.fit(X_data)
@@ -3466,13 +3479,15 @@ def evaluate_real_world_dataset(model,
 
     X_data = X_data.astype(np.float64)
     
-    print('Original Data Shape: ', X_data.shape)
+    print('Original Data Shape (encoded): ', X_data.shape)
+    print('Original Data Class Distribution: ', y_data[y_data>=0.5].shape[0], ' (true) /', y_data[y_data<0.5].shape[0], ' (false)')
     
     if not config['i_net']['force_evaluate_real_world'] and X_data.shape[1] != config['data']['number_of_variables']:
 
         evaluation_result_dict_placeholder =  {
                                     'dt_scores': {},
-                                    'inet_scores': {},                
+                                    'inet_scores': {},  
+                                    'model_scores': {},
                                } 
                 
         for identifier in distribution_list_evaluation:
@@ -3517,11 +3532,18 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict_placeholder['inet_scores']['accuracy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['inet_scores']['f1_score'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['inet_scores']['runtime'] = [np.nan] * len(dataset_size_list)        
-                                              
+                          
+        evaluation_result_dict_placeholder['model_scores']['soft_binary_crossentropy'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['model_scores']['binary_crossentropy'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['model_scores']['accuracy'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['model_scores']['f1_score'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['model_scores']['runtime'] = [np.nan] * len(dataset_size_list)        
+                                                          
 
         results_placeholder =  {
                                 'dt_scores': {},
-                                'inet_scores': {},                
+                                'inet_scores': {},
+                                'model_scores': {},
                                }  
         
         for identifier in distribution_list_evaluation:
@@ -3566,6 +3588,11 @@ def evaluate_real_world_dataset(model,
         results_placeholder['inet_scores']['f1_score'] = np.nan
         results_placeholder['inet_scores']['runtime'] = np.nan 
         
+        results_placeholder['model_scores']['soft_binary_crossentropy'] = np.nan
+        results_placeholder['model_scores']['binary_crossentropy'] = np.nan
+        results_placeholder['model_scores']['accuracy'] = np.nan
+        results_placeholder['model_scores']['f1_score'] = np.nan
+        results_placeholder['model_scores']['runtime'] = np.nan         
         
         distances_dict_placeholder = {
                 'z_score_aggregate': np.nan,
@@ -3612,11 +3639,13 @@ def evaluate_real_world_dataset(model,
                                                                 verbose=1)
       
     end_network_training = time.time()
-    print('Training Network: ', format(end_network_training-start_network_training))      
+    runtime_model = end_network_training-start_network_training
+    print('Training Network: ', format(runtime_model))      
     
     evaluation_result_dict = {
                               'dt_scores': {},
                               'inet_scores': {},
+                              'model_scores': {},
                              }
     
     dt_distilled_list = []
@@ -3627,6 +3656,7 @@ def evaluate_real_world_dataset(model,
         result_dict = {
                           'dt_scores': {},
                           'inet_scores': {},
+                          'model_scores': {},
                          }
         results_list.append(result_dict)
     
@@ -3637,7 +3667,7 @@ def evaluate_real_world_dataset(model,
     
     soft_binary_crossentropy_list_data_random = []
     binary_crossentropy_list_data_random = []
-    accuracy_list_data_random = []
+    accuracy_list_data_random = []    
     f1_score_list_data_random = []
     
     runtime_list = []
@@ -3663,7 +3693,15 @@ def evaluate_real_world_dataset(model,
     del parallel_distrib_evaluation    
     
     end_evaluate_network = time.time()
-    print('Evaluate Network: ', format(end_evaluate_network-start_evaluate_network))      
+    print('Evaluate Network: ', format(end_evaluate_network-start_evaluate_network))  
+    
+    
+    model_preds = test_network.predict(X_test).ravel()
+    
+    soft_binary_crossentropy_model = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test.values, model_preds)).numpy()  
+    binary_crossentropy_model = log_loss(np.round(y_test.values), model_preds, labels=[0,1])
+    accuracy_model = accuracy_score(np.round(y_test.values), np.round(model_preds))
+    f1_score_model = f1_score(np.round(y_test.values), np.round(model_preds))      
     
     for i, distribution_training in enumerate(distribution_list_evaluation):
 
@@ -3702,7 +3740,13 @@ def evaluate_real_world_dataset(model,
             result['inet_scores']['binary_crossentropy'] = results_distrib['inet_scores']['binary_crossentropy']
             result['inet_scores']['accuracy'] = results_distrib['inet_scores']['accuracy']
             result['inet_scores']['f1_score'] = results_distrib['inet_scores']['f1_score']          
-            result['inet_scores']['runtime'] = results_distrib['inet_scores']['runtime']   
+            result['inet_scores']['runtime'] = results_distrib['inet_scores']['runtime']          
+            
+            result['model_scores']['soft_binary_crossentropy'] = soft_binary_crossentropy_model
+            result['model_scores']['binary_crossentropy'] = binary_crossentropy_model
+            result['model_scores']['accuracy'] = accuracy_model
+            result['model_scores']['f1_score'] = f1_score_model
+            result['model_scores']['runtime'] = runtime_model
             
             
         soft_binary_crossentropy_list.append(evaluation_result_dict_distrib['dt_scores']['soft_binary_crossentropy'])
@@ -3735,6 +3779,12 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict['inet_scores']['accuracy'] = evaluation_result_dict_distrib['inet_scores']['accuracy']
         evaluation_result_dict['inet_scores']['f1_score'] = evaluation_result_dict_distrib['inet_scores']['f1_score']
         evaluation_result_dict['inet_scores']['runtime'] = evaluation_result_dict_distrib['inet_scores']['runtime']
+        
+        evaluation_result_dict['model_scores']['soft_binary_crossentropy'] = [soft_binary_crossentropy_model] * len(dataset_size_list)       
+        evaluation_result_dict['model_scores']['binary_crossentropy'] = [binary_crossentropy_model] * len(dataset_size_list)       
+        evaluation_result_dict['model_scores']['accuracy'] = [accuracy_model] * len(dataset_size_list)       
+        evaluation_result_dict['model_scores']['f1_score'] = [f1_score_model] * len(dataset_size_list)       
+        evaluation_result_dict['model_scores']['runtime'] = [runtime_model] * len(dataset_size_list)           
         
         dt_distilled_list.append(dt_distilled_list_distrib)
         #results_list.append(results_list_distrib)
@@ -3885,32 +3935,44 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
     #ALWAYS PASS TRAIN DATA FOR EVALUATION
     
+    lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)  
+    
     if train_data is None:    
         try:
             distrib_param_max = config['data']['distrib_param_max']
         except:
             distrib_param_max = 1     
             
-        X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
-                                                           config['data']['x_max'],
-                                                           config['evaluation']['per_network_optimization_dataset_size'], 
-                                                           config['data']['number_of_variables'], 
-                                                           config['data']['categorical_indices'],
-                                                           distrib=distribution,
-                                                           random_parameters=config['data']['random_parameters_distribution'],
-                                                           distrib_param_max=config['data']['distrib_param_max'],
-                                                           seed=config['computation']['RANDOM_SEED'],
-                                                           config=config)
+        condition = True
+        counter = 0
+        while condition and counter < 100:
+            
+            X_data_random = generate_random_data_points_custom(config['data']['x_min'], 
+                                                               config['data']['x_max'],
+                                                               config['evaluation']['per_network_optimization_dataset_size'], 
+                                                               config['data']['number_of_variables'], 
+                                                               config['data']['categorical_indices'],
+                                                               distrib=distribution,
+                                                               random_parameters=config['data']['random_parameters_distribution'],
+                                                               distrib_param_max=config['data']['distrib_param_max'],
+                                                               seed=config['computation']['RANDOM_SEED'],
+                                                               config=config)
+            
+            
+            
+            y_data_random_lambda_pred = np.round(np.nan_to_num(lambda_net.predict(X_data_random).ravel()))
+            condition = len(np.unique(y_data_random_lambda_pred)) == 1
+            
+            counter += 1
+            
+            if not config['evaluation']['optimize_sampling']:
+                condition = False ##comment out to ignore loop
         
     else:
         X_data_random = train_data
-
-
     
-    lambda_net = network_parameters_to_network(lambda_net_parameters_array, config, base_model=None)  
-
-    y_data_random_lambda_pred = lambda_net.predict(X_data_random).ravel()
-    y_test_lambda_pred = lambda_net.predict(X_test_lambda).ravel()
+    y_data_random_lambda_pred = np.nan_to_num(lambda_net.predict(X_data_random).ravel())
+    y_test_lambda_pred = np.nan_to_num(lambda_net.predict(X_test_lambda).ravel())
 
     if config['i_net']['nas']:
         dt_inet = dt_inet[:config['function_family']['function_representation_length']]
@@ -3923,10 +3985,10 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
     if config['function_family']['dt_type'] == 'SDT':
         y_test_inet_dt, _  = calculate_function_value_from_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet)
-        y_test_inet_dt = y_test_inet_dt.numpy()
+        y_test_inet_dt = np.nan_to_num(y_test_inet_dt.numpy())
     elif config['function_family']['dt_type'] == 'vanilla':
         y_test_inet_dt, _  = calculate_function_value_from_vanilla_decision_tree_parameters_wrapper(X_test_lambda, config)(dt_inet)
-        y_test_inet_dt = y_test_inet_dt.numpy()
+        y_test_inet_dt = np.nan_to_num(y_test_inet_dt.numpy())
 
     y_test_inet_dt_diff = tf.math.subtract(1.0, y_test_inet_dt)
     y_test_inet_dt_softmax = tf.stack([y_test_inet_dt, y_test_inet_dt_diff], axis=1)       
@@ -3961,7 +4023,8 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                         'accuracy': np.nan_to_num(accuracy_inet_dt),
                         'f1_score': np.nan_to_num(f1_score_inet_dt),           
                         #'runtime': inet_runtime
-                    },                
+                    },      
+                        
                    }
 
 
@@ -3991,18 +4054,18 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         end_dt_distilled = time.time()     
         dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)     
-
+        print('UPDATED!!')
         y_data_random_distilled_dt = dt_distilled.predict_proba(X_data_random)
         if y_data_random_distilled_dt.shape[1] > 1:
             y_data_random_distilled_dt = y_data_random_distilled_dt[:,1:].ravel()
         else:
-            y_data_random_distilled_dt = y_data_random_distilled_dt.ravel()
+            y_data_random_distilled_dt = dt_distilled.predict(X_data_random)#y_data_random_distilled_dt.ravel()
 
         y_test_distilled_dt = dt_distilled.predict_proba(X_test_lambda)
         if y_test_distilled_dt.shape[1] > 1:
             y_test_distilled_dt = y_test_distilled_dt[:,1:].ravel()
         else:
-            y_test_distilled_dt = y_test_distilled_dt.ravel()            
+            y_test_distilled_dt = dt_distilled.predict(X_test_lambda)# y_test_distilled_dt.ravel()            
 
 
     epsilon = 1e-6
@@ -4120,7 +4183,7 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
         print(tab)       
 
     number = min(min(X_test_lambda_array.shape[0], max(config['i_net']['test_size'], 1)), 50)
-    print('UPDATE4')
+
     start_inet = time.time() 
     network_parameters = np.array(network_parameters_array[:number])
     if config['i_net']['data_reshape_version'] == 0 or config['i_net']['data_reshape_version'] == 1 or config['i_net']['data_reshape_version'] == 2:
@@ -4834,18 +4897,28 @@ def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy=None, seed=42)
     false_ratio = false_labels/(false_labels+true_labels)
     
     min_ratio = min(true_ratio, false_ratio)
-
     print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
-    
     if min_ratio <= balance_ratio:
-        from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
-
+        from imblearn.over_sampling import RandomOverSampler, SMOTE, SMOTEN, ADASYN, BorderlineSMOTE, KMeansSMOTE, SVMSMOTE, SMOTENC
+        from imblearn.combine import SMOTETomek, SMOTEENN
         if strategy == 'SMOTE':
             oversample = SMOTE()
+        elif strategy == 'SMOTEN':
+            oversample = SMOTEN()                 
+        elif strategy == 'BorderlineSMOTE':
+            oversample = BorderlineSMOTE()                
+        elif strategy == 'KMeansSMOTE':
+            oversample = KMeansSMOTE(cluster_balance_threshold=0.1)    
+        elif strategy == 'SVMSMOTE':
+            oversample = SVMSMOTE()   
+        elif strategy == 'SMOTETomek':
+            oversample = SMOTETomek()   
+        elif strategy == 'SMOTEENN':
+            oversample = SMOTEENN()               
         elif strategy == 'ADASYN':
             oversample = ADASYN()
         else:
-            oversample = RandomOverSampler(sampling_strategy='minority', random_state=seed)
+            oversample = RandomOverSampler(sampling_strategy='auto', random_state=seed)
 
         X_train, y_train = oversample.fit_resample(X_train, y_train)
 
@@ -4866,12 +4939,10 @@ def train_network_real_world_data(X_train, y_train, X_valid, y_valid, config, ve
         tf.random.set_seed(config['computation']['RANDOM_SEED'])
     else:
         tf.set_random_seed(config['computation']['RANDOM_SEED'])
-
     test_network = generate_lambda_net_from_config(config, seed=config['computation']['RANDOM_SEED'])
-
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', 
-                                                      patience=10, 
-                                                      min_delta=0.0001, 
+                                                      patience=config['lambda_net']['patience_lambda'],#10, 
+                                                      min_delta=0.001, 
                                                       verbose=0, 
                                                       mode='min', 
                                                       restore_best_weights=config['lambda_net']['restore_best_weights'],#True
@@ -5161,6 +5232,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                verbosity=verbosity)
         
         else:
+            
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
             config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + i
@@ -5919,6 +5991,7 @@ def plot_decision_area_evaluation(X_train,
                                     network,
                                     tree_train_data,
                                     tree_uniform_data,
+                                    tree_normal_data,
                                     tree_random_data,
                                     inet_dt_params,
                                     column_names,
@@ -5961,8 +6034,11 @@ def plot_decision_area_evaluation(X_train,
                            decision_sparsity=config['function_family']['decision_sparsity'],
                            use_cuda=False,
                            verbosity=0)
-        tree_inet.initialize_from_parameter_array(inet_dt_params)
-
+        if config['i_net']['function_representation_type'] == 1:
+            tree_inet.initialize_from_parameter_array(inet_dt_params)
+        else:
+            print('RESHAPE0')
+            tree_inet.initialize_from_parameter_array(inet_dt_params, reshape=True, config=config)
 
     preds_network = np.round(network.predict(X_test))
     acc_network = accuracy_score(y_test, preds_network)
@@ -5980,21 +6056,25 @@ def plot_decision_area_evaluation(X_train,
     preds_tree_sklearn_uniform_data = np.round(tree_uniform_data.predict(X_test))
     acc_inet_sklearn_uniform_data = accuracy_score(preds_network, preds_tree_sklearn_uniform_data)
     
+    preds_tree_sklearn_normal_data = np.round(tree_normal_data.predict(X_test))
+    acc_inet_sklearn_normal_data = accuracy_score(preds_network, preds_tree_sklearn_normal_data)
+    
     print('Considered Columns:\t\t', '   '.join(list(column_names[feature_index])))
     print('Performance Network:\t\t', acc_network)
     print('Fidelity DT Sklearn Train Data:\t', acc_inet_sklearn_train_data)
     print('Fidelity DT Sklearn Random:\t', acc_inet_sklearn_random)
     print('Fidelity DT Sklearn Uniform Data:\t\t', acc_inet_sklearn_uniform_data)  
+    print('Fidelity DT Sklearn Normal Data:\t\t', acc_inet_sklearn_normal_data)  
     print('Fidelity DT I-Net:\t\t', acc_inet_tree)
 
 
     #gs = gridspec.GridSpec(2, 2)
-    gs = gridspec.GridSpec(1, 5)
+    gs = gridspec.GridSpec(1, 6)
 
     fig = plt.figure(figsize=(40,10))
 
-    labels = ['Neual Network', 'Distilled DT (Train Data)', 'Distilled DT (Random Data)', 'Distilled DT (U(0,1))', 'Distilled DT (I-Net)'] 
-    for i, (clf, lab) in enumerate(zip([network, tree_train_data, tree_random_data, tree_uniform_data, tree_inet],
+    labels = ['Neual Network', 'Distilled DT (Train Data)', 'Distilled DT (Random Data)', 'Distilled DT (U(0,1))', 'Distilled DT (N(0,1))', 'Distilled DT (I-Net)'] 
+    for i, (clf, lab) in enumerate(zip([network, tree_train_data, tree_random_data, tree_uniform_data, tree_normal_data, tree_inet],
                              labels)):
 
         #ax = plt.subplot(gs[i//2, i%2])
@@ -6205,14 +6285,17 @@ def plot_decision_area_evaluation_all_distrib(X_train,
                                             network,
                                             tree_train_data,
                                             tree_uniform_data,
+                                            tree_normal_data,
                                             tree_random_data_list,
                                             inet_dt_params,
                                             column_names,
                                             distrib_list,
-                                            config):
+                                            config,
+                                            identifier_folder = None,
+                                            identifier_file = None):
 
     if X_train.shape[1] > 2:
-        if False:
+        if True:
             tree_feature_importance = DecisionTreeClassifier(max_depth=config['function_family']['maximum_depth'])#dt_distilled_list_test[0][index][1]
             tree_feature_importance.fit(X_train, y_train)
 
@@ -6248,17 +6331,20 @@ def plot_decision_area_evaluation_all_distrib(X_train,
                            decision_sparsity=config['function_family']['decision_sparsity'],
                            use_cuda=False,
                            verbosity=0)
-        tree_inet.initialize_from_parameter_array(inet_dt_params)
-
-    print('Considered Columns:\t\t\t', '   '.join(list(column_names[feature_index])))
+        if config['i_net']['function_representation_type'] == 1:
+            print('RESHAPE0')
+            tree_inet.initialize_from_parameter_array(inet_dt_params)
+        else:
+            tree_inet.initialize_from_parameter_array(inet_dt_params, reshape=True, config=config)
+    print('Considered Columns:\t\t\t\t\t\t\t\t', '   '.join(list(column_names[feature_index])))
     
     preds_network = np.round(network.predict(X_test))
     acc_network = accuracy_score(y_test, preds_network)
-    print('Performance Network:\t\t\t', acc_network)
+    print('Performance Network:\t\t\t\t\t\t\t\t', acc_network)
     
     preds_tree_sklearn_train_data = np.round(tree_train_data.predict(X_test))
     acc_inet_sklearn_train_data = accuracy_score(preds_network, preds_tree_sklearn_train_data)
-    print('Fidelity DT Sklearn Train Data:\t\t', acc_inet_sklearn_train_data)    
+    print('Fidelity DT Sklearn Train Data:\t\t\t\t\t\t\t', acc_inet_sklearn_train_data)    
     
     for i, distrib in enumerate(distrib_list):
         preds_tree_sklearn_random = np.round(tree_random_data_list[i].predict(X_test))
@@ -6267,23 +6353,35 @@ def plot_decision_area_evaluation_all_distrib(X_train,
 
     preds_tree_sklearn_uniform_data = np.round(tree_uniform_data.predict(X_test))
     acc_inet_sklearn_uniform_data = accuracy_score(preds_network, preds_tree_sklearn_uniform_data)
-    print('Fidelity DT Sklearn Uniform Data:\t\t', acc_inet_sklearn_uniform_data)          
-        
+    print('Fidelity DT Sklearn Uniform Data:\t\t\t\t\t\t', acc_inet_sklearn_uniform_data)    
+    
+    preds_tree_sklearn_normal_data = np.round(tree_normal_data.predict(X_test))
+    acc_inet_sklearn_normal_data = accuracy_score(preds_network, preds_tree_sklearn_normal_data)
+    print('Fidelity DT Sklearn Normal Data:\t\t\t\t\t\t', acc_inet_sklearn_normal_data)  
+    
     preds_tree_inet = np.round(tree_inet.predict(X_test))
     acc_inet_tree = accuracy_score(preds_network, preds_tree_inet)
 
 
-    print('Fidelity DT I-Net:\t\t\t', acc_inet_tree)
+    print('Fidelity DT I-Net:\t\t\t\t\t\t\t\t', acc_inet_tree)
 
 
     #gs = gridspec.GridSpec(2, 2)
-    gs = gridspec.GridSpec(1, 3+len(distrib_list)+1)
+    gs = gridspec.GridSpec(1, 3+len(distrib_list)+2)
 
-    fig = plt.figure(figsize=((3+len(distrib_list))*10,10))
+    fig = plt.figure(figsize=((3+len(distrib_list)+2)*5,5))
 
-    labels = flatten_list(['Neual Network', 'Distilled DT (Train Data)', ['Distilled DT (' + str(distrib) + ')' for distrib in distrib_list], ['Distilled DT (U(0,1))' for distrib in distrib_list],  'Distilled DT (I-Net)'])
+    distrib_list_string = []
+    for distrib in distrib_list:
+        if '[' in str(distrib):
+            new_distrib = 'Random'
+            distrib_list_string.append(new_distrib)
+        else:
+            distrib_list_string.append(str(distrib))    
+        
+    labels = flatten_list(['Neual Network', 'Distilled DT (Train Data)', ['Distilled DT (' + str(distrib) + ')' for distrib in distrib_list_string], 'Distilled DT (U(0,1))', 'Distilled DT (N(0,1))',  'Distilled DT (I-Net)'])
     counter = 0
-    for i, (clf, lab) in enumerate(zip(flatten_list([network, tree_train_data, tree_random_data_list, tree_uniform_data, tree_inet]),
+    for i, (clf, lab) in enumerate(zip(flatten_list([network, tree_train_data, tree_random_data_list, tree_uniform_data, tree_normal_data, tree_inet]),
                              labels)):
         if 'Distilled DT' in lab and 'Train Data' not in lab and 'I-Net' not in lab and random_data_dict is not None and False:
             #ax = plt.subplot(gs[i//2, i%2])
@@ -6296,13 +6394,13 @@ def plot_decision_area_evaluation_all_distrib(X_train,
                               filler_feature_values=filler_feature_values,  #these will be ignored (value used for prediction)
                               filler_feature_ranges=filler_feature_ranges, #these will be ignored (value +- feature range used for plotting data)
                               legend=2)
-            plt.title(lab)
-            ax.set_xlabel(feature_index[0])
-            ax.set_ylabel(feature_index[1])
+            plt.title(lab, fontsize=25)
+            ax.set_xlabel(feature_index[0], fontsize=20)
+            ax.set_ylabel(feature_index[1], fontsize=20)
             plt.xlim([0, 1])
             plt.ylim([0, 1])   
             counter += 1
-        
+            
         else:
 
             #ax = plt.subplot(gs[i//2, i%2])
@@ -6314,21 +6412,22 @@ def plot_decision_area_evaluation_all_distrib(X_train,
                               filler_feature_values=filler_feature_values,  #these will be ignored (value used for prediction)
                               filler_feature_ranges=filler_feature_ranges, #these will be ignored (value +- feature range used for plotting data)
                               legend=2)
-            plt.title(lab)
-            ax.set_xlabel(feature_index[0])
-            ax.set_ylabel(feature_index[1])
+            plt.title(lab, fontsize=15)
+            plt.xticks(fontsize=10) #, rotation=90
+            ax.set_xlabel('x' + str(feature_index[0]),  fontsize=12)
+            ax.set_ylabel('x' + str(feature_index[1]),  fontsize=12)
             plt.xlim([0, 1])
             plt.ylim([0, 1])
 
 
-    plt.show()
+    if identifier_folder is not None and config['data']['number_of_variables'] == 2:
+        paths_dict = generate_paths(config, path_type = 'interpretation_net')
     
-    
+        plt.savefig('./data/distrib_plots/' + identifier_folder + '/' + identifier_file + '.pdf', bbox_inches = 'tight', pad_inches = 0)
     
 
-    
-    
-    
+    plt.show()
+    print('-----------------------------------------------------')
     
     
     
