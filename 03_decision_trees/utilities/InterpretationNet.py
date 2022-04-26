@@ -567,16 +567,17 @@ def train_inet(lambda_net_train_dataset,
     from keras.utils.generic_utils import get_custom_objects
     from keras import backend as K
     
-    def scaled_softmax_double(x):
-        x = 1/(1+K.exp(5*x))
+    def sigmoid_squeeze(x, factor=2):
+        x = 1/(1+K.exp(-factor*x))
         return x                        
 
-    def scaled_softmax_half(x):
-        x = 1/(1+K.exp(x/5))
-        return x                                  
+    def sigmoid_relaxed(x, factor=2):
+        x = 1/(1+K.exp(-x/factor))
+        return x      
 
-    get_custom_objects().update({'scaled_softmax_double': Activation(scaled_softmax_double)})     
-    get_custom_objects().update({'scaled_softmax_half': Activation(scaled_softmax_half)})     
+
+    get_custom_objects().update({'sigmoid_squeeze': Activation(sigmoid_squeeze)})     
+    get_custom_objects().update({'sigmoid_relaxed': Activation(sigmoid_relaxed)})     
 
     
     paths_dict = generate_paths(config, path_type = 'interpretation_net')
@@ -1311,11 +1312,35 @@ def train_inet(lambda_net_train_dataset,
                                                               activation='sigmoid', 
                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                               name='output_coeff_' + str(outputs_coeff_neurons))(hidden_outputs_coeff)                        
-                    else:                        
-                        outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
-                                                              activation='sigmoid', 
-                                                              kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
-                                                              name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
+                    else:
+                        if True:
+                            from keras import backend as K
+                            def sigmoid_squeeze(x):
+                                x = 1/(1+K.exp(-3*x))
+                                return x      
+                            
+                            def sigmoid_squeeze_inverse(x):
+                                x = 1/(1+K.exp(3*x))
+                                return x  
+                            
+                            def sigmoid_relaxed(x):
+                                x = 1/(1+K.exp(-x/3))
+                                return x      
+
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze_inverse)})       
+                            
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                            
+                        
+                        else:
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='sigmoid', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)
                         
                     outputs_list = [outputs_coeff]
                     for outputs_index in range(internal_node_num_):
@@ -1392,79 +1417,125 @@ def train_inet(lambda_net_train_dataset,
                         
                         if config['i_net']['function_representation_type'] == 4:
                             from keras import backend as K
-                            def linear_clip(x):
-                                #x = tf.keras.activations.linear(x)
-                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
-                                return  x
-
-                            def scaled_softmax_double(x):
-                                x = 1/(1+K.exp(2*x))
+                            def sigmoid_squeeze(x):
+                                x = 1/(1+K.exp(-2*x))
                                 return x                        
 
-                            def scaled_softmax_half(x):
-                                x = 1/(1+K.exp(x/5))
+                            def sigmoid_relaxed(x):
+                                x = 1/(1+K.exp(-x/2))
                                 return x      
-
-                            def tanh_softmax(x):
-                                x = tf.keras.activations.tanh(x)
-                                x = (x+1)/2
-                                return  x                            
-
-                            def gelu(x):
-                                return tf.keras.activations.gelu(x, approximate=False)
-                            
-                            def gcu(x):
-                                x = x*tf.math.cos(x)
-                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
-                                return x
                             
                             from keras.utils.generic_utils import get_custom_objects
 
-                            get_custom_objects().update({'activation_special': Activation(scaled_softmax_double)})                            
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze)})                            
 
                             outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                                   activation='activation_special', 
                                                                   kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                   name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                            
+                        
                         elif config['i_net']['function_representation_type'] == 5:
                             from keras import backend as K
-                            def linear_clip(x):
-                                #x = tf.keras.activations.linear(x)
-                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
-                                return  x
-
-                            def scaled_softmax_double(x):
-                                x = 1/(1+K.exp(5*x))
+                            def sigmoid_squeeze(x):
+                                x = 1/(1+K.exp(-3*x))
                                 return x                        
 
-                            def scaled_softmax_half(x):
-                                x = 1/(1+K.exp(x/5))
+                            def sigmoid_relaxed(x):
+                                x = 1/(1+K.exp(-x/3))
                                 return x      
-
-                            def tanh_softmax(x):
-                                x = tf.keras.activations.tanh(x)
-                                x = (x+1)/2
-                                return  x                            
-
-                            def gelu(x):
-                                return tf.keras.activations.gelu(x, approximate=False)
-                            
-                            def gcu(x):
-                                x = x*tf.math.cos(x)
-                                x = K.clip(x, 0, 1)#tf.clip_by_value(x, 0, 1)
-                                return x
                             
                             from keras.utils.generic_utils import get_custom_objects
 
-                            get_custom_objects().update({'activation_special': Activation(scaled_softmax_double)})                            
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze)})                            
+
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                                      
+                                
+                        elif config['i_net']['function_representation_type'] == 6:
+                            from keras import backend as K
+                            def sigmoid_squeeze(x):
+                                x = 1/(1+K.exp(-5*x))
+                                return x                        
+
+                            def sigmoid_relaxed(x):
+                                x = 1/(1+K.exp(-x/5))
+                                return x      
+                            
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze)})                            
+
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                                      
+                                
+                                
+                                                                
+                                
+                        elif config['i_net']['function_representation_type'] == 7:
+                            from keras import backend as K
+                            def sigmoid_squeeze_inverse(x):
+                                x = 1/(1+K.exp(3*x))
+                                return x                        
+
+                            def sigmoid_relaxed_inverse(x):
+                                x = 1/(1+K.exp(x/3))
+                                return x      
+                            
+                            
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze_inverse)})                            
 
                             outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
                                                                   activation='activation_special', 
                                                                   kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
                                                                   name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                            
                             
+                        elif config['i_net']['function_representation_type'] == 8:
+                            from keras import backend as K
+                            def sigmoid_squeeze(x):
+                                x = 1/(1+K.exp(-4*x))
+                                return x                        
+
+                            def sigmoid_relaxed(x):
+                                x = 1/(1+K.exp(-x/4))
+                                return x      
                             
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze)})                            
+
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                                      
+                        elif config['i_net']['function_representation_type'] == 9:
+                            from keras import backend as K
+                            def sigmoid_squeeze(x):
+                                x = 1/(1+K.exp(-2.5*x))
+                                return x                        
+
+                            def sigmoid_relaxed(x):
+                                x = 1/(1+K.exp(-x/2.5))
+                                return x      
                             
+                            from keras.utils.generic_utils import get_custom_objects
+
+                            get_custom_objects().update({'activation_special': Activation(sigmoid_squeeze)})                            
+
+                            outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                                  activation='activation_special', 
+                                                                  kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
+                                                                  name='output_coeff_' + str(outputs_coeff_neurons))(hidden)                                      
+                                
+                                
+                                                                                               
+                                                               
+                                    
                             
                         elif config['i_net']['function_representation_type'] == 3:
                             outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 

@@ -4054,7 +4054,6 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
 
         end_dt_distilled = time.time()     
         dt_distilled_runtime = (end_dt_distilled - start_dt_distilled)     
-        print('UPDATED!!')
         y_data_random_distilled_dt = dt_distilled.predict_proba(X_data_random)
         if y_data_random_distilled_dt.shape[1] > 1:
             y_data_random_distilled_dt = y_data_random_distilled_dt[:,1:].ravel()

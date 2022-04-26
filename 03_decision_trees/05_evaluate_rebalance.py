@@ -9,6 +9,9 @@ from tqdm import tqdm
 import time
 
 import os
+
+import numpy as np
+
                 
 def sleep_minutes_function(minutes):   
     for _ in tqdm(range(minutes)):
@@ -37,16 +40,19 @@ def main():
                 'number_of_random_evaluations_per_distribution': [10],
                 'optimize_sampling': [False],
                 
-                'dt_setting': [3, 2, 1], # 1=vanilla; 2=SDT1; 3=SDT-1  ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
+                'dt_setting': [13], # 1=vanilla; 2=SDT1; 3=SDT-1  ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
                 'inet_setting': [1], 
                 'dataset_size': [10000], #10000, 50000
                 
                 'maximum_depth': [3],
                 'number_of_variables':[
+                                               3, 
                                                9, 
                                                10, 
+                                               13,
                                                15, 
-                                               16, 
+                                               16,
+                                               23,
                                                28,
                                                29,
                                                32,
@@ -95,7 +101,7 @@ def main():
                 
             print('Possible Evaluations: ', len(parameter_grid))
                 
-            Parallel(n_jobs=5, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
+            Parallel(n_jobs=7, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
 
             #for parameter_setting in parameter_grid:
                 #run_evaluation.remote(parameter_setting)
@@ -103,7 +109,7 @@ def main():
                         
             for i in range(len(parameter_grid)):
                 del parameter_grid[i]['number_of_variables']
-                del parameter_grid[i]['dt_setting']
+                parameter_grid[i]['dt_setting'] = np.floor((parameter_grid[i]['dt_setting']-1) / 3).astype(int)
                 #print(parameter_grid[i])
             
             parameter_grid = [ii for n,ii in enumerate(parameter_grid) if ii not in parameter_grid[:n]]

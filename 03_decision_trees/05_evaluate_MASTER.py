@@ -9,6 +9,9 @@ from tqdm import tqdm
 import time
 
 import os
+
+import numpy as np
+
                 
 def sleep_minutes_function(minutes):   
     for _ in tqdm(range(minutes)):
@@ -101,7 +104,7 @@ def main():
                         
             for i in range(len(parameter_grid)):
                 del parameter_grid[i]['number_of_variables']
-                del parameter_grid[i]['dt_setting']
+                parameter_grid[i]['dt_setting'] = np.floor((parameter_grid[i]['dt_setting']-1) / 3).astype(int)
                 #print(parameter_grid[i])
             
             parameter_grid = [ii for n,ii in enumerate(parameter_grid) if ii not in parameter_grid[:n]]

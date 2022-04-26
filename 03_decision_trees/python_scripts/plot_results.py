@@ -187,6 +187,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
                           'i_net_dense_layers',
                           'i_net_dropout',
+                          'i_net_hidden_activation',
                           'i_net_learning_rate',
                           'i_net_loss',
                           'i_net_interpretation_dataset_size',
@@ -303,12 +304,17 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
         
         distribution_list_reduced = parameter_setting['distribution_list']#['uniform', 'normal', 'gamma', 'beta', 'poisson']
         distribution_list_additional = ['STANDARDUNIFORM', 'STANDARDNORMAL', 'TRAINDATA']   
-        
+
+        if not isinstance(parameter_setting['hidden_activation'], list):
+            parameter_setting['hidden_activation'] = [parameter_setting['hidden_activation'] for _ in range(len(parameter_setting['dense_layers']))]        
+
 
         config = {
             'i_net_dense_layers': [str(parameter_setting['dense_layers'])], #['[1024, 1024, 256, 2048, 2048]'], #
             'i_net_dropout': [str(parameter_setting['dropout'])], #['[0, 0, 0, 0, 0.3]'], #
-
+            
+            'i_net_hidden_activation': [str(parameter_setting['hidden_activation'])],      
+            
             'i_net_interpretation_dataset_size': [parameter_setting['dataset_size']], #['[0, 0, 0, 0, 0.3]'], #       
 
             'data_distrib_by_feature': parameter_setting['distrib_by_feature'],
@@ -353,12 +359,12 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
         distribution_list = deepcopy(distribution_list_reduced)
         distribution_list.extend(distribution_list_additional)        
 
-        config['data_distribution_list'] = [str(distribution_list_reduced)]        
-
-
-
+        config['data_distribution_list'] = [str(distribution_list_reduced)]
+        
         # In[12]:
-
+        #print('PARAMETER SETTING HIDDEN ACTIVATION', parameter_setting['hidden_activation'])
+        #print('results_summary_reduced', results_summary_reduced['i_net_hidden_activation'].values)
+        #print(valid_scores_df['i_net_hidden_activation'])
 
         score_names_list = ['valid_accuracy', 'valid_binary_crossentropy', 'valid_f1_score']
         valid_scores_columns = [name for name in results_summary_reduced_columns if 'valid' in name and any([score in name for score in score_names_list])]

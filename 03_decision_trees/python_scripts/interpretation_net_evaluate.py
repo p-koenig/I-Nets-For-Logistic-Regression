@@ -148,14 +148,14 @@ def extend_inet_parameter_setting(parameter_setting):
     elif parameter_setting['inet_setting'] == 9:
         parameter_setting['dense_layers'] = [1792, 512, 512]
         parameter_setting['dropout'] = [0, 0, 0.5]  
-        parameter_setting['hidden_activation'] = 'scaled_softmax_double'
+        parameter_setting['hidden_activation'] = 'sigmoid_squeeze'
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001
         
     elif parameter_setting['inet_setting'] == 10:
         parameter_setting['dense_layers'] = [1792, 512, 512]
         parameter_setting['dropout'] = [0, 0, 0.5]  
-        parameter_setting['hidden_activation'] = 'scaled_softmax_half'
+        parameter_setting['hidden_activation'] = 'sigmoid_relaxed'
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001
         
@@ -209,16 +209,41 @@ def run_evaluation(enumerator, timestr, parameter_setting):
         parameter_setting['decision_sparsity'] = 1     
         parameter_setting['function_representation_type'] = 4
         
+    elif parameter_setting['dt_setting'] == 13:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 5   
+        
+    elif parameter_setting['dt_setting'] == 16:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 6
+        
+    elif parameter_setting['dt_setting'] == 19:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 7 
+        
+    elif parameter_setting['dt_setting'] == 22:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 8 
+        
+    elif parameter_setting['dt_setting'] == 25:
+        parameter_setting['dt_type'] = 'vanilla'
+        parameter_setting['decision_sparsity'] = 1     
+        parameter_setting['function_representation_type'] = 9         
+        
     if 'distribution' not in parameter_setting['function_generation_type'] or 'trained' in parameter_setting['function_generation_type']:
-        if parameter_setting['dt_setting'] in [1,4,7,10]:
+        if parameter_setting['dt_setting'] % 3 == 1:
             parameter_setting['dt_type_train'] = 'vanilla'
             parameter_setting['maximum_depth_train'] = 3
             parameter_setting['decision_sparsity_train'] = 1        
-        elif parameter_setting['dt_setting'] in [2,5,8]:
+        elif parameter_setting['dt_setting'] % 3 == 2:
             parameter_setting['dt_type_train'] = 'SDT'
             parameter_setting['maximum_depth_train'] = 3
             parameter_setting['decision_sparsity_train'] = 1    
-        elif parameter_setting['dt_setting'] in [3,6,9]:
+        elif parameter_setting['dt_setting'] % 3 == 3:
             parameter_setting['dt_type_train'] = 'SDT'
             parameter_setting['maximum_depth_train'] = 3
             parameter_setting['decision_sparsity_train'] = -1              
