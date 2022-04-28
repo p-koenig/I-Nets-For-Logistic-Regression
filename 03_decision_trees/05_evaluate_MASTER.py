@@ -35,13 +35,13 @@ def main():
         
             evaluation_grid = {
                 
-                'n_jobs': [7],   
+                'n_jobs': [8],   
                 'force_evaluate_real_world': [False],
                 'number_of_random_evaluations_per_distribution': [10],
                 'optimize_sampling': [False],
                 
                 'dt_setting': [3, 2, 1], # 1=vanilla; 2=SDT1; 3=SDT-1  ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
-                'inet_setting': [1], 
+                'inet_setting': [3], 
                 'dataset_size': [10000], #10000, 50000
                 
                 'maximum_depth': [3],
@@ -49,6 +49,7 @@ def main():
                                                3,
                                                9, 
                                                10, 
+                                               12,
                                                13, 
                                                15, 
                                                16, 
@@ -81,9 +82,9 @@ def main():
                 'noise_injected_level': [0],
                 
                 'resampling_strategy': [None], #'ADASYN', 'SMOTE',, None
-                'resampling_threshold': [0.1],   
+                'resampling_threshold': [0.2],   
                 'restore_best_weights': [True],
-                'patience_lambda': [10],
+                'patience_lambda': [50],
                 
                 'random_evaluation_dataset_size': [500],
                 
@@ -98,22 +99,33 @@ def main():
                 
             print('Possible Evaluations: ', len(parameter_grid))
                 
-            Parallel(n_jobs=7, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
+            Parallel(n_jobs=6, backend='loky', verbose=10000)(delayed(run_evaluation)(enumerator, timestr, parameter_setting) for enumerator, parameter_setting in enumerate(parameter_grid))
 
             print('COMPUTATION FINISHED')    
                         
             for i in range(len(parameter_grid)):
                 del parameter_grid[i]['number_of_variables']
-                parameter_grid[i]['dt_setting'] = np.floor((parameter_grid[i]['dt_setting']-1) / 3).astype(int)
+                del parameter_grid[i]['dt_setting']
+                #parameter_grid[i]['dt_setting'] = np.floor((parameter_grid[i]['dt_setting']-1) / 3).astype(int)
                 #print(parameter_grid[i])
             
             parameter_grid = [ii for n,ii in enumerate(parameter_grid) if ii not in parameter_grid[:n]]
             
             print('Possible Evaluations Types: ', len(parameter_grid)) 
                 
-                
-            plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid, score_string='accuracy')   
+            print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')         
+            
+            plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid, score_string='accuracy')  
+            
+            print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
+            
             plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid, score_string='f1_score')   
+            
+            print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
+            
+            plot_evaluation_results(timestr=timestr, parameter_grid=parameter_grid, score_string='roc_auc_score')               
+            
+            print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
             
 if __name__ == "__main__": 
 

@@ -26,7 +26,7 @@ import datetime
 
 
 #from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, KFold
-from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score
+from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, f1_score, mean_absolute_error, r2_score, roc_auc_score
 from sklearn.preprocessing import MinMaxScaler
 #from similaritymeasures import frechet_dist, area_between_two_curves, dtw
 import time
@@ -3392,18 +3392,21 @@ def distribution_evaluation_single_model_synthetic_data(loss_function,
         results_list_extended['dt_scores']['binary_crossentropy_train_data'] = results_list[-3]['dt_scores']['binary_crossentropy']
         results_list_extended['dt_scores']['accuracy_train_data'] = results_list[-3]['dt_scores']['accuracy']
         results_list_extended['dt_scores']['f1_score_train_data'] = results_list[-3]['dt_scores']['f1_score']
+        results_list_extended['dt_scores']['roc_auc_score_train_data'] = results_list[-3]['dt_scores']['roc_auc_score']
         
 
         results_list_extended['dt_scores']['soft_binary_crossentropy_uniform_data'] = results_list[-2]['dt_scores']['soft_binary_crossentropy']
         results_list_extended['dt_scores']['binary_crossentropy_uniform_data'] = results_list[-2]['dt_scores']['binary_crossentropy']
         results_list_extended['dt_scores']['accuracy_uniform_data'] = results_list[-2]['dt_scores']['accuracy']
         results_list_extended['dt_scores']['f1_score_uniform_data'] = results_list[-2]['dt_scores']['f1_score']
+        results_list_extended['dt_scores']['roc_auc_uniform_data'] = results_list[-2]['dt_scores']['roc_auc_score']
         
 
         results_list_extended['dt_scores']['soft_binary_crossentropy_normal_data'] = results_list[-1]['dt_scores']['soft_binary_crossentropy']
         results_list_extended['dt_scores']['binary_crossentropy_normal_data'] = results_list[-1]['dt_scores']['binary_crossentropy']
         results_list_extended['dt_scores']['accuracy_normal_data'] = results_list[-1]['dt_scores']['accuracy']
-        results_list_extended['dt_scores']['f1_score_normal_data'] = results_list[-1]['dt_scores']['f1_score']        
+        results_list_extended['dt_scores']['f1_score_normal_data'] = results_list[-1]['dt_scores']['f1_score']   
+        results_list_extended['dt_scores']['roc_auc_score_normal_data'] = results_list[-1]['dt_scores']['roc_auc_score']        
 
         results_list = results_list_extended
         evaluation_result_dict = results_list
@@ -3494,12 +3497,16 @@ def evaluate_real_world_dataset(model,
             evaluation_result_dict_placeholder['dt_scores']['soft_binary_crossentropy_' + str(identifier)] = [np.nan] * len(dataset_size_list)
             evaluation_result_dict_placeholder['dt_scores']['binary_crossentropy_' + str(identifier)] = [np.nan] * len(dataset_size_list)
             evaluation_result_dict_placeholder['dt_scores']['accuracy_' + str(identifier)] = [np.nan] * len(dataset_size_list)
-            evaluation_result_dict_placeholder['dt_scores']['f1_score_' + str(identifier)] = [np.nan] * len(dataset_size_list)            
+            evaluation_result_dict_placeholder['dt_scores']['f1_score_' + str(identifier)] = [np.nan] * len(dataset_size_list)    
+            evaluation_result_dict_placeholder['dt_scores']['roc_auc_score_' + str(identifier)] = [np.nan] * len(dataset_size_list)    
+            
             
             evaluation_result_dict_placeholder['dt_scores']['soft_binary_crossentropy_data_random_' + str(identifier)] = [np.nan] * len(dataset_size_list)
             evaluation_result_dict_placeholder['dt_scores']['binary_crossentropy_data_random_' + str(identifier)] = [np.nan] * len(dataset_size_list)
             evaluation_result_dict_placeholder['dt_scores']['accuracy_data_random_' + str(identifier)] = [np.nan] * len(dataset_size_list)
             evaluation_result_dict_placeholder['dt_scores']['f1_score_data_random_' + str(identifier)] = [np.nan] * len(dataset_size_list)
+            evaluation_result_dict_placeholder['dt_scores']['roc_auc_score_data_random_' + str(identifier)] = [np.nan] * len(dataset_size_list)
+            
             
             evaluation_result_dict_placeholder['dt_scores']['runtime_' + str(identifier)] = [np.nan] * len(dataset_size_list)
             
@@ -3508,21 +3515,25 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict_placeholder['dt_scores']['binary_crossentropy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['accuracy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['f1_score'] = [np.nan] * len(dataset_size_list)        
-        
+        evaluation_result_dict_placeholder['dt_scores']['roc_auc_score'] = [np.nan] * len(dataset_size_list)        
+    
         evaluation_result_dict_placeholder['dt_scores']['soft_binary_crossentropy_data_random'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['binary_crossentropy_data_random'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['accuracy_data_random'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['f1_score_data_random'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['dt_scores']['roc_auc_score_data_random'] = [np.nan] * len(dataset_size_list)
         
         evaluation_result_dict_placeholder['dt_scores']['soft_binary_crossentropy_std'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['binary_crossentropy_std'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['accuracy_std'] = [np.nan] * len(dataset_size_list)
-        evaluation_result_dict_placeholder['dt_scores']['f1_score_std'] = [np.nan] * len(dataset_size_list)        
+        evaluation_result_dict_placeholder['dt_scores']['f1_score_std'] = [np.nan] * len(dataset_size_list) 
+        evaluation_result_dict_placeholder['dt_scores']['roc_auc_score_std'] = [np.nan] * len(dataset_size_list)        
         
         evaluation_result_dict_placeholder['dt_scores']['soft_binary_crossentropy_data_random_std'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['binary_crossentropy_data_random_std'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['accuracy_data_random_std'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['dt_scores']['f1_score_data_random_std'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['dt_scores']['roc_auc_score_data_random_std'] = [np.nan] * len(dataset_size_list)
         
         evaluation_result_dict_placeholder['dt_scores']['runtime'] = [np.nan] * len(dataset_size_list)
         
@@ -3531,12 +3542,14 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict_placeholder['inet_scores']['binary_crossentropy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['inet_scores']['accuracy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['inet_scores']['f1_score'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['inet_scores']['roc_auc_score'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['inet_scores']['runtime'] = [np.nan] * len(dataset_size_list)        
                           
         evaluation_result_dict_placeholder['model_scores']['soft_binary_crossentropy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['model_scores']['binary_crossentropy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['model_scores']['accuracy'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['model_scores']['f1_score'] = [np.nan] * len(dataset_size_list)
+        evaluation_result_dict_placeholder['model_scores']['roc_auc_score'] = [np.nan] * len(dataset_size_list)
         evaluation_result_dict_placeholder['model_scores']['runtime'] = [np.nan] * len(dataset_size_list)        
                                                           
 
@@ -3550,12 +3563,14 @@ def evaluate_real_world_dataset(model,
             results_placeholder['dt_scores']['soft_binary_crossentropy_' + str(identifier)] = np.nan
             results_placeholder['dt_scores']['binary_crossentropy_' + str(identifier)] = np.nan
             results_placeholder['dt_scores']['accuracy_' + str(identifier)] = np.nan
-            results_placeholder['dt_scores']['f1_score_' + str(identifier)] = np.nan            
+            results_placeholder['dt_scores']['f1_score_' + str(identifier)] = np.nan  
+            results_placeholder['dt_scores']['roc_auc_score_' + str(identifier)] = np.nan            
             
             results_placeholder['dt_scores']['soft_binary_crossentropy_data_random_' + str(identifier)] = np.nan
             results_placeholder['dt_scores']['binary_crossentropy_data_random_' + str(identifier)] = np.nan
             results_placeholder['dt_scores']['accuracy_data_random_' + str(identifier)] = np.nan
             results_placeholder['dt_scores']['f1_score_data_random_' + str(identifier)] = np.nan
+            results_placeholder['dt_scores']['roc_auc_score_data_random_' + str(identifier)] = np.nan
             
             results_placeholder['dt_scores']['runtime_' + str(identifier)] = np.nan
         
@@ -3563,21 +3578,25 @@ def evaluate_real_world_dataset(model,
         results_placeholder['dt_scores']['binary_crossentropy'] = np.nan
         results_placeholder['dt_scores']['accuracy'] = np.nan
         results_placeholder['dt_scores']['f1_score'] = np.nan
+        results_placeholder['dt_scores']['roc_auc_score'] = np.nan
         
         results_placeholder['dt_scores']['soft_binary_crossentropy_data_random'] = np.nan
         results_placeholder['dt_scores']['binary_crossentropy_data_random'] = np.nan
         results_placeholder['dt_scores']['accuracy_data_random'] = np.nan
         results_placeholder['dt_scores']['f1_score_data_random'] = np.nan
+        results_placeholder['dt_scores']['roc_auc_score_data_random'] = np.nan
         
         results_placeholder['dt_scores']['soft_binary_crossentropy_std'] = np.nan
         results_placeholder['dt_scores']['binary_crossentropy_std'] = np.nan
         results_placeholder['dt_scores']['accuracy_std'] = np.nan
         results_placeholder['dt_scores']['f1_score_std'] = np.nan
+        results_placeholder['dt_scores']['roc_auc_score_std'] = np.nan
         
         results_placeholder['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.nan
         results_placeholder['dt_scores']['binary_crossentropy_data_random_std'] = np.nan
         results_placeholder['dt_scores']['accuracy_data_random_std'] = np.nan
         results_placeholder['dt_scores']['f1_score_data_random_std'] = np.nan
+        results_placeholder['dt_scores']['roc_auc_score_data_random_std'] = np.nan
         
         results_placeholder['dt_scores']['runtime'] = np.nan
         
@@ -3586,12 +3605,14 @@ def evaluate_real_world_dataset(model,
         results_placeholder['inet_scores']['binary_crossentropy'] = np.nan
         results_placeholder['inet_scores']['accuracy'] = np.nan
         results_placeholder['inet_scores']['f1_score'] = np.nan
+        results_placeholder['inet_scores']['roc_auc_score'] = np.nan
         results_placeholder['inet_scores']['runtime'] = np.nan 
         
         results_placeholder['model_scores']['soft_binary_crossentropy'] = np.nan
         results_placeholder['model_scores']['binary_crossentropy'] = np.nan
         results_placeholder['model_scores']['accuracy'] = np.nan
         results_placeholder['model_scores']['f1_score'] = np.nan
+        results_placeholder['model_scores']['roc_auc_score'] = np.nan
         results_placeholder['model_scores']['runtime'] = np.nan         
         
         distances_dict_placeholder = {
@@ -3664,11 +3685,13 @@ def evaluate_real_world_dataset(model,
     binary_crossentropy_list = []
     accuracy_list = []
     f1_score_list = []
+    roc_auc_score_list = []
     
     soft_binary_crossentropy_list_data_random = []
     binary_crossentropy_list_data_random = []
     accuracy_list_data_random = []    
     f1_score_list_data_random = []
+    roc_auc_score_list_data_random = []
     
     runtime_list = []
     
@@ -3701,8 +3724,12 @@ def evaluate_real_world_dataset(model,
     soft_binary_crossentropy_model = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test.values, model_preds)).numpy()  
     binary_crossentropy_model = log_loss(np.round(y_test.values), model_preds, labels=[0,1])
     accuracy_model = accuracy_score(np.round(y_test.values), np.round(model_preds))
-    f1_score_model = f1_score(np.round(y_test.values), np.round(model_preds))      
-    
+    f1_score_model = f1_score(np.round(y_test.values), np.round(model_preds), average='weighted')  
+    try:
+        roc_auc_score_model = roc_auc_score(np.round(y_test.values), model_preds, average='weighted')      
+    except ValueError:
+        roc_auc_score_model = 0
+
     for i, distribution_training in enumerate(distribution_list_evaluation):
 
         
@@ -3727,11 +3754,13 @@ def evaluate_real_world_dataset(model,
             result['dt_scores']['binary_crossentropy_' + str(distribution_training)] = results_distrib['dt_scores']['binary_crossentropy']
             result['dt_scores']['accuracy_' + str(distribution_training)] = results_distrib['dt_scores']['accuracy']
             result['dt_scores']['f1_score_' + str(distribution_training)] = results_distrib['dt_scores']['f1_score']
+            result['dt_scores']['roc_auc_score_' + str(distribution_training)] = results_distrib['dt_scores']['roc_auc_score']
             
             result['dt_scores']['soft_binary_crossentropy_data_random_' + str(distribution_training)] = results_distrib['dt_scores']['soft_binary_crossentropy_data_random']
             result['dt_scores']['binary_crossentropy_data_random_' + str(distribution_training)] = results_distrib['dt_scores']['binary_crossentropy_data_random']
             result['dt_scores']['accuracy_data_random_' + str(distribution_training)] = results_distrib['dt_scores']['accuracy_data_random']
             result['dt_scores']['f1_score_data_random_' + str(distribution_training)] = results_distrib['dt_scores']['f1_score_data_random']
+            result['dt_scores']['roc_auc_score_data_random_' + str(distribution_training)] = results_distrib['dt_scores']['roc_auc_score_data_random']
             
             result['dt_scores']['runtime_' + str(distribution_training)] = results_distrib['dt_scores']['runtime']
 
@@ -3739,13 +3768,15 @@ def evaluate_real_world_dataset(model,
             result['inet_scores']['soft_binary_crossentropy'] = results_distrib['inet_scores']['soft_binary_crossentropy']
             result['inet_scores']['binary_crossentropy'] = results_distrib['inet_scores']['binary_crossentropy']
             result['inet_scores']['accuracy'] = results_distrib['inet_scores']['accuracy']
-            result['inet_scores']['f1_score'] = results_distrib['inet_scores']['f1_score']          
+            result['inet_scores']['f1_score'] = results_distrib['inet_scores']['f1_score']
+            result['inet_scores']['roc_auc_score'] = results_distrib['inet_scores']['roc_auc_score']           
             result['inet_scores']['runtime'] = results_distrib['inet_scores']['runtime']          
             
             result['model_scores']['soft_binary_crossentropy'] = soft_binary_crossentropy_model
             result['model_scores']['binary_crossentropy'] = binary_crossentropy_model
             result['model_scores']['accuracy'] = accuracy_model
             result['model_scores']['f1_score'] = f1_score_model
+            result['model_scores']['roc_auc_score'] = roc_auc_score_model
             result['model_scores']['runtime'] = runtime_model
             
             
@@ -3753,11 +3784,13 @@ def evaluate_real_world_dataset(model,
         binary_crossentropy_list.append(evaluation_result_dict_distrib['dt_scores']['binary_crossentropy'])
         accuracy_list.append(evaluation_result_dict_distrib['dt_scores']['accuracy'])
         f1_score_list.append(evaluation_result_dict_distrib['dt_scores']['f1_score'])
+        roc_auc_score_list.append(evaluation_result_dict_distrib['dt_scores']['roc_auc_score'])
 
         soft_binary_crossentropy_list_data_random.append(evaluation_result_dict_distrib['dt_scores']['soft_binary_crossentropy_data_random'])
         binary_crossentropy_list_data_random.append(evaluation_result_dict_distrib['dt_scores']['binary_crossentropy_data_random'])
         accuracy_list_data_random.append(evaluation_result_dict_distrib['dt_scores']['accuracy_data_random'])
         f1_score_list_data_random.append(evaluation_result_dict_distrib['dt_scores']['f1_score_data_random'])
+        roc_auc_score_list_data_random.append(evaluation_result_dict_distrib['dt_scores']['roc_auc_score_data_random'])
         
         runtime_list.append(evaluation_result_dict_distrib['dt_scores']['runtime'])    
         
@@ -3765,11 +3798,13 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict['dt_scores']['binary_crossentropy_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['binary_crossentropy']
         evaluation_result_dict['dt_scores']['accuracy_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['accuracy']
         evaluation_result_dict['dt_scores']['f1_score_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['f1_score']
+        evaluation_result_dict['dt_scores']['roc_auc_score_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['roc_auc_score']
         
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['soft_binary_crossentropy_data_random']
         evaluation_result_dict['dt_scores']['binary_crossentropy_data_random_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['binary_crossentropy_data_random']
         evaluation_result_dict['dt_scores']['accuracy_data_random_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['accuracy_data_random']
         evaluation_result_dict['dt_scores']['f1_score_data_random_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['f1_score_data_random']
+        evaluation_result_dict['dt_scores']['roc_auc_score_data_random_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['roc_auc_score_data_random']
         
         evaluation_result_dict['dt_scores']['runtime_' + str(distribution_training)] = evaluation_result_dict_distrib['dt_scores']['runtime']
         
@@ -3778,12 +3813,14 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict['inet_scores']['binary_crossentropy'] = evaluation_result_dict_distrib['inet_scores']['binary_crossentropy']
         evaluation_result_dict['inet_scores']['accuracy'] = evaluation_result_dict_distrib['inet_scores']['accuracy']
         evaluation_result_dict['inet_scores']['f1_score'] = evaluation_result_dict_distrib['inet_scores']['f1_score']
+        evaluation_result_dict['inet_scores']['roc_auc_score'] = evaluation_result_dict_distrib['inet_scores']['roc_auc_score']
         evaluation_result_dict['inet_scores']['runtime'] = evaluation_result_dict_distrib['inet_scores']['runtime']
         
         evaluation_result_dict['model_scores']['soft_binary_crossentropy'] = [soft_binary_crossentropy_model] * len(dataset_size_list)       
         evaluation_result_dict['model_scores']['binary_crossentropy'] = [binary_crossentropy_model] * len(dataset_size_list)       
         evaluation_result_dict['model_scores']['accuracy'] = [accuracy_model] * len(dataset_size_list)       
-        evaluation_result_dict['model_scores']['f1_score'] = [f1_score_model] * len(dataset_size_list)       
+        evaluation_result_dict['model_scores']['f1_score'] = [f1_score_model] * len(dataset_size_list)      
+        evaluation_result_dict['model_scores']['roc_auc_score'] = [roc_auc_score_model] * len(dataset_size_list)        
         evaluation_result_dict['model_scores']['runtime'] = [runtime_model] * len(dataset_size_list)           
         
         dt_distilled_list.append(dt_distilled_list_distrib)
@@ -3794,11 +3831,13 @@ def evaluate_real_world_dataset(model,
         binary_crossentropy_list_result = []
         accuracy_list_result = []
         f1_score_list_result = []
+        roc_auc_score_list_result = []
 
         soft_binary_crossentropy_list_data_random_result = []
         binary_crossentropy_list_data_random_result = []
         accuracy_list_data_random_result = []
-        f1_score_list_data_random_result = []     
+        f1_score_list_data_random_result = [] 
+        roc_auc_score_list_data_random_result = []     
         
         runtime_list_result = []
         
@@ -3807,12 +3846,14 @@ def evaluate_real_world_dataset(model,
             binary_crossentropy_list_result.append(result['dt_scores']['binary_crossentropy_' + str(distribution)])
             accuracy_list_result.append(result['dt_scores']['accuracy_' + str(distribution)])
             f1_score_list_result.append(result['dt_scores']['f1_score_' + str(distribution)])
+            roc_auc_score_list_result.append(result['dt_scores']['roc_auc_score_' + str(distribution)])
             
             
             soft_binary_crossentropy_list_data_random_result.append(result['dt_scores']['soft_binary_crossentropy_data_random_' + str(distribution)])
             binary_crossentropy_list_data_random_result.append(result['dt_scores']['binary_crossentropy_data_random_' + str(distribution)])
             accuracy_list_data_random_result.append(result['dt_scores']['accuracy_data_random_' + str(distribution)])
             f1_score_list_data_random_result.append(result['dt_scores']['f1_score_data_random_' + str(distribution)])
+            roc_auc_score_list_data_random_result.append(result['dt_scores']['roc_auc_score_data_random_' + str(distribution)])
                       
             runtime_list_result.append(result['dt_scores']['runtime_' + str(distribution)])
             
@@ -3820,21 +3861,25 @@ def evaluate_real_world_dataset(model,
         result['dt_scores']['binary_crossentropy'] = np.mean(binary_crossentropy_list_result)
         result['dt_scores']['accuracy'] = np.mean(accuracy_list_result)
         result['dt_scores']['f1_score'] = np.mean(f1_score_list_result)
+        result['dt_scores']['roc_auc_score'] = np.mean(roc_auc_score_list_result)
 
         result['dt_scores']['soft_binary_crossentropy_data_random'] = np.mean(soft_binary_crossentropy_list_data_random_result)
         result['dt_scores']['binary_crossentropy_data_random'] = np.mean(binary_crossentropy_list_data_random_result)
         result['dt_scores']['accuracy_data_random'] = np.mean(accuracy_list_data_random_result)
         result['dt_scores']['f1_score_data_random'] = np.mean(f1_score_list_data_random_result)
+        result['dt_scores']['roc_auc_score_data_random'] = np.mean(roc_auc_score_list_data_random_result)
         
         result['dt_scores']['soft_binary_crossentropy_std'] = np.std(soft_binary_crossentropy_list_result)
         result['dt_scores']['binary_crossentropy_std'] = np.std(binary_crossentropy_list_result)
         result['dt_scores']['accuracy_std'] = np.std(accuracy_list_result)
         result['dt_scores']['f1_score_std'] = np.std(f1_score_list_result)
+        result['dt_scores']['roc_auc_score_std'] = np.std(roc_auc_score_list_result)
 
         result['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.std(soft_binary_crossentropy_list_data_random_result)
         result['dt_scores']['binary_crossentropy_data_random_std'] = np.std(binary_crossentropy_list_data_random_result)
         result['dt_scores']['accuracy_data_random_std'] = np.std(accuracy_list_data_random_result)
         result['dt_scores']['f1_score_data_random_std'] = np.std(f1_score_list_data_random_result)
+        result['dt_scores']['roc_auc_score_data_random_std'] = np.std(roc_auc_score_list_data_random_result)
         
         result['dt_scores']['runtime'] = np.mean(runtime_list_result)
 
@@ -3857,21 +3902,25 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict['dt_scores']['binary_crossentropy'] = np.mean(np.array(binary_crossentropy_list)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['accuracy'] = np.mean(np.array(accuracy_list)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['f1_score'] = np.mean(np.array(f1_score_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score'] = np.mean(np.array(roc_auc_score_list)[:,:-counter], axis=0)
 
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random'] = np.mean(np.array(soft_binary_crossentropy_list_data_random)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['binary_crossentropy_data_random'] = np.mean(np.array(binary_crossentropy_list_data_random)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['accuracy_data_random'] = np.mean(np.array(accuracy_list_data_random)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['f1_score_data_random'] = np.mean(np.array(f1_score_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score_data_random'] = np.mean(np.array(roc_auc_score_list_data_random)[:,:-counter], axis=0)
 
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_std'] = np.std(np.array(soft_binary_crossentropy_list)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['binary_crossentropy_std'] = np.std(np.array(binary_crossentropy_list)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['accuracy_std'] = np.std(np.array(accuracy_list)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['f1_score_std'] = np.std(np.array(f1_score_list)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score_std'] = np.std(np.array(roc_auc_score_list)[:,:-counter], axis=0)
 
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.std(np.array(soft_binary_crossentropy_list_data_random)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['binary_crossentropy_data_random_std'] = np.std(np.array(binary_crossentropy_list_data_random)[:,:-counter], axis=0)
         evaluation_result_dict['dt_scores']['accuracy_data_random_std'] = np.std(np.array(accuracy_list_data_random)[:,:-counter], axis=0)
-        evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(np.array(f1_score_list_data_random)[:,:-counter], axis=0)    
+        evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(np.array(f1_score_list_data_random)[:,:-counter], axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score_data_random_std'] = np.std(np.array(roc_auc_score_list_data_random)[:,:-counter], axis=0)    
 
         evaluation_result_dict['dt_scores']['runtime'] = np.mean(np.array(runtime_list)[:,:-counter], axis=0)    
     else:
@@ -3879,21 +3928,25 @@ def evaluate_real_world_dataset(model,
         evaluation_result_dict['dt_scores']['binary_crossentropy'] = np.mean(binary_crossentropy_list, axis=0)
         evaluation_result_dict['dt_scores']['accuracy'] = np.mean(accuracy_list, axis=0)
         evaluation_result_dict['dt_scores']['f1_score'] = np.mean(f1_score_list, axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score'] = np.mean(roc_auc_score_list, axis=0)
 
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random'] = np.mean(soft_binary_crossentropy_list_data_random, axis=0)
         evaluation_result_dict['dt_scores']['binary_crossentropy_data_random'] = np.mean(binary_crossentropy_list_data_random, axis=0)
         evaluation_result_dict['dt_scores']['accuracy_data_random'] = np.mean(accuracy_list_data_random, axis=0)
         evaluation_result_dict['dt_scores']['f1_score_data_random'] = np.mean(f1_score_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score_data_random'] = np.mean(roc_auc_score_list_data_random, axis=0)
 
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_std'] = np.std(soft_binary_crossentropy_list, axis=0)
         evaluation_result_dict['dt_scores']['binary_crossentropy_std'] = np.std(binary_crossentropy_list, axis=0)
         evaluation_result_dict['dt_scores']['accuracy_std'] = np.std(accuracy_list, axis=0)
         evaluation_result_dict['dt_scores']['f1_score_std'] = np.std(f1_score_list, axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score_std'] = np.std(roc_auc_score_list, axis=0)
 
         evaluation_result_dict['dt_scores']['soft_binary_crossentropy_data_random_std'] = np.std(soft_binary_crossentropy_list_data_random, axis=0)
         evaluation_result_dict['dt_scores']['binary_crossentropy_data_random_std'] = np.std(binary_crossentropy_list_data_random, axis=0)
         evaluation_result_dict['dt_scores']['accuracy_data_random_std'] = np.std(accuracy_list_data_random, axis=0)
-        evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(f1_score_list_data_random, axis=0)    
+        evaluation_result_dict['dt_scores']['f1_score_data_random_std'] = np.std(f1_score_list_data_random, axis=0)
+        evaluation_result_dict['dt_scores']['roc_auc_score_data_random_std'] = np.std(roc_auc_score_list_data_random, axis=0)      
 
         evaluation_result_dict['dt_scores']['runtime'] = np.mean(runtime_list, axis=0)           
     
@@ -3996,8 +4049,12 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
     soft_binary_crossentropy_inet_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_inet_dt_softmax)).numpy()  
     binary_crossentropy_inet_dt = log_loss(np.round(y_test_lambda_pred), y_test_inet_dt, labels=[0,1])
     accuracy_inet_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))
-    f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt))        
-
+    f1_score_inet_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_inet_dt), average='weighted')        
+    try:
+        roc_auc_score_inet_dt = roc_auc_score(np.round(y_test_lambda_pred), y_test_inet_dt, average='weighted')      
+    except ValueError:
+        roc_auc_score_inet_dt = 0    
+    
 
     if config['evaluation']['per_network_optimization_dataset_size'] > 50_000 and config['function_family']['dt_type'] == 'SDT': 
 
@@ -4015,13 +4072,16 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                             'accuracy_data_random': np.nan,
                             'f1_score': np.nan,   
                             'f1_score_data_random': np.nan,   
+                            'roc_auc_score': np.nan,   
+                            'roc_auc_score_data_random': np.nan,                               
                             'runtime': np.nan
                         },
                     'inet_scores': {
                         'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_inet_dt),
                         'binary_crossentropy': np.nan_to_num(binary_crossentropy_inet_dt),
                         'accuracy': np.nan_to_num(accuracy_inet_dt),
-                        'f1_score': np.nan_to_num(f1_score_inet_dt),           
+                        'f1_score': np.nan_to_num(f1_score_inet_dt),         
+                        'roc_auc_score': np.nan_to_num(roc_auc_score_inet_dt),           
                         #'runtime': inet_runtime
                     },      
                         
@@ -4088,13 +4148,21 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
     soft_binary_crossentropy_distilled_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_test_lambda_pred_softmax, y_test_distilled_dt_softmax)).numpy()    
     binary_crossentropy_distilled_dt = log_loss(np.round(y_test_lambda_pred), y_test_distilled_dt, labels=[0,1])
     accuracy_distilled_dt = accuracy_score(np.round(y_test_lambda_pred), np.round(y_test_distilled_dt))
-    f1_score_distilled_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_distilled_dt))   
+    f1_score_distilled_dt = f1_score(np.round(y_test_lambda_pred), np.round(y_test_distilled_dt), average='weighted')   
+    try:
+        roc_auc_score_distilled_dt = roc_auc_score(np.round(y_test_lambda_pred), y_test_distilled_dt, average='weighted')
+    except ValueError:
+        roc_auc_score_distilled_dt = 0        
 
     soft_binary_crossentropy_data_random_distilled_dt = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_data_random_lambda_pred_softmax, y_data_random_distilled_dt_softmax)).numpy()
     binary_crossentropy_data_random_distilled_dt = log_loss(np.round(y_data_random_lambda_pred), y_data_random_distilled_dt, labels=[0,1])
     accuracy_data_random_distilled_dt = accuracy_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))
-    f1_score_data_random_distilled_dt = f1_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt))     
-
+    f1_score_data_random_distilled_dt = f1_score(np.round(y_data_random_lambda_pred), np.round(y_data_random_distilled_dt), average='weighted')
+    try:
+        roc_auc_score_data_random_distilled_dt = roc_auc_score(np.round(y_data_random_lambda_pred), y_data_random_distilled_dt, average='weighted')    
+    except ValueError:
+        roc_auc_score_data_random_distilled_dt = 0          
+    
     #if train_data is not None:
         #print('np.round(y_test_lambda_pred)',np.round(y_test_lambda_pred))
         #print('accuracy_data_random_distilled_dt, accuracy_distilled_dt', accuracy_data_random_distilled_dt, accuracy_distilled_dt)
@@ -4122,14 +4190,17 @@ def evaluate_interpretation_net_prediction_single_sample(lambda_net_parameters_a
                         'accuracy': np.nan_to_num(accuracy_distilled_dt),
                         'accuracy_data_random': np.nan_to_num(accuracy_data_random_distilled_dt),
                         'f1_score': np.nan_to_num(f1_score_distilled_dt),   
-                        'f1_score_data_random': np.nan_to_num(f1_score_data_random_distilled_dt),   
+                        'f1_score_data_random': np.nan_to_num(f1_score_data_random_distilled_dt),
+                        'roc_auc_score': np.nan_to_num(roc_auc_score_distilled_dt),   
+                        'roc_auc_score_data_random': np.nan_to_num(roc_auc_score_data_random_distilled_dt),   
                         'runtime': dt_distilled_runtime
                     },
                     'inet_scores': {
                         'soft_binary_crossentropy': np.nan_to_num(soft_binary_crossentropy_inet_dt),
                         'binary_crossentropy': np.nan_to_num(binary_crossentropy_inet_dt),
                         'accuracy': np.nan_to_num(accuracy_inet_dt),
-                        'f1_score': np.nan_to_num(f1_score_inet_dt),           
+                        'f1_score': np.nan_to_num(f1_score_inet_dt),
+                        'roc_auc_score': np.nan_to_num(roc_auc_score_inet_dt),            
                         #'runtime': inet_runtime
                     },                
                }
@@ -4171,11 +4242,13 @@ def evaluate_interpretation_net_synthetic_data(network_parameters_array,
                 ['Binary Crossentropy (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['binary_crossentropy'], 3)],
                 ['Accuracy (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['accuracy'], 3)],
                 ['F1 Score (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['f1_score'], 3)],
+                ['ROC AUC Score (Mean)', np.round(inet_evaluation_result_dict_mean['dt_scores']['roc_auc_score_data_random'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['roc_auc_score'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['roc_auc_score'], 3)],                
                 ['Runtime (Mean)',  np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['runtime'], 3)],
                 ['Soft Binary Crossentropy (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['soft_binary_crossentropy_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['soft_binary_crossentropy_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['soft_binary_crossentropy_median'], 3)],
                 ['Binary Crossentropy (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['binary_crossentropy_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['binary_crossentropy_median'], 3)],
                 ['Accuracy (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['accuracy_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['accuracy_median'], 3)],
                 ['F1 Score (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['f1_score_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['f1_score_median'], 3)],
+                ['ROC AUC Score (Median)', np.round(inet_evaluation_result_dict_mean['dt_scores']['roc_auc_score_data_random_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['roc_auc_score_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['roc_auc_score_median'], 3)],                
                 ['Runtime (Median)',  np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime_median'], 3), np.round(inet_evaluation_result_dict_mean['dt_scores']['runtime_median'], 3), np.round(inet_evaluation_result_dict_mean['inet_scores']['runtime_median'], 3)],
             ]    
         )
@@ -4334,6 +4407,10 @@ def get_complete_distribution_evaluation_results_dataframe(inet_evaluation_resul
              'F1 Score Distilled Data Random', 
              'F1 Score Distilled', 
              'F1 Score I-Net', 
+             'ROC AUC Score Distilled Train Data', 
+             'ROC AUC Score Distilled Data Random', 
+             'ROC AUC Score Distilled', 
+             'ROC AUC Score I-Net',         
              'Runtime Distilled Train Data', 
              'Runtime Distilled Data Random', 
              'Runtime Distilled', 
@@ -4369,7 +4446,13 @@ def get_complete_distribution_evaluation_results_dataframe(inet_evaluation_resul
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['f1_score_data_random'], 3),
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['f1_score'], 3),
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['f1_score'], 3)
-                        ] for identifier in identifier_list],        
+                        ] for identifier in identifier_list],  
+                      [[
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['roc_auc_score_train_data'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['roc_auc_score_data_random'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['roc_auc_score'], 3),
+                          np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['inet_scores']['roc_auc_score'], 3)
+                        ] for identifier in identifier_list],            
                       [[
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['runtime'], 3),
                           np.round(inet_evaluation_result_dict_mean_by_distribution[identifier]['dt_scores']['runtime'], 3),
@@ -4408,6 +4491,10 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
              'F1 Score Distilled', 
              'F1 Score Distilled STD', 
              'F1 Score I-Net', 
+             'ROC AUC Score Distilled (Train Data)', 
+             'ROC AUC Score Distilled', 
+             'ROC AUC Score Distilled STD', 
+             'ROC AUC Score I-Net',         
              'Runtime Distilled (Train Data)', 
              'Runtime Distilled', 
              'Runtime Distilled STD', 
@@ -4441,7 +4528,13 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['f1_score'] for index in indices]), 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['f1_score_std'] for index in indices]), 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
-                            ] for identifier in identifier_list],        
+                            ] for identifier in identifier_list],     
+                          [[
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['roc_auc_score'], 3),
+                              np.round(np.mean([results_dict[identifier][index]['dt_scores']['roc_auc_score'] for index in indices]), 3),
+                              np.round(np.mean([results_dict[identifier][index]['dt_scores']['roc_auc_score_std'] for index in indices]), 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['roc_auc_score'], 3)
+                            ] for identifier in identifier_list],               
                           [[
                               np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               np.round(np.mean([results_dict[identifier][index]['dt_scores']['runtime'] for index in indices]), 3),
@@ -4479,7 +4572,15 @@ def get_complete_performance_evaluation_results_dataframe(results_dict, identifi
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_std'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
-                            ] for identifier in identifier_list],        
+                            ] for identifier in identifier_list],   
+                          [[
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['roc_auc_score'], 3),
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score_data_random']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score_std'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['roc_auc_score'], 3)
+                            ] for identifier in identifier_list],                
+            
                           [[
                               np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['runtime']
@@ -4530,6 +4631,13 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                          ['F1 Score Distilled (' + str(distribution) + ')' for distribution in distribution_list_evaluation], 
                          ['STD F1 Score Distilled (' + str(distribution) + ')' for distribution in distribution_list_evaluation], 
                          'F1 Score I-Net', 
+                         'ROC AUC Score Distilled (Train Data)', 
+                         'ROC AUC Score Distilled (Standard Uniform)',
+                         'ROC AUC Score Distilled (Standard Normal)', 
+                         ['ROC AUC Score Distilled (' + str(distribution) + ')' for distribution in distribution_list_evaluation], 
+                         ['STD ROC AUC Score Distilled (' + str(distribution) + ')' for distribution in distribution_list_evaluation], 
+                         'ROC AUC Score I-Net',         
+        
                          'Runtime Distilled (Train Data)', 
                          'Runtime Distilled (Standard Uniform)',
                          'Runtime Distilled (Standard Normal)', 
@@ -4575,6 +4683,15 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
                             ]) for identifier in identifier_list],        
                           [flatten_list([
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['roc_auc_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['roc_auc_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['roc_auc_score'], 3),                              
+                              [np.round(np.mean([results_dict[identifier][index]['dt_scores']['roc_auc_score_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
+                              [np.round(np.std([results_dict[identifier][index]['dt_scores']['roc_auc_score_' + str(distribution)] for index in indices]), 3) for distribution in distribution_list_evaluation],
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['roc_auc_score'], 3)
+                            ]) for identifier in identifier_list],             
+            
+                          [flatten_list([
                               np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['runtime'], 3),                              
@@ -4617,7 +4734,16 @@ def get_complete_performance_evaluation_results_dataframe_all_distrib(results_di
                               #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_data_random']
                               [np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['f1_score_' + str(distribution)], 3) for distribution in distribution_list_evaluation],
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
-                            ]) for identifier in identifier_list],        
+                            ]) for identifier in identifier_list],      
+                          [flatten_list([
+                              np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['roc_auc_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['roc_auc_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index('STANDARDNORMAL')]['dt_scores']['roc_auc_score'], 3),               
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score_data_random']
+                              [np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score_' + str(distribution)], 3) for distribution in distribution_list_evaluation],
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['roc_auc_score'], 3)
+                            ]) for identifier in identifier_list],             
+            
                           [flatten_list([
                               np.round(results_dict[identifier][dataset_size_list.index('TRAINDATA')]['dt_scores']['runtime'], 3),
                               np.round(results_dict[identifier][dataset_size_list.index('STANDARDUNIFORM')]['dt_scores']['runtime'], 3),
@@ -4693,6 +4819,15 @@ def print_complete_performance_evaluation_results(results_dict, identifier_list,
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['f1_score'], 3)
                             ] for identifier in identifier_list]                               
                           ]),
+            flatten_list(['ROC AUC Score', 
+                          [[
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score_train_data'], 3),
+                              #np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score_data_random']
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['dt_scores']['roc_auc_score'], 3),
+                              np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['roc_auc_score'], 3)
+                            ] for identifier in identifier_list]                               
+                          ]),            
+            
             flatten_list(['Runtime', 
                           [[
                               np.round(results_dict[identifier][dataset_size_list.index(dataset_size)]['inet_scores']['runtime_train_data'], 3),
@@ -4766,6 +4901,16 @@ def print_results_synthetic_evaluation(inet_evaluation_result_dict_mean_train, i
              np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score_data_random'], 3), 
              np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score'], 3), 
              np.round(inet_evaluation_result_dict_mean_test['inet_scores']['f1_score'], 3)],
+            ['ROC AUC Score (Mean)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['roc_auc_score_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['roc_auc_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['roc_auc_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['roc_auc_score_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['roc_auc_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['roc_auc_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['roc_auc_score_data_random'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['roc_auc_score'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['roc_auc_score'], 3)],            
             ['Runtime (Mean)',  
              np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime'], 3), 
              np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime'], 3), 
@@ -4816,6 +4961,17 @@ def print_results_synthetic_evaluation(inet_evaluation_result_dict_mean_train, i
              np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score_data_random_median'], 3), 
              np.round(inet_evaluation_result_dict_mean_test['dt_scores']['f1_score_median'], 3), 
              np.round(inet_evaluation_result_dict_mean_test['inet_scores']['f1_score_median'], 3)],
+            ['ROC AUC Score (Median)', 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['roc_auc_score_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['dt_scores']['roc_auc_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_train['inet_scores']['roc_auc_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['roc_auc_score_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['dt_scores']['roc_auc_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_valid['inet_scores']['roc_auc_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['roc_auc_score_data_random_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['dt_scores']['roc_auc_score_median'], 3), 
+             np.round(inet_evaluation_result_dict_mean_test['inet_scores']['roc_auc_score_median'], 3)],            
+            
             ['Runtime (Median)',  
              np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime_median'], 3), 
              np.round(inet_evaluation_result_dict_mean_train['dt_scores']['runtime_median'], 3), 
@@ -4873,7 +5029,7 @@ def normalize_real_world_data(X_data):
         
     return X_data, normalizer_list
 
-def split_train_test_valid(X_data, y_data, valid_frac=0.05, test_frac=0.1, seed=42, verbose=0):
+def split_train_test_valid(X_data, y_data, valid_frac=0.05, test_frac=0.10, seed=42, verbose=0):
     data_size = X_data.shape[0]
     test_size = int(data_size*test_frac)
     valid_size = int(data_size*valid_frac)
@@ -5028,6 +5184,9 @@ def print_results_different_data_sizes(results, dataset_size_list_print):
             flatten_list(['F1 Score', 
                           [[np.round(result_dict['dt_scores']['f1_score_data_random'], 3), np.round(result_dict['dt_scores']['f1_score'], 3)] for result_dict in results],
                           np.round(results[0]['inet_scores']['f1_score'], 3)]),
+            flatten_list(['ROC AUC Score', 
+                          [[np.round(result_dict['dt_scores']['roc_auc_score_data_random'], 3), np.round(result_dict['dt_scores']['roc_auc_score'], 3)] for result_dict in results],
+                          np.round(results[0]['inet_scores']['roc_auc_score'], 3)]),
             flatten_list(['Runtime',  
                           [[np.round(result_dict['dt_scores']['runtime'], 3), np.round(result_dict['dt_scores']['runtime'], 3)] for result_dict in results],
                           np.round(results[0]['inet_scores']['runtime'], 3)])
@@ -5068,6 +5227,11 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
 
     results_list = []
     dt_distilled_list = []
+        
+    counter_standardnormal = 0
+    counter_standarduniform = 0
+    counter_random = 0
+    
     for i, dataset_size in enumerate(dataset_size_list):
 
         if dataset_size == 'TRAINDATA': 
@@ -5090,7 +5254,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
         elif dataset_size == 'STANDARDUNIFORM': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standarduniform
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5100,11 +5264,13 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
                                                                                #y_test_lambda,
                                                                                config_test,
                                                                                distribution='standarduniform',
-                                                                               verbosity=verbosity)                                  
+                                                                               verbosity=verbosity)     
+            counter_standarduniform += 1        
+            
         elif dataset_size == 'STANDARDNORMAL': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standardnormal            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5114,12 +5280,13 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
                                                                                #y_test_lambda,
                                                                                config_test,
                                                                                distribution='standardnormal',
-                                                                               verbosity=verbosity)                             
+                                                                               verbosity=verbosity)   
+            counter_standardnormal += 1        
                              
         else:
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
-            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + i
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_random
             
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
@@ -5131,7 +5298,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
                                                                                config_test,
                                                                                distribution=distribution,
                                                                                verbosity=verbosity)
-
+            counter_random += 1        
 
         results['inet_scores']['runtime'] = inet_runtime
         results_list.append(results)
@@ -5156,6 +5323,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
                     ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
                     ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
                     ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
+                    ['ROC AUC Score', np.round(results['dt_scores']['roc_auc_score_data_random'], 3), np.round(results['dt_scores']['roc_auc_score'], 3), np.round(results['inet_scores']['roc_auc_score'], 3)],                    
                     ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
                 ]    
             )
@@ -5182,6 +5350,11 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
 
     results_list = []
     dt_distilled_list = []
+    
+    counter_standardnormal = 0
+    counter_standarduniform = 0
+    counter_random = 0    
+    
     for i, dataset_size in enumerate(dataset_size_list):
 
         if dataset_size == 'TRAINDATA': 
@@ -5203,7 +5376,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
         elif dataset_size == 'STANDARDUNIFORM': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standarduniform         
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5214,11 +5387,13 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                config_test,
                                                                                distribution='standarduniform',
                                                                                verbosity=verbosity)
+            
+            counter_standarduniform += 1
         
         elif dataset_size == 'STANDARDNORMAL': 
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
-            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED']            
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standardnormal            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
                 
@@ -5229,12 +5404,14 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                config_test,
                                                                                distribution='standardnormal',
                                                                                verbosity=verbosity)
+            
+            counter_standardnormal += 1
         
         else:
             
             config_test = deepcopy(config)
             config_test['evaluation']['per_network_optimization_dataset_size'] = dataset_size
-            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + i
+            config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_random
             
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
@@ -5246,6 +5423,8 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                config_test,
                                                                                distribution=distribution,
                                                                                verbosity=verbosity)
+            
+            counter_random += 1
 
 
         results['inet_scores']['runtime'] = inet_runtime
@@ -5271,6 +5450,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                     ['Binary Crossentropy',  np.round(results['dt_scores']['binary_crossentropy_data_random'], 3), np.round(results['dt_scores']['binary_crossentropy'], 3), np.round(results['inet_scores']['binary_crossentropy'], 3)],
                     ['Accuracy', np.round(results['dt_scores']['accuracy_data_random'], 3), np.round(results['dt_scores']['accuracy'], 3), np.round(results['inet_scores']['accuracy'], 3)],
                     ['F1 Score', np.round(results['dt_scores']['f1_score_data_random'], 3), np.round(results['dt_scores']['f1_score'], 3), np.round(results['inet_scores']['f1_score'], 3)],
+                    ['ROC AUC Score', np.round(results['dt_scores']['roc_auc_score_data_random'], 3), np.round(results['dt_scores']['roc_auc_score'], 3), np.round(results['inet_scores']['roc_auc_score'], 3)],                    
                     ['Runtime',  np.round(results['dt_scores']['runtime'], 3), np.round(results['dt_scores']['runtime'], 3), np.round(results['inet_scores']['runtime'], 3)],
                 ]    
             )

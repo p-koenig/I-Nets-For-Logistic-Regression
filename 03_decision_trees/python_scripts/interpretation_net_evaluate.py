@@ -106,43 +106,25 @@ def extend_inet_parameter_setting(parameter_setting):
         parameter_setting['hidden_activation'] = 'relu'
         parameter_setting['optimizer'] = 'rmsprop'      
         parameter_setting['learning_rate'] = 0.001 
-    elif parameter_setting['inet_setting'] == 3: ##SDT, n=32
-        parameter_setting['dense_layers'] = [512, 512, 512]
-        parameter_setting['dropout'] = [0, 0, 0]     
-        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh', 'sigmoid']
-        parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001             
-    elif parameter_setting['inet_setting'] == 4: ##SDT, n=15
-        parameter_setting['dense_layers'] = [512, 512]
-        parameter_setting['dropout'] = [0, 0.1]     
-        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh']
-        parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001  
-    elif parameter_setting['inet_setting'] == 5: ##vanilla, n=15
-        parameter_setting['dense_layers'] = [512, 512]
-        parameter_setting['dropout'] = [0.3, 0]     
-        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh']
-        parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001      
-    elif parameter_setting['inet_setting'] == 6: ##vanilla, n=32
-        parameter_setting['dense_layers'] = [512, 512, 512]
-        parameter_setting['dropout'] = [0.5, 0, 0]     
-        parameter_setting['hidden_activation'] = ['sigmoid', 'tanh', 'sigmoid']
-        parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001      
-    elif parameter_setting['inet_setting'] == 7:
-        parameter_setting['dense_layers'] = [512]
-        parameter_setting['dropout'] = [0]     
-        parameter_setting['hidden_activation'] = ['sigmoid']
-        parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001   
-    elif parameter_setting['inet_setting'] == 8:
-        parameter_setting['dense_layers'] = [512, 512, 512]
-        parameter_setting['dropout'] = [0, 0, 0]     
-        parameter_setting['hidden_activation'] = 'relu'
-        parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001 
         
+    elif parameter_setting['inet_setting'] == 3:
+        parameter_setting['dense_layers'] = [1792, 512, 512]
+        parameter_setting['dropout'] = [0, 0, 0.5]  
+        parameter_setting['hidden_activation'] = 'swish'
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001
+    elif parameter_setting['inet_setting'] == 4:
+        parameter_setting['dense_layers'] = [1024, 1024, 256, 2048, 2048]
+        parameter_setting['dropout'] = [0, 0, 0, 0, 0.3]     
+        parameter_setting['hidden_activation'] = 'swish'
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001      
+    elif parameter_setting['inet_setting'] == 5:
+        parameter_setting['dense_layers'] = [1024, 1024, 256, 2048, 2048]
+        parameter_setting['dropout'] = [0, 0, 0, 0, 0.3]     
+        parameter_setting['hidden_activation'] = 'swish'
+        parameter_setting['optimizer'] = 'rmsprop'      
+        parameter_setting['learning_rate'] = 0.001                
         
         
     elif parameter_setting['inet_setting'] == 9:
@@ -367,7 +349,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
                         'interpretation_dataset_size': parameter_setting['dataset_size'],
 
-                        'test_size': 10, #Float for fraction, Int for number 0
+                        'test_size': 5, #Float for fraction, Int for number 0
                         'evaluate_distribution': True,
                         'force_evaluate_real_world':  parameter_setting['force_evaluate_real_world'],
 
@@ -1020,7 +1002,14 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                 # In[ ]:
 
 
-                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAINDATA']
+                #dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAINDATA']
+                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 
+                                                  'TRAINDATA', 
+                                                  ['STANDARDUNIFORM']*config['evaluation']['number_of_random_evaluations_per_distribution'], 
+                                                  ['STANDARDNORMAL']*config['evaluation']['number_of_random_evaluations_per_distribution']])#[1_000, 10_000, 100_000, 1_000_000, 'TRAINDATA']
+
+
+                
                 dataset_size_list_print = []
                 for size in dataset_size_list:
                     if type(size) is int:
@@ -2556,9 +2545,57 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                     print_head = data_dict[identifier]['X_train'].head()
                 print_head
                 
+
                 
-                
-                
+                heart_failure_data = pd.read_csv('real_world_datasets/Heart Failure/heart_failure_clinical_records_dataset.csv', delimiter=',')
+
+
+                nominal_features_heart_failure = [
+                                        ]
+                ordinal_features_heart_failure = [
+
+                                   ]
+
+
+                X_data_heart_failure = heart_failure_data.drop(['DEATH_EVENT'], axis = 1)
+                y_data_heart_failure = ((heart_failure_data['DEATH_EVENT'] > 0) * 1)
+
+                identifier = 'Heart Failure'
+                identifier_list.append(identifier)
+
+                (distances_dict[identifier], 
+                 evaluation_result_dict[identifier], 
+                 results_dict[identifier], 
+                 dt_inet_dict[identifier], 
+                 dt_distilled_list_dict[identifier], 
+                 data_dict[identifier],
+                 normalizer_list_dict[identifier],
+                 test_network_list[identifier]) = evaluate_real_world_dataset(model,
+                                                                                dataset_size_list,
+                                                                                mean_train_parameters,
+                                                                                std_train_parameters,
+                                                                                lambda_net_dataset_train.network_parameters_array,
+                                                                                X_data_heart_failure, 
+                                                                                y_data_heart_failure, 
+                                                                                nominal_features = nominal_features_heart_failure, 
+                                                                                ordinal_features = ordinal_features_heart_failure,
+                                                                                config = config,
+                                                                                distribution_list_evaluation = config['data']['distribution_list_eval'],
+                                                                                config_train_network = None)
+                print_head = None
+                if verbosity > 0:
+                    print_results_different_data_sizes(results_dict[identifier], dataset_size_list_print)
+                    print_network_distances(distances_dict)
+
+                    dt_inet_plot = plot_decision_tree_from_parameters(dt_inet_dict[identifier], normalizer_list_dict[identifier], config)
+                    dt_distilled_plot = plot_decision_tree_from_model(dt_distilled_list_dict[identifier][-2], config)
+
+                    display(dt_inet_plot, dt_distilled_plot)
+
+                    print_head = data_dict[identifier]['X_train'].head()
+                print_head                
+
+
                 
 
 

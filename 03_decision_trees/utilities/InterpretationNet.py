@@ -1134,7 +1134,7 @@ def train_inet(lambda_net_train_dataset,
                 #inputs = CastToFloat32()(inputs)
                     
                 inputs_bias = crop(1, 0, bias_count)(inputs)
-                inputs_weight = crop(1, 0, bias_count)(inputs)#crop(1, bias_count, bias_count+weight_count)(inputs)
+                inputs_weight = crop(1, bias_count, weight_count)(inputs)#crop(1, bias_count, bias_count+weight_count)(inputs)
                 
                 hidden_weight = tf.keras.layers.Dense(config['i_net']['dense_layers'][0], 
                                                       kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']), 
@@ -1225,6 +1225,7 @@ def train_inet(lambda_net_train_dataset,
                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']))(hidden_outputs_coeff)
                     else:
                         outputs_coeff = tf.keras.layers.Dense(outputs_coeff_neurons, 
+                                                              #activation='tanh', 
                                                               kernel_initializer=tf.keras.initializers.GlorotUniform(seed=config['computation']['RANDOM_SEED']))(hidden)        
                     outputs_list = [outputs_coeff]
                         
