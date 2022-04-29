@@ -188,11 +188,15 @@ def return_callbacks_from_string(callback_string_list, config=None):
     #if 'plot_losses_callback' in callback_string_list:
         #callbacks.append(PlotLossesCallback())
     if 'reduce_lr_loss' in callback_string_list:
-        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=50, verbose=0, min_delta=0.001, mode='min') #epsilon
+        reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', patience=50, verbose=0, min_delta=0.001, mode='min') #epsilon #, factor=0.1
+        #reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', patience=25, verbose=0, min_delta=0.001, mode='min') #epsilon #, factor=0.1
+        
         callbacks.append(reduce_lr_loss)
     if 'early_stopping' in callback_string_list:
         #earlyStopping = EarlyStopping(monitor='val_loss', patience=50, min_delta=0.001, verbose=0, mode='min', restore_best_weights=True)
-        earlyStopping = CustomStopper(monitor='val_loss', patience=50, min_delta=0.001, verbose=0, mode='min', restore_best_weights=True, start_epoch = 25)
+        earlyStopping = CustomStopper(monitor='val_loss', patience=100, min_delta=0.001, verbose=0, mode='min', restore_best_weights=True, start_epoch = 10)
+        #earlyStopping = CustomStopper(monitor='val_loss', patience=25, min_delta=0.001, verbose=0, mode='min', restore_best_weights=False, start_epoch = 10)
+        
         callbacks.append(earlyStopping)        
     if 'plot_losses' in callback_string_list:
         plotLosses = PlotLossesKerasTF()

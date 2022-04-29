@@ -303,7 +303,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
         
         distribution_list_reduced = parameter_setting['distribution_list']#['uniform', 'normal', 'gamma', 'beta', 'poisson']
-        distribution_list_additional = ['STANDARDUNIFORM', 'STANDARDNORMAL', 'TRAINDATA']   
+        distribution_list_additional = ['STANDARDUNIFORM', 'STANDARDNORMAL'] #['STANDARDUNIFORM', 'STANDARDNORMAL', 'TRAINDATA']   
 
         if not isinstance(parameter_setting['hidden_activation'], list):
             parameter_setting['hidden_activation'] = [parameter_setting['hidden_activation'] for _ in range(len(parameter_setting['dense_layers']))]        
@@ -407,7 +407,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
             real_world_datasets = {
                                 #'Adult': 28,#65,
                                 'Titanic': 9,
-                                'Absenteeism': 15,
+                                #'Absenteeism': 15,
                                 'Loan House': 16,#17,
                                     #'Loan Credit': 32,
                                 'Medical Insurance': 9,#6,
@@ -418,13 +418,13 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                                     #'Wisconsin Prognostic Breast Cancer': 10,
                                     #'Abalone': 10,
                                     ##'Car': 21,
-                                    'Haberman': 3, 
+                                    #'Haberman': 3, 
                                     'Credit Card': 23, 
-                                    'Heart Disease': 13,           
+                                    #'Heart Disease': 13,           
 
                                    }
             real_world_datasets = dict(sorted(real_world_datasets.items(), key=lambda item: item[1]))
-        else:
+        elif False:
             real_world_datasets = {
                                 'Adult': 32,#28,
                                 'Titanic': 10,#9,
@@ -494,9 +494,9 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
         empty_data_distilled = empty_data_distilled.reshape(empty_data_distilled.shape[0]*empty_data_distilled.shape[1], -1)
 
         empty_data_distilled_standard = np.array(np.vstack([
-                     flatten_list(['vanilla1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
-                     flatten_list(['SDT1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
-                     flatten_list(['SDT-1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),  
+                     #flatten_list(['vanilla1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
+                     #flatten_list(['SDT1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),
+                     #flatten_list(['SDT-1', 'distilled', 0, 'TRAINDATA', [np.nan for _ in range(len(columns)-4)]]),  
                      [flatten_list(['vanilla1', 'distilled', i, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)],
                      [flatten_list(['SDT1',  'distilled', i, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)],
                      [flatten_list(['SDT-1',  'distilled', i, 'STANDARDUNIFORM', [np.nan for _ in range(len(columns)-4)]]) for i in range(number_of_random_evaluations_per_distribution+1)],    
@@ -843,14 +843,14 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                     row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
 
 
-        os.makedirs(os.path.dirname("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/"), exist_ok=True)
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean_" + score_string + ".tex", "a+") as f:
+        os.makedirs(os.path.dirname("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/"), exist_ok=True)
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_with_distilled_mean_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
             f.write('\n\n')
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_" + score_string + ".tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla')
@@ -944,7 +944,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
 
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_split_" + score_string + ".tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_split_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'vanilla distrib comparison')
@@ -1143,13 +1143,13 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                 for best_distrib in best_distrib_key_list:
                     row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean_" + score_string + ".tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_with_distilled_mean_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT1')
             f.write('\n\n')
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_" + score_string + ".tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT1')
@@ -1239,7 +1239,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
 
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_split_" + score_string + ".tex", "w") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_split_" + score_string + ".tex", "w") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT1_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT1 distrib comparison')
@@ -1438,13 +1438,13 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                 for best_distrib in best_distrib_key_list:
                     row[str(best_distrib)] = '\\bftab' + row[str(best_distrib)] 
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_with_distilled_mean_" + score_string + ".tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_with_distilled_mean_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex_with_distilled_mean.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
             f.write('\n\n')
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_" + score_string + ".tex", "a+") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_" + score_string + ".tex", "a+") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT')
@@ -1531,7 +1531,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
 
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_table_split_" + score_string + ".tex", "w") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_table_split_" + score_string + ".tex", "w") as f:
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_SDT_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
             write_latex_table_bottom(f, 'SDT distrib comparison')
@@ -1544,7 +1544,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
 
 
-        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) +"/latex_tables_complete_" + score_string + ".tex", "w") as f:
+        with open("./evaluation_results/" + timestr + '-' + str(evaluation_number) + score_string +"/latex_tables_complete_" + score_string + ".tex", "w") as f:
             f.write('\\newpage \n')
             write_latex_table_top(f)
             f.write(add_hline(real_world_scores_df_distrib_adjusted_mean_std_VANILLA_extended_only_distrib_latex.to_latex(index=True, bold_rows=True, escape=False), 1))
@@ -1735,7 +1735,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) + score_string +'/real_workd_complete_by_technique_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 
         # In[27]:
@@ -1750,7 +1750,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) + score_string +'/real_workd_complete_by_technique_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 
         # In[28]:
@@ -1765,7 +1765,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_by_distrib_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) + score_string +'/real_workd_complete_by_technique_by_distrib_barplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 
         # In[29]:
@@ -1780,6 +1780,6 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                             aspect = 2.5, 
                             col_wrap = 3)
 
-        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) +'/real_workd_complete_by_technique_by_distrib_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig('./evaluation_results/' + timestr + '-' + str(evaluation_number) + score_string +'/real_workd_complete_by_technique_by_distrib_boxplot.pdf', bbox_inches = 'tight', pad_inches = 0)
 
 

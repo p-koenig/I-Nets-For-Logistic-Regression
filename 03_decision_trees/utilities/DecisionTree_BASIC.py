@@ -304,6 +304,8 @@ class SDT(nn.Module):
         minimum_loss = np.inf
         epochs_without_improvement = 0
         
+        #epochs = 1
+        
         if self.verbosity > 0:
 
             for epoch in tqdm(range(epochs)):

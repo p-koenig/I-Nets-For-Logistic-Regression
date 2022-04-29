@@ -105,8 +105,7 @@ def extend_inet_parameter_setting(parameter_setting):
         parameter_setting['dropout'] = [0, 0, 0, 0, 0.3]     
         parameter_setting['hidden_activation'] = 'relu'
         parameter_setting['optimizer'] = 'rmsprop'      
-        parameter_setting['learning_rate'] = 0.001 
-        
+        parameter_setting['learning_rate'] = 0.001   
     elif parameter_setting['inet_setting'] == 3:
         parameter_setting['dense_layers'] = [1792, 512, 512]
         parameter_setting['dropout'] = [0, 0, 0.5]  
@@ -114,17 +113,29 @@ def extend_inet_parameter_setting(parameter_setting):
         parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001
     elif parameter_setting['inet_setting'] == 4:
-        parameter_setting['dense_layers'] = [1024, 1024, 256, 2048, 2048]
-        parameter_setting['dropout'] = [0, 0, 0, 0, 0.3]     
+        parameter_setting['dense_layers'] = [4096, 2048]
+        parameter_setting['dropout'] = [0, 0.5]  
         parameter_setting['hidden_activation'] = 'swish'
         parameter_setting['optimizer'] = 'adam'      
-        parameter_setting['learning_rate'] = 0.001      
+        parameter_setting['learning_rate'] = 0.001       
     elif parameter_setting['inet_setting'] == 5:
-        parameter_setting['dense_layers'] = [1024, 1024, 256, 2048, 2048]
-        parameter_setting['dropout'] = [0, 0, 0, 0, 0.3]     
+        parameter_setting['dense_layers'] = [1792, 512, 512]
+        parameter_setting['dropout'] = [0.3, 0.3, 0.3]  
+        parameter_setting['hidden_activation'] = 'sigmoid'
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001
+    elif parameter_setting['inet_setting'] == 6:
+        parameter_setting['dense_layers'] = [2048, 1024]
+        parameter_setting['dropout'] = [0.3, 0.3, 0.3]  
+        parameter_setting['hidden_activation'] = 'swish'
+        parameter_setting['optimizer'] = 'adam'      
+        parameter_setting['learning_rate'] = 0.001     
+    elif parameter_setting['inet_setting'] == 7:
+        parameter_setting['dense_layers'] = [1792, 512, 512]
+        parameter_setting['dropout'] =  [0.3, 0.3, 0.3]
         parameter_setting['hidden_activation'] = 'swish'
         parameter_setting['optimizer'] = 'rmsprop'      
-        parameter_setting['learning_rate'] = 0.001                
+        parameter_setting['learning_rate'] = 0.001        
         
         
     elif parameter_setting['inet_setting'] == 9:

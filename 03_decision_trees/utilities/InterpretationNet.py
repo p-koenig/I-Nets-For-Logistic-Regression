@@ -1632,6 +1632,7 @@ def train_inet(lambda_net_train_dataset,
                     
             if config['i_net']['early_stopping']:
                 callback_names.append('early_stopping')
+                callback_names.append('reduce_lr_loss')
             
             callbacks = return_callbacks_from_string(callback_names, config)            
 
