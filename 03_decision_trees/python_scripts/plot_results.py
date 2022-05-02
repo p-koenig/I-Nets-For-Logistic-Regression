@@ -382,7 +382,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
         # In[13]:
 
-        if True:
+        if False:
             real_world_datasets = {
                                     'Adult': 28,#65,
                                     'Titanic': 9,
@@ -420,7 +420,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                                     ##'Car': 21,
                                     #'Haberman': 3, 
                                     'Credit Card': 23, 
-                                    #'Heart Disease': 13,           
+                                    'Heart Disease': 13,           
 
                                    }
             real_world_datasets = dict(sorted(real_world_datasets.items(), key=lambda item: item[1]))

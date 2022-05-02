@@ -135,6 +135,12 @@ def extend_inet_parameter_setting(parameter_setting):
         parameter_setting['dropout'] =  [0.3, 0.3, 0.3]
         parameter_setting['hidden_activation'] = 'swish'
         parameter_setting['optimizer'] = 'rmsprop'      
+        parameter_setting['learning_rate'] = 0.001    
+    elif parameter_setting['inet_setting'] == 8:
+        parameter_setting['dense_layers'] = [1792, 512, 512]
+        parameter_setting['dropout'] = [0.3, 0.3, 0.3]  
+        parameter_setting['hidden_activation'] = 'swish'
+        parameter_setting['optimizer'] = 'adam'      
         parameter_setting['learning_rate'] = 0.001        
         
         
@@ -228,6 +234,10 @@ def run_evaluation(enumerator, timestr, parameter_setting):
         parameter_setting['function_representation_type'] = 9         
         
     if 'distribution' not in parameter_setting['function_generation_type'] or 'trained' in parameter_setting['function_generation_type']:
+        #print('IN LOOP', parameter_setting['dt_setting'] % 3)
+        #print('CONDITION1', parameter_setting['dt_setting'] % 3 == 1)
+        #print('CONDITION2', parameter_setting['dt_setting'] % 3 == 2)
+        #print('CONDITION3', parameter_setting['dt_setting'] % 3 == 3)
         if parameter_setting['dt_setting'] % 3 == 1:
             parameter_setting['dt_type_train'] = 'vanilla'
             parameter_setting['maximum_depth_train'] = 3
@@ -236,7 +246,8 @@ def run_evaluation(enumerator, timestr, parameter_setting):
             parameter_setting['dt_type_train'] = 'SDT'
             parameter_setting['maximum_depth_train'] = 3
             parameter_setting['decision_sparsity_train'] = 1    
-        elif parameter_setting['dt_setting'] % 3 == 3:
+            #print('dt_type_train', parameter_setting['dt_type_train'])
+        elif parameter_setting['dt_setting'] % 3 == 0:
             parameter_setting['dt_type_train'] = 'SDT'
             parameter_setting['maximum_depth_train'] = 3
             parameter_setting['decision_sparsity_train'] = -1              
@@ -2483,7 +2494,8 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                                                                                 ordinal_features = ordinal_features_credit_card,
                                                                                 config = config,
                                                                                 distribution_list_evaluation = config['data']['distribution_list_eval'],
-                                                                                config_train_network = None)
+                                                                                config_train_network = None,
+                                                                                force_rebalance=True)
                 print_head = None
                 if verbosity > 0:
                     print_results_different_data_sizes(results_dict[identifier], dataset_size_list_print)

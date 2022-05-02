@@ -3465,7 +3465,8 @@ def evaluate_real_world_dataset(model,
                                 ordinal_features, 
                                 config,
                                 distribution_list_evaluation,
-                                config_train_network=None):
+                                config_train_network=None,
+                                force_rebalance=False):
     
     start_evaluate_network_complete = time.time()
     
@@ -3646,10 +3647,17 @@ def evaluate_real_world_dataset(model,
                                       seed=config['computation']['RANDOM_SEED'],
                                       verbose=1)
 
-    X_train, y_train = rebalance_data(X_train, 
-                                      y_train, 
-                                      balance_ratio=config['i_net']['resampling_threshold'], 
-                                      strategy=config['i_net']['resampling_strategy'])
+    if force_rebalance:
+        X_train, y_train = rebalance_data(X_train, 
+                                          y_train, 
+                                          balance_ratio=0.5, 
+                                          strategy=config['i_net']['resampling_strategy'])    
+    else:
+    
+        X_train, y_train = rebalance_data(X_train, 
+                                          y_train, 
+                                          balance_ratio=config['i_net']['resampling_threshold'], 
+                                          strategy=config['i_net']['resampling_strategy'])
 
     if config_train_network == None:
         config_train_network = config

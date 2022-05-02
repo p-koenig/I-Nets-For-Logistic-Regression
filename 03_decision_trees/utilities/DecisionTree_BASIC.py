@@ -171,6 +171,10 @@ class SDT(nn.Module):
             if self.verbosity > 3:
                 print('_mu', _mu)
             
+        if self.verbosity > 3:
+            print('leaf_nodes', self.leaf_nodes)
+            print('leaf_nodes', self.leaf_nodes.weight)
+            print('_mu', _mu)
         y_pred = self.leaf_nodes(_mu)
         
         if self.verbosity > 3:
