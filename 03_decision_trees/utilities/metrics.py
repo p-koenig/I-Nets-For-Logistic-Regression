@@ -328,8 +328,7 @@ def calculate_function_values_loss_decision_wrapper(network_parameters_structure
         else:
             random_evaluation_dataset = tf.reshape(tensor=distribution_line, shape=(-1,config['data']['number_of_variables']))
 
-        random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)             
-
+        random_evaluation_dataset = tf.dtypes.cast(tf.convert_to_tensor(random_evaluation_dataset), tf.float32)   
         
         function_values_true = calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluation_dataset, network_parameters_structure, model_lambda_placeholder, config)(network_parameters)
         #tf.print('function_values_true', function_values_true[:50], summarize=50)

@@ -139,7 +139,7 @@ class SDT(nn.Module):
                                     self.output_dim,
                                     bias=False)
         
-        if True:
+        if False:
             if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
                 vals_list, idx_list = torch.topk(torch.abs(self.inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
 
@@ -195,13 +195,23 @@ class SDT(nn.Module):
             print('X', X)
             
         if self.decision_sparsity != -1 and self.decision_sparsity != self.input_dim:
-            inner_nodes = deepcopy(self.inner_nodes)
-            vals_list, idx_list = torch.topk(torch.abs(inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
-            weights = torch.zeros_like(inner_nodes[0].weight)
-            for i, idx in enumerate(idx_list):
-                weights[i][idx] = inner_nodes[0].weight[i][idx]
-            inner_nodes[0].weight = torch.nn.Parameter(weights) 
-            path_prob = nn.Sigmoid()(self.beta*inner_nodes(X))
+            if self.decision_sparsity == 1:
+                inner_nodes = deepcopy(self.inner_nodes)
+                #vals_list, idx_list = torch.topk(torch.abs(inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+                #weights = torch.zeros_like(inner_nodes[0].weight)
+                #for i, idx in enumerate(idx_list):
+                #    weights[i][idx] = inner_nodes[0].weight[i][idx]
+                inner_nodes[0].weight = torch.nn.Parameter(inner_nodes[0].weight * nn.Softmax()(1000*torch.abs(inner_nodes[0].weight)))
+                path_prob = nn.Sigmoid()(self.beta*inner_nodes(X))            
+            
+            else:
+                inner_nodes = deepcopy(self.inner_nodes)
+                vals_list, idx_list = torch.topk(torch.abs(inner_nodes[0].weight), k=self.decision_sparsity, dim=1)#output.topk(k)
+                weights = torch.zeros_like(inner_nodes[0].weight)
+                for i, idx in enumerate(idx_list):
+                    weights[i][idx] = inner_nodes[0].weight[i][idx]
+                inner_nodes[0].weight = torch.nn.Parameter(weights) 
+                path_prob = nn.Sigmoid()(self.beta*inner_nodes(X))
         else:   
             path_prob = nn.Sigmoid()(self.beta*self.inner_nodes(X))
             

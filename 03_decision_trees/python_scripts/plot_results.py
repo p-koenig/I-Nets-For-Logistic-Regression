@@ -143,16 +143,25 @@ def add_hline(latex: str, index: int) -> str:
 # In[3]:
 
 def plot_evaluation_results(timestr, parameter_grid, score_string):
-    
-    results_summary = pd.read_csv('./results_summary/' + timestr + '.csv', delimiter=';')
-
-    results_summary_columns = list(results_summary.columns)
-    results_summary['function_family_decision_sparsity'][results_summary['data_number_of_variables'] == results_summary['function_family_decision_sparsity']] = -1
-
-    # ### Select columns
 
     # In[4]:
+    
     for evaluation_number, parameter_setting in enumerate(parameter_grid):
+                
+        #results_summary = pd.read_csv('./results_summary/' + timestr + file_identifier + '.csv', delimiter=';')
+        results_summary = pd.read_csv('./results_summary/' + timestr + '.csv', delimiter=';')
+        
+        counter = 1
+        while results_summary['evaluation_random_evaluation_dataset_size_per_distribution'].values[0] != parameter_setting['random_evaluation_dataset_size_per_distribution']:
+            results_summary = pd.read_csv('./results_summary/' + timestr + '-' + str(counter) + '.csv', delimiter=';')
+            counter += 1
+            if counter == 100:
+                print('COUNTER ERROR')
+                break
+
+        results_summary_columns = list(results_summary.columns)
+        results_summary['function_family_decision_sparsity'][results_summary['data_number_of_variables'] == results_summary['function_family_decision_sparsity']] = -1        
+
 
         parameter_setting = extend_inet_parameter_setting(parameter_setting)    
 
@@ -208,6 +217,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                           'evaluation_optimize_sampling',
 
                           'evaluation_number_of_random_evaluations_per_distribution',
+                          'evaluation_random_evaluation_dataset_size_per_distribution',
                           'evaluation_random_evaluation_dataset_size',
                          ]
 
@@ -350,6 +360,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
             'function_family_maximum_depth': [parameter_setting['maximum_depth']], # [3, 4, 5]
 
             'evaluation_number_of_random_evaluations_per_distribution': [parameter_setting['number_of_random_evaluations_per_distribution']],
+            'evaluation_random_evaluation_dataset_size_per_distribution': parameter_setting['random_evaluation_dataset_size_per_distribution'],
             'evaluation_optimize_sampling': [parameter_setting['optimize_sampling']],            
             'evaluation_random_evaluation_dataset_size':  parameter_setting['random_evaluation_dataset_size'], 
         }      
@@ -363,11 +374,16 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
         distribution_list_not_sampled = deepcopy(distribution_list[-1])
     
         config['data_distribution_list'] = [str(distribution_list_reduced)]
+        #config['evaluation_random_evaluation_dataset_size_per_distribution'] = str([config['evaluation_random_evaluation_dataset_size_per_distribution'] for _ in range(parameter_setting['number_of_random_evaluations_per_distribution'])])
         
         # In[12]:
         #print('PARAMETER SETTING HIDDEN ACTIVATION', parameter_setting['hidden_activation'])
         #print('results_summary_reduced', results_summary_reduced['i_net_hidden_activation'].values)
         #print(valid_scores_df['i_net_hidden_activation'])
+        
+        print('random_evaluation_dataset_size_per_distribution parameter_setting', type(parameter_setting['random_evaluation_dataset_size_per_distribution']), parameter_setting['random_evaluation_dataset_size_per_distribution'])
+        print('random_evaluation_dataset_size_per_distribution results_summary_reduced', type(results_summary_reduced['evaluation_random_evaluation_dataset_size_per_distribution'].values[0]), results_summary_reduced['evaluation_random_evaluation_dataset_size_per_distribution'].values)
+        
 
         score_names_list = ['valid_accuracy', 'valid_binary_crossentropy', 'valid_f1_score']
         valid_scores_columns = [name for name in results_summary_reduced_columns if 'valid' in name and any([score in name for score in score_names_list])]
@@ -516,7 +532,8 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
 
         real_world_scores_df_distrib_adjusted = pd.DataFrame(data=empty_data, columns=columns)
 
-
+        
+        
         for real_world_dataset_name, real_world_dataset_variables in real_world_datasets.items():
             #scores_by_variables = real_world_scores_df[real_world_scores_df['data_number_of_variables'] == real_world_dataset_variables]
             if real_world_scores_df[real_world_scores_df['data_number_of_variables'] == real_world_dataset_variables].shape[0] > 1:
@@ -528,7 +545,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                             if (any([row['distrib'] in name for name in column_name.split('_')]) and#row['distrib'] in column_name.split('_') and 
                                 real_world_dataset_name in column_name and 
                                 score_name in column_name and 
-                                (('10000' in column_name and '100000' not in column_name) # and not any(str(dist) in column_name for dist in distribution_list_sampled[1:]) 
+                                ((str(parameter_setting['random_evaluation_dataset_size_per_distribution']) in column_name and str(parameter_setting['random_evaluation_dataset_size_per_distribution']) + '0' not in column_name) # and not any(str(dist) in column_name for dist in distribution_list_sampled[1:]) 
                                  #or (any(str(dist) in column_name for dist in distribution_list_sampled[1:]) and '10000' not in column_name) 
                                  #or (any(str(dist) in column_name for dist in distribution_list_not_sampled) and not any(str(dist) in column_name for dist in distribution_list_sampled))) 
                                 or (any(str(dist) in column_name for dist in distribution_list_additional) and not any(str(dist) in column_name for dist in distribution_list_reduced)))
@@ -554,7 +571,7 @@ def plot_evaluation_results(timestr, parameter_grid, score_string):
                             else:
                                 scores_by_variables_selected = scores_by_variables[scores_by_variables['dt_type'] == row['dt_type']]
                                 scores_by_variables_selected = scores_by_variables_selected[scores_by_variables_selected['technique'] == row['technique']]
-                                relevant_column = score_name + '_' + real_world_dataset_name + '_10000'
+                                relevant_column = score_name + '_' + real_world_dataset_name + '_' + str(parameter_setting['random_evaluation_dataset_size_per_distribution'])
                                 row[real_world_dataset_name + ' ' + score_name] = np.max(scores_by_variables_selected[relevant_column].values)                            
 
                         except:

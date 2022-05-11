@@ -1,0 +1,96 @@
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{llllll}
+\toprule
+{} &                                          inet &                                     distilled & ['uniform', 'normal', 'gamma', 'beta', 'poisson'] &                               STANDARDUNIFORM &                          STANDARDNORMAL \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \bftab\phantom{0}96.16 $\pm$ \phantom{0}0.00 &                  \phantom{0}89.18 $\pm$ 18.59 &                      \phantom{0}74.35 $\pm$ 25.45 &  \bftab\phantom{0}96.50 $\pm$ \phantom{0}1.75 &  \phantom{0}94.85 $\pm$ \phantom{0}5.69 \\
+\textbf{Medical Insurance (n=9)                  } &        \phantom{0}92.00 $\pm$ \phantom{0}0.00 &        \phantom{0}93.10 $\pm$ \phantom{0}7.77 &                      \phantom{0}89.42 $\pm$ 11.44 &  \bftab\phantom{0}92.23 $\pm$ \phantom{0}0.98 &  \phantom{0}97.88 $\pm$ \phantom{0}0.84 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \bftab\phantom{0}99.32 $\pm$ \phantom{0}0.00 &                  \phantom{0}78.73 $\pm$ 21.69 &            \phantom{0}92.95 $\pm$ \phantom{0}5.00 &  \bftab\phantom{0}96.82 $\pm$ \phantom{0}1.28 &  \phantom{0}50.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &        \phantom{0}65.62 $\pm$ \phantom{0}0.00 &            \bftab\phantom{0}79.29 $\pm$ 14.85 &                      \phantom{0}79.91 $\pm$ 12.53 &  \bftab\phantom{0}85.73 $\pm$ \phantom{0}6.40 &            \phantom{0}73.92 $\pm$ 19.23 \\
+\textbf{Heart Disease (n=13)                     } &        \phantom{0}65.05 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}89.04 $\pm$ \phantom{0}7.15 &            \phantom{0}89.79 $\pm$ \phantom{0}5.93 &  \bftab\phantom{0}92.73 $\pm$ \phantom{0}3.14 &  \phantom{0}83.96 $\pm$ \phantom{0}7.76 \\
+\textbf{Cervical Cancer (n=15)                   } &        \phantom{0}59.24 $\pm$ \phantom{0}0.00 &        \phantom{0}57.00 $\pm$ \phantom{0}6.02 &            \phantom{0}55.71 $\pm$ \phantom{0}6.69 &  \bftab\phantom{0}63.23 $\pm$ \phantom{0}0.74 &  \phantom{0}53.22 $\pm$ \phantom{0}3.27 \\
+\textbf{Loan House (n=16)                        } &            \bftab100.00 $\pm$ \phantom{0}0.00 &                  \phantom{0}89.26 $\pm$ 23.88 &                      \phantom{0}82.95 $\pm$ 27.38 &            \bftab100.00 $\pm$ \phantom{0}0.00 &            \phantom{0}85.47 $\pm$ 26.29 \\
+\textbf{Credit Card (n=23)                       } &        \phantom{0}53.10 $\pm$ \phantom{0}0.00 &                  \phantom{0}53.48 $\pm$ 10.30 &                \bftab\phantom{0}55.02 $\pm$ 15.15 &        \phantom{0}54.71 $\pm$ \phantom{0}7.38 &  \phantom{0}50.24 $\pm$ \phantom{0}0.29 \\
+\midrule
+\textbf{Summary                                  } &                  \phantom{0}78.81 $\pm$ 18.55 &                  \phantom{0}78.64 $\pm$ 14.33 &                      \phantom{0}77.51 $\pm$ 13.95 &            \bftab\phantom{0}85.24 $\pm$ 15.81 &            \phantom{0}73.69 $\pm$ 18.73 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results vanilla.}}
+\label{tab:eval-results}
+\end{table}
+
+
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{llllll}
+\toprule
+{} &                                   inet &                              distilled & ['uniform', 'normal', 'gamma', 'beta', 'poisson'] &                              STANDARDUNIFORM &                         STANDARDNORMAL \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Medical Insurance (n=9)                  } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Heart Disease (n=13)                     } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Cervical Cancer (n=15)                   } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Loan House (n=16)                        } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Credit Card (n=23)                       } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\midrule
+\textbf{Summary                                  } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT1.}}
+\label{tab:eval-results}
+\end{table}
+
+
+\begin{table}[htb]
+\centering
+\resizebox{\columnwidth}{!}{
+%\begin{threeparttable}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tabular}{llllll}
+\toprule
+{} &                                   inet &                              distilled & ['uniform', 'normal', 'gamma', 'beta', 'poisson'] &                              STANDARDUNIFORM &                         STANDARDNORMAL \\
+\midrule
+\textbf{Titanic (n=9)                            } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Medical Insurance (n=9)                  } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Brest Cancer Wisconsin (n=9)             } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Wisconsin Diagnostic Breast Cancer (n=10)} &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Heart Disease (n=13)                     } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Cervical Cancer (n=15)                   } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Loan House (n=16)                        } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\textbf{Credit Card (n=23)                       } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\midrule
+\textbf{Summary                                  } &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 &       \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \bftab\phantom{0}0.00 $\pm$ \phantom{0}0.00 &  \phantom{0}0.00 $\pm$ \phantom{0}0.00 \\
+\bottomrule
+\end{tabular}%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{tablenotes}
+%\item[a] \footnotesize
+%\item[b] \footnotesize
+%\end{tablenotes}
+%\end{threeparttable}
+}
+\caption{\textbf{Evaluation Results SDT.}}
+\label{tab:eval-results}
+\end{table}
+
+

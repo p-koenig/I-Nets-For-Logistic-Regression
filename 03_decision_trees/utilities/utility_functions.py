@@ -667,6 +667,8 @@ def get_shaped_parameters_for_decision_tree(flat_parameters, config, eager_execu
             weights = flat_parameters[:input_dim*internal_node_num_]
             weights = tf.reshape(weights, (internal_node_num_, input_dim))
 
+            
+            #print("config['data']['number_of_variables'], config['function_family']['decision_sparsity']", config['data']['number_of_variables'], config['function_family']['decision_sparsity'])
             if config['function_family']['decision_sparsity'] != -1 and config['function_family']['decision_sparsity'] !=  config['data']['number_of_variables']:
                 vals_list, idx_list = tf.nn.top_k(tf.abs(weights), k=config['function_family']['decision_sparsity'], sorted=False)
                 idx_list = tf.cast(idx_list, tf.int64)
@@ -5265,7 +5267,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
 
         elif dataset_size == 'STANDARDUNIFORM': 
             config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
+            config_test['evaluation']['per_network_optimization_dataset_size'] = config['evaluation']['random_evaluation_dataset_size_per_distribution']
             config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standarduniform
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
@@ -5281,7 +5283,7 @@ def evaluate_network_real_world_data_parallel(loss_function, metrics, test_netwo
             
         elif dataset_size == 'STANDARDNORMAL': 
             config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
+            config_test['evaluation']['per_network_optimization_dataset_size'] = config['evaluation']['random_evaluation_dataset_size_per_distribution']
             config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standardnormal            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
@@ -5387,7 +5389,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
                                                                                verbosity=verbosity)
         elif dataset_size == 'STANDARDUNIFORM': 
             config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
+            config_test['evaluation']['per_network_optimization_dataset_size'] = config['evaluation']['random_evaluation_dataset_size_per_distribution']
             config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standarduniform         
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            
@@ -5404,7 +5406,7 @@ def evaluate_network_real_world_data(model, test_network, X_train, X_test, datas
         
         elif dataset_size == 'STANDARDNORMAL': 
             config_test = deepcopy(config)
-            config_test['evaluation']['per_network_optimization_dataset_size'] = 10000
+            config_test['evaluation']['per_network_optimization_dataset_size'] = config['evaluation']['random_evaluation_dataset_size_per_distribution']
             config_test['computation']['RANDOM_SEED'] = config['computation']['RANDOM_SEED'] + counter_standardnormal            
             if isinstance(X_test, pd.DataFrame):
                 X_test = X_test.values            

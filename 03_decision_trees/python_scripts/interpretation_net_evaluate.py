@@ -396,6 +396,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         #'inet_holdout_seed_evaluation': False,
 
                         'number_of_random_evaluations_per_distribution': parameter_setting['number_of_random_evaluations_per_distribution'],
+                        'random_evaluation_dataset_size_per_distribution': parameter_setting['random_evaluation_dataset_size_per_distribution'],
                         'optimize_sampling': parameter_setting['optimize_sampling'],
                         
                         
@@ -1025,7 +1026,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
 
 
                 #dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 'TRAINDATA', 'STANDARDUNIFORM', 'STANDARDNORMAL'])#[1_000, 10_000, 100_000, 1_000_000, 'TRAINDATA']
-                dataset_size_list = flatten_list([[10_000]*config['evaluation']['number_of_random_evaluations_per_distribution'], 
+                dataset_size_list = flatten_list([[config['evaluation']['random_evaluation_dataset_size_per_distribution']]*config['evaluation']['number_of_random_evaluations_per_distribution'],  
                                                   'TRAINDATA', 
                                                   ['STANDARDUNIFORM']*config['evaluation']['number_of_random_evaluations_per_distribution'], 
                                                   ['STANDARDNORMAL']*config['evaluation']['number_of_random_evaluations_per_distribution']])#[1_000, 10_000, 100_000, 1_000_000, 'TRAINDATA']
