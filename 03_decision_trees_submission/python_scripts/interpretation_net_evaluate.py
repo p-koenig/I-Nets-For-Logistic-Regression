@@ -193,7 +193,7 @@ def run_evaluation(enumerator, timestr, parameter_setting):
                         'maximum_depth_train': parameter_setting['maximum_depth_train'],#3, #None or int
                         'decision_sparsity_train': parameter_setting['decision_sparsity_train'],#1, #None or int
 
-                        'function_generation_type': parameter_setting['function_generation_type']
+                        'function_generation_type': parameter_setting['function_generation_type'],
                         
                         'distrib_by_feature': parameter_setting['distrib_by_feature'],
                         'distribution_list': parameter_setting['distribution_list'],
