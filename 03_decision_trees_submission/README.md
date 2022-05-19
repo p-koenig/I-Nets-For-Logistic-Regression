@@ -10,5 +10,9 @@ Replicating the requirements comprises three steps:
 
 For the ablation study, the data generation is more elaborate. An expemplary file for the data generation is given in the corresponding notebooks "01b" and "02b". To reproduce the experiments, you need to run those notebooks for each number of variables by changing "number_of_variables" in the config at the top of the notebook to the corresponding value. This has to be performed for each function family (an expemplary notebook is given for each function family). Afterward, you can simply run the python scripty ending with "BENCHMARK" for the corresponding function family to reproduce the results of the ablation study.
 
+The function families are identified in th code as follows:
+    - vanilla --> standard decision tree
+    - SDT1 --> univariate SDT
+    - SDT-1 --> standard SDT
 
 The network parameters used for training the I-Net have to be generated manually, since they are too large to upload. However, I can provide you with them upon request.

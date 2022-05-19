@@ -38,6 +38,7 @@ def main():
                 'n_jobs': [8],   
                 'force_evaluate_real_world': [False],
                 'number_of_random_evaluations_per_distribution': [10],
+                'random_evaluation_dataset_size_per_distribution': [10_000],
                 'optimize_sampling': [False],
                 
                 'dt_setting': [1], # 1=vanilla; 2=SDT1; 3=SDT-1  ------- 'dt_type', 'decision_sparsity', 'function_representation_type'                
