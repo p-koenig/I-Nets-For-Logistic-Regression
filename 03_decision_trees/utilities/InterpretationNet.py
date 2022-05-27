@@ -257,7 +257,7 @@ class DeepDenseLayerBlock(ak.Block):
             activation = hp.Choice("activation_" + str(i), values=['relu', 'sigmoid', 'tanh'], default='relu')
             num_units_list.append(num_units)
             dropout_list.append(dropout)
-            activation_list.append(activation)
+            activation_list.append(activation)          
         
         for i in range(num_layers):
             if i == 0:
