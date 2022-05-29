@@ -1,0 +1,700 @@
+{'n_jobs': [8], 'force_evaluate_real_world': [False], 'number_of_random_evaluations_per_distribution': [10], 'random_evaluation_dataset_size_per_distribution': [50, 100, 250, 500, 1000, 5000, 10000, 20000, 30000, 40000, 50000], 'optimize_sampling': [False], 'dt_setting': [1], 'inet_setting': [1], 'dataset_size': [10000], 'maximum_depth': [3], 'number_of_variables': [9, 10, 13, 15, 16, 23], 'function_generation_type': ['distribution'], 'distrib_by_feature': [True], 'max_distributions_per_class': [1], 'distribution_list': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], 'distribution_list_eval': [['uniform', 'normal', 'gamma', 'beta', 'poisson']], 'distrib_param_max': [5], 'exclude_linearly_seperable': [True], 'data_generation_filtering': [False], 'fixed_class_probability': [False], 'balanced_data': [True], 'weighted_data_generation': [False], 'shift_distrib': [False], 'separate_weight_bias': [False], 'normalize_lambda_nets': [False], 'data_reshape_version': [None], 'noise_injected_level': [0], 'resampling_strategy': [None], 'resampling_threshold': [0.25], 'restore_best_weights': [True], 'patience_lambda': [50], 'random_evaluation_dataset_size': [500], 'lambda_network_layers': [[128]]}
+Possible Evaluations:  66
+[Parallel(n_jobs=6)]: Using backend LokyBackend with 6 concurrent workers.
+[Parallel(n_jobs=6)]: Done   1 tasks      | elapsed: 21.1min
+[Parallel(n_jobs=6)]: Done   2 tasks      | elapsed: 21.4min
+[Parallel(n_jobs=6)]: Done   3 tasks      | elapsed: 24.7min
+[Parallel(n_jobs=6)]: Done   4 tasks      | elapsed: 30.2min
+[Parallel(n_jobs=6)]: Done   5 tasks      | elapsed: 35.7min
+[Parallel(n_jobs=6)]: Done   6 tasks      | elapsed: 36.0min
+[Parallel(n_jobs=6)]: Done   7 tasks      | elapsed: 42.9min
+[Parallel(n_jobs=6)]: Done   8 tasks      | elapsed: 43.4min
+[Parallel(n_jobs=6)]: Done   9 tasks      | elapsed: 49.1min
+[Parallel(n_jobs=6)]: Done  10 tasks      | elapsed: 54.5min
+[Parallel(n_jobs=6)]: Done  11 tasks      | elapsed: 58.1min
+[Parallel(n_jobs=6)]: Done  12 tasks      | elapsed: 62.2min
+[Parallel(n_jobs=6)]: Done  13 tasks      | elapsed: 70.1min
+[Parallel(n_jobs=6)]: Done  14 tasks      | elapsed: 71.0min
+[Parallel(n_jobs=6)]: Done  15 tasks      | elapsed: 76.9min
+[Parallel(n_jobs=6)]: Done  16 tasks      | elapsed: 81.4min
+[Parallel(n_jobs=6)]: Done  17 tasks      | elapsed: 84.7min
+[Parallel(n_jobs=6)]: Done  18 tasks      | elapsed: 90.0min
+[Parallel(n_jobs=6)]: Done  19 tasks      | elapsed: 96.9min
+[Parallel(n_jobs=6)]: Done  20 tasks      | elapsed: 98.8min
+[Parallel(n_jobs=6)]: Done  21 tasks      | elapsed: 104.5min
+[Parallel(n_jobs=6)]: Done  22 tasks      | elapsed: 110.9min
+[Parallel(n_jobs=6)]: Done  23 tasks      | elapsed: 119.2min
+[Parallel(n_jobs=6)]: Done  24 tasks      | elapsed: 123.5min
+[Parallel(n_jobs=6)]: Done  25 tasks      | elapsed: 133.0min
+[Parallel(n_jobs=6)]: Done  26 tasks      | elapsed: 136.0min
+[Parallel(n_jobs=6)]: Done  27 tasks      | elapsed: 139.2min
+[Parallel(n_jobs=6)]: Done  28 tasks      | elapsed: 146.5min
+[Parallel(n_jobs=6)]: Done  29 tasks      | elapsed: 157.2min
+[Parallel(n_jobs=6)]: Done  30 tasks      | elapsed: 158.4min
+[Parallel(n_jobs=6)]: Done  31 tasks      | elapsed: 169.9min
+[Parallel(n_jobs=6)]: Done  32 tasks      | elapsed: 175.4min
+[Parallel(n_jobs=6)]: Done  33 tasks      | elapsed: 175.4min
+[Parallel(n_jobs=6)]: Done  34 tasks      | elapsed: 175.5min
+[Parallel(n_jobs=6)]: Done  35 tasks      | elapsed: 185.2min
+[Parallel(n_jobs=6)]: Done  36 tasks      | elapsed: 187.6min
+[Parallel(n_jobs=6)]: Done  37 tasks      | elapsed: 199.7min
+[Parallel(n_jobs=6)]: Done  38 tasks      | elapsed: 202.1min
+[Parallel(n_jobs=6)]: Done  39 tasks      | elapsed: 204.4min
+[Parallel(n_jobs=6)]: Done  40 tasks      | elapsed: 205.1min
+[Parallel(n_jobs=6)]: Done  41 tasks      | elapsed: 216.6min
+[Parallel(n_jobs=6)]: Done  42 tasks      | elapsed: 217.0min
+[Parallel(n_jobs=6)]: Done  43 tasks      | elapsed: 227.9min
+[Parallel(n_jobs=6)]: Done  44 tasks      | elapsed: 230.3min
+[Parallel(n_jobs=6)]: Done  45 tasks      | elapsed: 244.8min
+[Parallel(n_jobs=6)]: Done  46 tasks      | elapsed: 244.9min
+[Parallel(n_jobs=6)]: Done  47 tasks      | elapsed: 255.2min
+[Parallel(n_jobs=6)]: Done  48 tasks      | elapsed: 258.5min
+[Parallel(n_jobs=6)]: Done  49 tasks      | elapsed: 266.7min
+[Parallel(n_jobs=6)]: Done  50 tasks      | elapsed: 269.2min
+[Parallel(n_jobs=6)]: Done  51 tasks      | elapsed: 285.5min
+[Parallel(n_jobs=6)]: Done  52 tasks      | elapsed: 285.8min
+[Parallel(n_jobs=6)]: Done  53 tasks      | elapsed: 298.0min
+[Parallel(n_jobs=6)]: Done  54 tasks      | elapsed: 301.6min
+[Parallel(n_jobs=6)]: Done  55 tasks      | elapsed: 304.3min
+[Parallel(n_jobs=6)]: Done  56 out of  66 | elapsed: 305.6min remaining: 54.6min
+[Parallel(n_jobs=6)]: Done  57 out of  66 | elapsed: 324.1min remaining: 51.2min
+[Parallel(n_jobs=6)]: Done  58 out of  66 | elapsed: 324.7min remaining: 44.8min
+[Parallel(n_jobs=6)]: Done  59 out of  66 | elapsed: 336.2min remaining: 39.9min
+[Parallel(n_jobs=6)]: Done  60 out of  66 | elapsed: 342.7min remaining: 34.3min
+[Parallel(n_jobs=6)]: Done  61 out of  66 | elapsed: 348.5min remaining: 28.6min
+[Parallel(n_jobs=6)]: Done  62 out of  66 | elapsed: 351.7min remaining: 22.7min
+[Parallel(n_jobs=6)]: Done  63 out of  66 | elapsed: 372.8min remaining: 17.8min
+[Parallel(n_jobs=6)]: Done  64 out of  66 | elapsed: 374.4min remaining: 11.7min
+[Parallel(n_jobs=6)]: Done  66 out of  66 | elapsed: 379.9min remaining:    0.0s
+[Parallel(n_jobs=6)]: Done  66 out of  66 | elapsed: 379.9min finished
+COMPUTATION FINISHED
+Possible Evaluations Types:  11
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 50, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 50
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [50 50 50 50 50 50 50 50 50 50 50 50]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.63 |                          0.64 |                   0.67 |                  0.6  |
+| Medical Insurance (n=9)                   |        0.83 |             0.66 |                          0.77 |                   0.69 |                  0.56 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.52 |                          0.58 |                   0.56 |                  0.38 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.66 |                          0.75 |                   0.6  |                  0.6  |
+| Heart Disease (n=13)                      |        0.73 |             0.69 |                          0.69 |                   0.71 |                  0.69 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.58 |                          0.45 |                   0.68 |                  0.58 |
+| Loan House (n=16)                         |        1    |             0.66 |                          0.62 |                   0.61 |                  0.78 |
+| Credit Card (n=23)                        |        0.76 |             0.53 |                          0.57 |                   0.48 |                  0.52 |
+| Summary                                   |        0.86 |             0.62 |                          0.63 |                   0.62 |                  0.59 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=6.4907558496013325, pvalue=7.447252350621955e-06)
+Ttest_indResult(statistic=6.490755849601332, pvalue=1.5114140212324222e-05)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 100, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 100
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [100 100 100 100 100 100 100 100 100 100 100 100]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.67 |                          0.67 |                   0.72 |                  0.64 |
+| Medical Insurance (n=9)                   |        0.83 |             0.72 |                          0.78 |                   0.68 |                  0.73 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.56 |                          0.65 |                   0.62 |                  0.48 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.43 |                          0.45 |                   0.43 |                  0.42 |
+| Heart Disease (n=13)                      |        0.73 |             0.75 |                          0.72 |                   0.78 |                  0.76 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.58 |                          0.63 |                   0.58 |                  0.51 |
+| Loan House (n=16)                         |        1    |             0.65 |                          0.73 |                   0.6  |                  0.69 |
+| Credit Card (n=23)                        |        0.76 |             0.49 |                          0.58 |                   0.44 |                  0.41 |
+| Summary                                   |        0.86 |             0.61 |                          0.65 |                   0.61 |                  0.58 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=5.442749147844254, pvalue=5.420818301012021e-05)
+Ttest_indResult(statistic=5.442749147844254, pvalue=5.5633865539736875e-05)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 250, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 250
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [250 250 250 250 250 250 250 250 250 250 250 250]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.67 |                          0.66 |                   0.7  |                  0.69 |
+| Medical Insurance (n=9)                   |        0.83 |             0.67 |                          0.61 |                   0.73 |                  0.62 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.62 |                          0.76 |                   0.72 |                  0.39 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.56 |                          0.72 |                   0.58 |                  0.46 |
+| Heart Disease (n=13)                      |        0.73 |             0.74 |                          0.68 |                   0.75 |                  0.79 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.61 |                          0.71 |                   0.65 |                  0.52 |
+| Loan House (n=16)                         |        1    |             0.77 |                          0.8  |                   0.68 |                  0.87 |
+| Credit Card (n=23)                        |        0.76 |             0.54 |                          0.49 |                   0.51 |                  0.6  |
+| Summary                                   |        0.86 |             0.65 |                          0.68 |                   0.67 |                  0.62 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=5.272993037222343, pvalue=7.578804724037837e-05)
+Ttest_indResult(statistic=5.272993037222343, pvalue=8.776995141575309e-05)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 500, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 500
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [500 500 500 500 500 500 500 500 500 500 500 500]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.75 |                          0.71 |                   0.77 |                  0.72 |
+| Medical Insurance (n=9)                   |        0.83 |             0.76 |                          0.83 |                   0.81 |                  0.64 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.61 |                          0.7  |                   0.8  |                  0.37 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.52 |                          0.72 |                   0.44 |                  0.45 |
+| Heart Disease (n=13)                      |        0.73 |             0.76 |                          0.66 |                   0.8  |                  0.78 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.63 |                          0.57 |                   0.68 |                  0.57 |
+| Loan House (n=16)                         |        1    |             0.7  |                          0.7  |                   0.71 |                  0.68 |
+| Credit Card (n=23)                        |        0.76 |             0.57 |                          0.53 |                   0.66 |                  0.55 |
+| Summary                                   |        0.86 |             0.66 |                          0.68 |                   0.71 |                  0.59 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=4.696715484373768, pvalue=0.00024247603188005105)
+Ttest_indResult(statistic=4.696715484373768, pvalue=0.00024670104466058404)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 1000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 1000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.78 |                          0.76 |                   0.83 |                  0.75 |
+| Medical Insurance (n=9)                   |        0.83 |             0.79 |                          0.76 |                   0.84 |                  0.75 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.65 |                          0.78 |                   0.77 |                  0.45 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.53 |                          0.61 |                   0.46 |                  0.51 |
+| Heart Disease (n=13)                      |        0.73 |             0.79 |                          0.84 |                   0.84 |                  0.7  |
+| Cervical Cancer (n=15)                    |        0.85 |             0.62 |                          0.62 |                   0.75 |                  0.47 |
+| Loan House (n=16)                         |        1    |             0.83 |                          0.81 |                   0.83 |                  0.87 |
+| Credit Card (n=23)                        |        0.76 |             0.66 |                          0.62 |                   0.69 |                  0.71 |
+| Summary                                   |        0.86 |             0.71 |                          0.73 |                   0.75 |                  0.65 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=3.3568689563281318, pvalue=0.004008801810190714)
+Ttest_indResult(statistic=3.3568689563281318, pvalue=0.00401902356154473)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 5000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 5000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000 5000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.83 |                          0.77 |                   0.87 |                  0.85 |
+| Medical Insurance (n=9)                   |        0.83 |             0.84 |                          0.75 |                   0.88 |                  0.9  |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.53 |                          0.8  |                   0.48 |                  0.4  |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.44 |                          0.66 |                   0.37 |                  0.34 |
+| Heart Disease (n=13)                      |        0.73 |             0.78 |                          0.73 |                   0.85 |                  0.74 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.57 |                          0.53 |                   0.71 |                  0.49 |
+| Loan House (n=16)                         |        1    |             0.89 |                          0.92 |                   0.89 |                  0.87 |
+| Credit Card (n=23)                        |        0.76 |             0.66 |                          0.68 |                   0.74 |                  0.56 |
+| Summary                                   |        0.86 |             0.69 |                          0.73 |                   0.72 |                  0.64 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=2.797349154220007, pvalue=0.012911772537367005)
+Ttest_indResult(statistic=2.797349154220007, pvalue=0.014907082250539308)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 10000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 10000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 10000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.81 |                          0.71 |                   0.86 |                  0.86 |
+| Medical Insurance (n=9)                   |        0.83 |             0.89 |                          0.88 |                   0.89 |                  0.91 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.49 |                          0.84 |                   0.39 |                  0.32 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.43 |                          0.56 |                   0.38 |                  0.33 |
+| Heart Disease (n=13)                      |        0.73 |             0.81 |                          0.75 |                   0.86 |                  0.8  |
+| Cervical Cancer (n=15)                    |        0.85 |             0.65 |                          0.65 |                   0.72 |                  0.61 |
+| Loan House (n=16)                         |        1    |             0.78 |                          0.77 |                   0.97 |                  0.6  |
+| Credit Card (n=23)                        |        0.76 |             0.58 |                          0.69 |                   0.75 |                  0.34 |
+| Summary                                   |        0.86 |             0.68 |                          0.73 |                   0.73 |                  0.6  |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=2.9209282323765025, pvalue=0.00999695418830589)
+Ttest_indResult(statistic=2.9209282323765025, pvalue=0.011904126765094053)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 20000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 20000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [20000 20000 20000 20000 20000 20000 20000 20000 20000 20000 20000 20000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.83 |                          0.73 |                   0.87 |                  0.85 |
+| Medical Insurance (n=9)                   |        0.83 |             0.87 |                          0.81 |                   0.92 |                  0.89 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.46 |                          0.74 |                   0.36 |                  0.34 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.42 |                          0.56 |                   0.34 |                  0.37 |
+| Heart Disease (n=13)                      |        0.73 |             0.81 |                          0.74 |                   0.86 |                  0.82 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.58 |                          0.66 |                   0.78 |                  0.36 |
+| Loan House (n=16)                         |        1    |             0.82 |                          0.75 |                   1    |                  0.69 |
+| Credit Card (n=23)                        |        0.76 |             0.66 |                          0.76 |                   0.75 |                  0.5  |
+| Summary                                   |        0.86 |             0.68 |                          0.72 |                   0.73 |                  0.6  |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=2.83334553635067, pvalue=0.011986857594240946)
+Ttest_indResult(statistic=2.83334553635067, pvalue=0.014381769685464932)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 30000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 30000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [30000 30000 30000 30000 30000 30000 30000 30000 30000 30000 30000 30000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.83 |                          0.78 |                   0.87 |                  0.83 |
+| Medical Insurance (n=9)                   |        0.83 |             0.89 |                          0.85 |                   0.92 |                  0.89 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.45 |                          0.73 |                   0.32 |                  0.37 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.44 |                          0.63 |                   0.36 |                  0.35 |
+| Heart Disease (n=13)                      |        0.73 |             0.8  |                          0.77 |                   0.85 |                  0.79 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.6  |                          0.75 |                   0.75 |                  0.34 |
+| Loan House (n=16)                         |        1    |             0.79 |                          0.85 |                   1    |                  0.56 |
+| Credit Card (n=23)                        |        0.76 |             0.68 |                          0.71 |                   0.75 |                  0.6  |
+| Summary                                   |        0.86 |             0.69 |                          0.76 |                   0.73 |                  0.59 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=2.8228046532976423, pvalue=0.01225083927442435)
+Ttest_indResult(statistic=2.8228046532976423, pvalue=0.014423648237352288)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 40000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 40000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [40000 40000 40000 40000 40000 40000 40000 40000 40000 40000 40000 40000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.84 |                          0.74 |                   0.87 |                  0.88 |
+| Medical Insurance (n=9)                   |        0.83 |             0.9  |                          0.86 |                   0.91 |                  0.91 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.48 |                          0.82 |                   0.34 |                  0.32 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.43 |                          0.64 |                   0.36 |                  0.31 |
+| Heart Disease (n=13)                      |        0.73 |             0.82 |                          0.78 |                   0.85 |                  0.8  |
+| Cervical Cancer (n=15)                    |        0.85 |             0.62 |                          0.65 |                   0.77 |                  0.42 |
+| Loan House (n=16)                         |        1    |             0.9  |                          0.93 |                   1    |                  0.78 |
+| Credit Card (n=23)                        |        0.76 |             0.67 |                          0.75 |                   0.75 |                  0.54 |
+| Summary                                   |        0.86 |             0.71 |                          0.77 |                   0.73 |                  0.62 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=2.3385018567024956, pvalue=0.03267000797784827)
+Ttest_indResult(statistic=2.3385018567024956, pvalue=0.03692365331675821)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+{'balanced_data': True, 'data_generation_filtering': False, 'data_reshape_version': None, 'dataset_size': 10000, 'distrib_by_feature': True, 'distrib_param_max': 5, 'distribution_list': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'distribution_list_eval': ['uniform', 'normal', 'gamma', 'beta', 'poisson'], 'exclude_linearly_seperable': True, 'fixed_class_probability': False, 'force_evaluate_real_world': False, 'function_generation_type': 'distribution', 'inet_setting': 1, 'lambda_network_layers': [128], 'max_distributions_per_class': 1, 'maximum_depth': 3, 'n_jobs': 8, 'noise_injected_level': 0, 'normalize_lambda_nets': False, 'number_of_random_evaluations_per_distribution': 10, 'optimize_sampling': False, 'patience_lambda': 50, 'random_evaluation_dataset_size': 500, 'random_evaluation_dataset_size_per_distribution': 50000, 'resampling_strategy': None, 'resampling_threshold': 0.25, 'restore_best_weights': True, 'separate_weight_bias': False, 'shift_distrib': False, 'weighted_data_generation': False}
+random_evaluation_dataset_size_per_distribution parameter_setting <class 'int'> 50000
+random_evaluation_dataset_size_per_distribution results_summary_reduced <class 'numpy.int64'> [50000 50000 50000 50000 50000 50000 50000 50000 50000 50000 50000 50000]
+results_summary_reduced.shape (12, 4326)
+real_world_scores_df.shape (12, 4326)
+(93, 12)
+Vanilla DT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |        0.96 |             0.78 |                          0.6  |                   0.87 |                  0.85 |
+| Medical Insurance (n=9)                   |        0.83 |             0.88 |                          0.89 |                   0.91 |                  0.85 |
+| Brest Cancer Wisconsin (n=9)              |        0.97 |             0.43 |                          0.74 |                   0.32 |                  0.32 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |        0.8  |             0.38 |                          0.62 |                   0.29 |                  0.34 |
+| Heart Disease (n=13)                      |        0.73 |             0.81 |                          0.72 |                   0.87 |                  0.82 |
+| Cervical Cancer (n=15)                    |        0.85 |             0.59 |                          0.73 |                   0.79 |                  0.28 |
+| Loan House (n=16)                         |        1    |             0.85 |                          0.74 |                   1    |                  0.81 |
+| Credit Card (n=23)                        |        0.76 |             0.65 |                          0.68 |                   0.75 |                  0.55 |
+| Summary                                   |        0.86 |             0.67 |                          0.71 |                   0.72 |                  0.6  |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT1 Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+SDT Results:
+
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+|                                           |   inet mean |   distilled mean |   Multi-Distrib Sampling mean |   STANDARDUNIFORM mean |   STANDARDNORMAL mean |
+|-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------|
+| Titanic (n=9)                             |           0 |                0 |                             0 |                      0 |                     0 |
+| Medical Insurance (n=9)                   |           0 |                0 |                             0 |                      0 |                     0 |
+| Brest Cancer Wisconsin (n=9)              |           0 |                0 |                             0 |                      0 |                     0 |
+| Wisconsin Diagnostic Breast Cancer (n=10) |           0 |                0 |                             0 |                      0 |                     0 |
+| Heart Disease (n=13)                      |           0 |                0 |                             0 |                      0 |                     0 |
+| Cervical Cancer (n=15)                    |           0 |                0 |                             0 |                      0 |                     0 |
+| Loan House (n=16)                         |           0 |                0 |                             0 |                      0 |                     0 |
+| Credit Card (n=23)                        |           0 |                0 |                             0 |                      0 |                     0 |
+| Summary                                   |           0 |                0 |                             0 |                      0 |                     0 |
++-------------------------------------------+-------------+------------------+-------------------------------+------------------------+-----------------------+
+Ttest_indResult(statistic=2.8319150076668844, pvalue=0.012022357039929023)
+Ttest_indResult(statistic=2.8319150076668835, pvalue=0.014877881748296384)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+Ttest_indResult(statistic=nan, pvalue=nan)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

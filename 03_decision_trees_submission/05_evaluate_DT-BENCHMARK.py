@@ -47,17 +47,12 @@ def main():
                 
                 'maximum_depth': [3],
                 'number_of_variables':[
-                                               #3,
                                                9, 
                                                10, 
-                                               #12,
                                                13, 
                                                15, 
                                                16, 
                                                23,
-                                               #28,
-                                               #29,
-                                               #32,
                                               ],      
                 
                 
