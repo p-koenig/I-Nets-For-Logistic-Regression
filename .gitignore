@@ -1,0 +1,13 @@
+!*official_full_requirements.txt
+!*official_project_requirements.txt
+*.ipynb_checkpoints*
+*.DS_Store
+*.png
+*.pdf
+*.pkl
+*.npy
+*.hdf5
+*.eps
+*.h5
+*.out
+*.*.*
