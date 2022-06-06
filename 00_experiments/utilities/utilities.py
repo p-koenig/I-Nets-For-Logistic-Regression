@@ -31,16 +31,27 @@ import random
 from utilities.utilities import *
 
 
+from utilities.DHDT import DHDT
 
-
-def make_batch(iterable, n=1):
-    l = len(iterable)
-    for ndx in range(0, l, n):
-        yield iterable[ndx:min(ndx + n, l)]    
-        
-def sigmoid_squeeze(x, factor=3):
-    x = 1/(1+K.exp(-factor*x))
-    return x  
+def mergeDict(dict1, dict2):
+    #Merge dictionaries and keep values of common keys in list
+    newDict = {**dict1, **dict2}
+    for key, value in newDict.items():
+        if key in dict1 and key in dict2:
+            if isinstance(dict1[key], dict) and isinstance(value, dict):
+                newDict[key] = mergeDict(dict1[key], value)
+            elif isinstance(dict1[key], list) and isinstance(value, list):
+                newDict[key] = dict1[key]
+                newDict[key].extend(value)
+            elif isinstance(dict1[key], list) and not isinstance(value, list):
+                newDict[key] = dict1[key]
+                newDict[key].extend([value])
+            elif not isinstance(dict1[key], list) and isinstance(value, list):
+                newDict[key] = [dict1[key]]
+                newDict[key].extend(value)
+            else:
+                newDict[key] = [dict1[key], value]
+    return newDict
 
 
 def normalize_data(X_data):
@@ -60,7 +71,7 @@ def normalize_data(X_data):
         
     return X_data, normalizer_list
 
-def split_train_test_valid(X_data, y_data, valid_frac=0.10, test_frac=0.20, seed=42, verbose=0):
+def split_train_test_valid(X_data, y_data, valid_frac=0.10, test_frac=0.20, seed=42, verbosity=0):
     data_size = X_data.shape[0]
     test_size = int(data_size*test_frac)
     valid_size = int(data_size*valid_frac)
@@ -68,7 +79,7 @@ def split_train_test_valid(X_data, y_data, valid_frac=0.10, test_frac=0.20, seed
     X_train_with_valid, X_test, y_train_with_valid, y_test = train_test_split(X_data, y_data, test_size=test_size, random_state=seed)
     X_train, X_valid, y_train, y_valid = train_test_split(X_train_with_valid, y_train_with_valid, test_size=valid_size, random_state=seed)
 
-    if verbose > 0:
+    if verbosity > 0:
         print(X_train.shape, y_train.shape)
         print(X_valid.shape, y_valid.shape)
         print(X_test.shape, y_test.shape)    
@@ -76,7 +87,12 @@ def split_train_test_valid(X_data, y_data, valid_frac=0.10, test_frac=0.20, seed
     return X_train, y_train, X_valid, y_valid, X_test, y_test
 
 
-def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE', seed=42):#, strategy='SMOTE'
+def rebalance_data(X_train, 
+                   y_train, 
+                   balance_ratio=0.25, 
+                   strategy='SMOTE', 
+                   seed=42, 
+                   verbosity=0):#, strategy='SMOTE'
     true_labels = len(y_train[y_train >= 0.5 ]) 
     false_labels = len(y_train[y_train < 0.5 ]) 
 
@@ -84,7 +100,8 @@ def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE', seed=
     false_ratio = false_labels/(false_labels+true_labels)
     
     min_ratio = min(true_ratio, false_ratio)
-    print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
+    if verbosity > 0:
+        print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
     if min_ratio <= balance_ratio:
         from imblearn.over_sampling import RandomOverSampler, SMOTE, SMOTEN, ADASYN, BorderlineSMOTE, KMeansSMOTE, SVMSMOTE, SMOTENC
         from imblearn.combine import SMOTETomek, SMOTEENN
@@ -111,8 +128,8 @@ def rebalance_data(X_train, y_train, balance_ratio=0.25, strategy='SMOTE', seed=
 
         true_labels = len(y_train[y_train >= 0.5 ]) 
         false_labels = len(y_train[y_train < 0.5 ]) 
-
-        print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
+        if verbosity > 0:
+            print('True Ratio: ', str(true_labels/(true_labels+false_labels)))    
 
     return X_train, y_train
 
@@ -124,7 +141,8 @@ def preprocess_data(X_data,
                     y_data,
                     nominal_features,
                     ordinal_features,
-                    random_seed=42):
+                    random_seed=42,
+                    verbosity=0):
     
     start_evaluate_network_complete = time.time()
 
@@ -132,7 +150,8 @@ def preprocess_data(X_data,
     np.random.seed(random_seed)
     tf.random.set_seed(random_seed)
 
-    print('Original Data Shape (selected): ', X_data.shape)
+    if verbosity > 0:
+        print('Original Data Shape (selected): ', X_data.shape)
 
     transformer = ColumnTransformer(transformers=[('cat', OneHotEncoder(), nominal_features)], remainder='passthrough', sparse_threshold=0)
     transformer.fit(X_data)
@@ -145,8 +164,9 @@ def preprocess_data(X_data,
 
     X_data = X_data.astype(np.float64)
 
-    print('Original Data Shape (encoded): ', X_data.shape)
-    print('Original Data Class Distribution: ', y_data[y_data>=0.5].shape[0], ' (true) /', y_data[y_data<0.5].shape[0], ' (false)')
+    if verbosity > 0:
+        print('Original Data Shape (encoded): ', X_data.shape)
+        print('Original Data Class Distribution: ', y_data[y_data>=0.5].shape[0], ' (true) /', y_data[y_data<0.5].shape[0], ' (false)')
 
     X_data, normalizer_list = normalize_data(X_data)
 
@@ -158,17 +178,21 @@ def preprocess_data(X_data,
      y_test) = split_train_test_valid(X_data, 
                                       y_data, 
                                       seed=random_seed,
-                                      verbose=1)    
+                                      verbosity=verbosity)    
     
     X_train, y_train = rebalance_data(X_train, 
                                       y_train, 
                                       balance_ratio=0.25, 
-                                      strategy='SMOTE')    
+                                      strategy='SMOTE',
+                                      verbosity=verbosity)    
     
     return (X_train, y_train), (X_valid, y_valid), (X_test, y_test), normalizer_list
     
     
-def get_preprocessed_dataset(identifier=''):
+def get_preprocessed_dataset(identifier='', 
+                             random_seed=42, 
+                             config=None,
+                             verbosity=0):
     
     return_dict = {identifier: {}}
     
@@ -268,7 +292,34 @@ def get_preprocessed_dataset(identifier=''):
         X_data = data.drop(['Absenteeism time in hours'], axis = 1)
         y_data = ((data['Absenteeism time in hours'] > 4) * 1) #absenteeism_data['Absenteeism time in hours']
 
-     
+    elif identifier == 'make_classification':
+        
+        informative = np.random.randint(config['number_of_variables']//2, high=config['number_of_variables']+1) #config['data']['number_of_variables']
+        redundant = np.random.randint(0, high=config['number_of_variables']-informative+1) #0
+        repeated = config['number_of_variables']-informative-redundant # 0
+
+        n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
+
+        X_data, y_data = make_classification(n_samples=config['n_samples'], 
+                                                           n_features=config['number_of_variables'], #The total number of features. These comprise n_informative informative features, n_redundant redundant features, n_repeated duplicated features and n_features-n_informative-n_redundant-n_repeated useless features drawn at random.
+                                                           n_informative=informative,#config['data']['number_of_variables'], #The number of informative features. Each class is composed of a number of gaussian clusters each located around the vertices of a hypercube in a subspace of dimension n_informative.
+                                                           n_redundant=redundant, #The number of redundant features. These features are generated as random linear combinations of the informative features.
+                                                           n_repeated=repeated, #The number of duplicated features, drawn randomly from the informative and the redundant features.
+                                                           n_classes=2, 
+                                                           n_clusters_per_class=n_clusters_per_class, 
+                                                           #flip_y=0.0, #The fraction of samples whose class is assigned randomly. 
+                                                           #class_sep=1.0, #The factor multiplying the hypercube size. Larger values spread out the clusters/classes and make the classification task easier.
+                                                           #hypercube=False, #If True, the clusters are put on the vertices of a hypercube. If False, the clusters are put on the vertices of a random polytope.
+                                                           #shift=0.0, #Shift features by the specified value. If None, then features are shifted by a random value drawn in [-class_sep, class_sep].
+                                                           #scale=1.0, #Multiply features by the specified value. 
+                                                           shuffle=True, 
+                                                           random_state=random_seed)         
+        
+        
+        nominal_features = []
+        ordinal_features = []        
+
+    
     
     
     ((return_dict['X_train'], return_dict['y_train']),
@@ -277,6 +328,139 @@ def get_preprocessed_dataset(identifier=''):
      return_dict['normalizer_list']) = preprocess_data(X_data, 
                                                        y_data,
                                                        nominal_features,
-                                                       ordinal_features)       
+                                                       ordinal_features,
+                                                       random_seed=random_seed,
+                                                       verbosity=verbosity)       
         
     return return_dict
+
+
+def evaluate_dhdt(identifier, 
+                  random_seed_data=42, 
+                  random_seed_model=42, 
+                  config=None,
+                  verbosity=0):
+
+    if verbosity > 0:
+        print('________________________________________________________________________________________________________')   
+    
+    dataset_dict = {}
+    model_dict = {}
+
+    scores_dict = {'sklearn': {},
+                   'DHDT': {}}
+    
+    dataset_dict = get_preprocessed_dataset(identifier,
+                                            random_seed=random_seed_data,
+                                            config=config,
+                                            verbosity=verbosity)
+
+    model_dict['sklearn'] = DecisionTreeClassifier(max_depth=3, 
+                                                   random_state=random_seed_model)
+
+    model_dict['sklearn'].fit(dataset_dict['X_train'], 
+                              dataset_dict['y_train'])
+
+    scores_dict['sklearn']['accuracy'] = model_dict['sklearn'].score(dataset_dict['X_test'], 
+                                                                     dataset_dict['y_test'])
+
+
+
+    model_dict['DHDT'] = DHDT(depth=3,
+                             number_of_variables = dataset_dict['X_train'].shape[1],
+                             learning_rate=1e-3,
+                             squeeze_factor = 1,
+                             loss='binary_crossentropy',#'binary_crossentropy',
+                             optimizer='rmsprop',
+                             random_seed=random_seed_model,
+                             verbosity=verbosity)
+
+    scores_dict['history'] = model_dict['DHDT'].fit(dataset_dict['X_train'], 
+                                                  dataset_dict['y_train'], 
+                                                  batch_size=512, 
+                                                  epochs=1_000, 
+                                                  early_stopping_epochs=50, 
+                                                  valid_data=(dataset_dict['X_valid'], dataset_dict['y_valid']))
+
+    dataset_dict['y_test_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_test'])
+    scores_dict['DHDT']['accuracy'] = accuracy_score(dataset_dict['y_test'], np.round(dataset_dict['y_test_dhdt']))
+    
+    if verbosity > 0:
+        print('Test Accuracy Sklearn (' + identifier + ')', scores_dict['sklearn']['accuracy'])
+        print('Test Accuracy DHDT (' + identifier + ')', scores_dict['DHDT']['accuracy'])   
+        print('________________________________________________________________________________________________________')   
+
+    return identifier, dataset_dict, model_dict, scores_dict
+    
+    
+def evaluate_synthetic_parallel(identifier_list, 
+                              random_seed_data=42, 
+                              random_seed_model=42, 
+                              trials = 1,
+                              config=None,
+                              verbosity=0):
+
+    dataset_dict = {}
+    model_dict = {}
+
+    scores_dict = {}
+    
+    disable = True if verbosity <= 0 else False
+    for identifier in tqdm(identifier_list, desc='dataset loop', disable=disable):
+        for trial_num in range(trials):    
+            dataset_dict_trial = {}
+            model_dict_trial = {}
+
+            scores_dict_trial = {}    
+        
+            (identifier,
+             dataset_dict_trial[identifier], 
+             model_dict_trial[identifier], 
+             scores_dict_trial[identifier]) = evaluate_dhdt(identifier, 
+                                                      random_seed_data=random_seed_data, 
+                                                      random_seed_model=random_seed_model+trial_num, 
+                                                      config=config,
+                                                      verbosity=verbosity)
+            
+            if dataset_dict == {} or identifier not in dataset_dict.keys():
+                dataset_dict[identifier] = dataset_dict_trial[identifier]
+            else:
+                dataset_dict[identifier] = mergeDict(dataset_dict[identifier], dataset_dict_trial[identifier])
+                
+            if  model_dict == {} or identifier not in model_dict.keys():
+                model_dict[identifier] = model_dict_trial[identifier]
+            else:
+                model_dict[identifier] = mergeDict(model_dict[identifier], model_dict_trial[identifier])
+                
+            if  scores_dict == {} or identifier not in scores_dict.keys():
+                scores_dict[identifier] = scores_dict_trial[identifier]
+            else:
+                scores_dict[identifier] = mergeDict(scores_dict[identifier], scores_dict_trial[identifier])
+                
+        
+    return model_dict, scores_dict, dataset_dict
+
+def evaluate_real_world_parallel(identifier_list, 
+                                  random_seed_data=42, 
+                                  random_seed_model=42, 
+                                  config=None,
+                                  verbosity=0):
+
+    dataset_dict = {}
+    model_dict = {}
+
+    scores_dict = {}
+    
+    disable = True if verbosity <= 0 else False
+    for identifier in tqdm(identifier_list, desc='dataset loop', disable=disable):
+
+        (identifier,
+         dataset_dict[identifier], 
+         model_dict[identifier], 
+         scores_dict[identifier]) = evaluate_dhdt(identifier, 
+                                                  random_seed_data=random_seed_data, 
+                                                  random_seed_model=random_seed_model, 
+                                                  config=config,
+                                                  verbosity=verbosity)
+        
+    return model_dict, scores_dict, dataset_dict

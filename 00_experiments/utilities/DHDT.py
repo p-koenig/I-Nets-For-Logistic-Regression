@@ -30,6 +30,16 @@ import random
 
 from utilities.utilities import *
 
+
+def make_batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]    
+        
+def sigmoid_squeeze(x, factor=3):
+    x = 1/(1+K.exp(-factor*x))
+    return x  
+
 class DHDT(tf.Module):
     
     def __init__(
@@ -42,8 +52,7 @@ class DHDT(tf.Module):
             optimizer = 'adam',
             random_seed=42,
             verbosity=1):    
-        
-        
+                
         self.depth = depth
         self.learning_rate = learning_rate
         self.loss = tf.keras.losses.get(loss)
@@ -86,13 +95,14 @@ class DHDT(tf.Module):
         self.plotlosses = PlotLosses()    
         
     def fit(self, X_train, y_train, batch_size=256, epochs=100, early_stopping_epochs=5, valid_data=None):
-        
+                
         minimum_loss_epoch = np.inf
         epochs_without_improvement = 0    
         
         batch_size = min(batch_size, X_train.shape[0])
         
-        for current_epoch in tqdm(range(epochs), desc='epochs'):
+        disable = True if self.verbosity == -1 else False
+        for current_epoch in tqdm(range(epochs), desc='epochs', disable=disable):
             tf.random.set_seed(self.seed + current_epoch)
             X_train = tf.random.shuffle(X_train, seed=self.seed + current_epoch)
             tf.random.set_seed(self.seed + current_epoch)
