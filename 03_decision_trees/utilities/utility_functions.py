@@ -1644,9 +1644,9 @@ def generate_data_make_classification_decision_tree_trained(config, seed=42):
 
 def generate_data_make_classification(config, seed=42):
             
-    informative = config['data']['number_of_variables']#np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
-    redundant = 0#np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
-    repeated = 0#config['data']['number_of_variables']-informative-redundant # 0
+    informative = np.random.randint(config['data']['number_of_variables']//2, high=config['data']['number_of_variables']+1) #config['data']['number_of_variables']
+    redundant = np.random.randint(0, high=config['data']['number_of_variables']-informative+1) #0
+    repeated = config['data']['number_of_variables']-informative-redundant # 0
 
     n_clusters_per_class =  max(2, np.random.randint(0, high=informative//2+1)) #2
 
