@@ -1,13 +1,12 @@
-import tensorflow as tf
-import tensorflow_addons as tfa
 import numpy as np
 
 from sklearn.datasets import make_classification
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ParameterGrid
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.metrics import accuracy_score
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, LabelEncoder, OrdinalEncoder
+
 from livelossplot import PlotLosses
 
 import os
@@ -18,20 +17,42 @@ from IPython.display import Image
 from IPython.display import display, clear_output
 
 import pandas as pd
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = '' #'true'
+
 import warnings
+warnings.filterwarnings('ignore')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import logging
+
+import tensorflow as tf
+import tensorflow_addons as tfa
+
+tf.get_logger().setLevel('ERROR')
+tf.autograph.set_verbosity(3)
+
+np.seterr(all="ignore")
 
 from keras import backend as K
 from keras.utils.generic_utils import get_custom_objects
 
+
 import seaborn as sns
+sns.set_style("darkgrid")
+
 import time
 import random
-from collections.abc import Iterable
-
 
 from utilities.utilities import *
+from utilities.DHDT import *
 
+from joblib import Parallel, delayed
+
+from itertools import product
+from collections.abc import Iterable
+
+from copy import deepcopy
 
 from utilities.DHDT import DHDT
 
@@ -214,9 +235,6 @@ def get_preprocessed_dataset(identifier,
         identifier: {}
     }
     
-    
-    
-    
     if identifier == 'Cervical Cancer':
         data = pd.read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/00383/risk_factors_cervical_cancer.csv', index_col=False)#, names=feature_names
 
@@ -370,7 +388,6 @@ def get_preprocessed_dataset(identifier,
         ordinal_features = ['Sex']
 
         X_data = data.drop(['capital_gain'], axis = 1)
-
         y_data = ((data['capital_gain'] != ' <=50K') * 1)        
         
     elif identifier == 'Titanic':
@@ -611,7 +628,7 @@ def get_preprocessed_dataset(identifier,
         X_data = data.drop(['charges'], axis = 1)
         y_data = ((data['charges'] > 10_000) * 1)
 
-    elif identifier == 'Medical Insurance':
+    elif identifier == 'Bank Marketing':
 
         data = pd.read_csv('real_world_datasets/Bank Marketing/bank-full.csv', delimiter=';') #bank
 
@@ -708,7 +725,7 @@ def get_preprocessed_dataset(identifier,
         X_data = data.drop(['Class'], axis = 1)
         y_data = pd.Series(OrdinalEncoder().fit_transform(data['Class'].values.reshape(-1, 1)).flatten(), name='Class')
 
-    elif identifier == 'Wisconsin Diagnositc Breast Cancer':
+    elif identifier == 'Wisconsin Diagnostic Breast Cancer':
 
         feature_names = [
                         'ID number',
@@ -753,7 +770,7 @@ def get_preprocessed_dataset(identifier,
         X_data = data.drop(['Diagnosis'], axis = 1)
         y_data = pd.Series(OrdinalEncoder().fit_transform(data['Diagnosis'].values.reshape(-1, 1)).flatten(), name='Diagnosis')
        
-    elif identifier == 'Wisconsin Prognositc Breast Cancer':
+    elif identifier == 'Wisconsin Prognostic Breast Cancer':
 
         feature_names = [
                         'ID number',
@@ -811,7 +828,7 @@ def get_preprocessed_dataset(identifier,
                         'Rings',#		integer			+1.5 gives the age in years
                         ]
 
-        abalone_data = pd.read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data', names=feature_names, index_col=False)
+        data = pd.read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data', names=feature_names, index_col=False)
 
 
         features_select = [
@@ -945,7 +962,7 @@ def get_preprocessed_dataset(identifier,
         X_data = data.drop(['survival'], axis = 1)
         y_data = ((data['survival'] < 2) * 1)
 
-    elif identifier == 'Habermans Survival':
+    elif identifier == 'Heart Failure':
         
         data = pd.read_csv('real_world_datasets/Heart Failure/heart_failure_clinical_records_dataset.csv', delimiter=',')
 
@@ -987,6 +1004,8 @@ def get_preprocessed_dataset(identifier,
         nominal_features = []
         ordinal_features = []        
 
+    else:
+        raise SystemExit('Unknown key: ' + str(identifier))
     
     
     
@@ -1020,7 +1039,7 @@ def evaluate_dhdt(identifier,
     
     dataset_dict = get_preprocessed_dataset(identifier,
                                             random_seed=random_seed_data,
-                                            config=config,
+                                            config=config['make_classification'],
                                             verbosity=verbosity)
 
     model_dict['sklearn'] = DecisionTreeClassifier(max_depth=3, 
@@ -1029,33 +1048,54 @@ def evaluate_dhdt(identifier,
     model_dict['sklearn'].fit(dataset_dict['X_train'], 
                               dataset_dict['y_train'])
 
-    scores_dict['sklearn']['accuracy'] = model_dict['sklearn'].score(dataset_dict['X_test'], 
-                                                                     dataset_dict['y_test'])
 
 
+    model_dict['DHDT'] = DHDT(dataset_dict['X_train'].shape[1],
 
-    model_dict['DHDT'] = DHDT(depth=3,
-                             number_of_variables = dataset_dict['X_train'].shape[1],
-                             learning_rate=1e-3,
-                             squeeze_factor = 1,
-                             loss='binary_crossentropy',#'binary_crossentropy',
-                             optimizer='rmsprop',
-                             random_seed=random_seed_model,
-                             verbosity=verbosity)
+                                depth = config['dhdt']['depth'],
+
+                                learning_rate = config['dhdt']['learning_rate'],
+                                optimizer = config['dhdt']['optimizer'],
+
+                                beta_1 = config['dhdt']['beta_1'],
+                                beta_2 = config['dhdt']['beta_2'],
+
+                                squeeze_factor = config['dhdt']['squeeze_factor'],
+
+                                loss = config['dhdt']['loss'],#'mae',
+
+                                random_seed = random_seed_model,
+                                verbosity = verbosity)        
+
 
     scores_dict['history'] = model_dict['DHDT'].fit(dataset_dict['X_train'], 
                                                   dataset_dict['y_train'], 
-                                                  batch_size=512, 
-                                                  epochs=1_000, 
-                                                  early_stopping_epochs=50, 
+                                                  batch_size=config['dhdt']['batch_size'], 
+                                                  epochs=config['dhdt']['epochs'], 
+                                                  early_stopping_epochs=config['dhdt']['early_stopping_epochs'], 
                                                   valid_data=(dataset_dict['X_valid'], dataset_dict['y_valid']))
 
+    
+    
+    scores_dict['sklearn']['accuracy_test'] = model_dict['sklearn'].score(dataset_dict['X_test'], 
+                                                                     dataset_dict['y_test'])
+
+
     dataset_dict['y_test_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_test'])
-    scores_dict['DHDT']['accuracy'] = accuracy_score(dataset_dict['y_test'], np.round(dataset_dict['y_test_dhdt']))
+    scores_dict['DHDT']['accuracy_test'] = accuracy_score(dataset_dict['y_test'], np.round(dataset_dict['y_test_dhdt']))
+
+        
+    
+    scores_dict['sklearn']['accuracy_valid'] = model_dict['sklearn'].score(dataset_dict['X_valid'], 
+                                                                     dataset_dict['y_valid'])
+
+
+    dataset_dict['y_valid_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_valid'])
+    scores_dict['DHDT']['accuracy_valid'] = accuracy_score(dataset_dict['y_valid'], np.round(dataset_dict['y_valid_dhdt']))    
     
     if verbosity > 0:
-        print('Test Accuracy Sklearn (' + identifier + ')', scores_dict['sklearn']['accuracy'])
-        print('Test Accuracy DHDT (' + identifier + ')', scores_dict['DHDT']['accuracy'])   
+        print('Test Accuracy Sklearn (' + identifier + ')', scores_dict['sklearn']['accuracy_test'])
+        print('Test Accuracy DHDT (' + identifier + ')', scores_dict['DHDT']['accuracy_test'])   
         print('________________________________________________________________________________________________________')   
 
     return identifier, dataset_dict, model_dict, scores_dict
@@ -1064,7 +1104,6 @@ def evaluate_dhdt(identifier,
 def evaluate_synthetic_parallel(index,
                                random_seed_data=42, 
                                random_seed_model=42, 
-                               trials = 1,
                                config=None,
                                verbosity=0):
 
@@ -1074,7 +1113,7 @@ def evaluate_synthetic_parallel(index,
     scores_dict = {}
     
     disable = True if verbosity <= 0 else False
-    for trial_num in range(trials):    
+    for trial_num in range(config['computation']['trials']):    
         dataset_dict_trial = {}
         model_dict_trial = {}
 

@@ -1,13 +1,12 @@
-import tensorflow as tf
-import tensorflow_addons as tfa
 import numpy as np
 
 from sklearn.datasets import make_classification
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ParameterGrid
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.metrics import accuracy_score
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, LabelEncoder, OrdinalEncoder
+
 from livelossplot import PlotLosses
 
 import os
@@ -18,15 +17,42 @@ from IPython.display import Image
 from IPython.display import display, clear_output
 
 import pandas as pd
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = '' #'true'
+
 import warnings
+warnings.filterwarnings('ignore')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import logging
+
+import tensorflow as tf
+import tensorflow_addons as tfa
+
+tf.get_logger().setLevel('ERROR')
+tf.autograph.set_verbosity(3)
+
+np.seterr(all="ignore")
 
 from keras import backend as K
 from keras.utils.generic_utils import get_custom_objects
 
+
 import seaborn as sns
+sns.set_style("darkgrid")
+
 import time
 import random
+
+from utilities.utilities import *
+from utilities.DHDT import *
+
+from joblib import Parallel, delayed
+
+from itertools import product
+from collections.abc import Iterable
+
+from copy import deepcopy
 
 from utilities.utilities import *
 
@@ -44,18 +70,31 @@ class DHDT(tf.Module):
     
     def __init__(
             self,
-            depth=3,
-            number_of_variables = 5,
-            squeeze_factor = 5,
-            learning_rate=1e-3,
-            loss='binary_crossentropy',#'mae',
+            number_of_variables,
+        
+            depth = 3,
+        
+            learning_rate = 1e-3,
             optimizer = 'adam',
-            random_seed=42,
-            verbosity=1):    
+        
+            beta_1 = 100,
+            beta_2 = 100,
+        
+            squeeze_factor = 1,
+        
+            loss = 'binary_crossentropy',#'mae',
+        
+            random_seed = 42,
+            verbosity = 1):    
                 
         self.depth = depth
+        
         self.learning_rate = learning_rate
         self.loss = tf.keras.losses.get(loss)
+        
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        
         self.seed = random_seed
         self.verbosity = verbosity
         self.number_of_variables = number_of_variables
@@ -177,7 +216,7 @@ class DHDT(tf.Module):
             for internal_node_index in path: 
                 #tf.print(path, internal_node_index)
                 #split_index = tfa.seq2seq.hardmax(self.split_index_array[self.number_of_variables*internal_node_index:self.number_of_variables*(internal_node_index+1)])
-                split_index = tfa.activations.sparsemax(100 * self.split_index_array[self.number_of_variables*internal_node_index:self.number_of_variables*(internal_node_index+1)])                        
+                split_index = tfa.activations.sparsemax(self.beta_1 * self.split_index_array[self.number_of_variables*internal_node_index:self.number_of_variables*(internal_node_index+1)])                        
 
                 #split_values = tf.sigmoid(self.split_values)[self.number_of_variables*internal_node_index:self.number_of_variables*(internal_node_index+1)]
                 split_values = sigmoid_squeeze(self.split_values[self.number_of_variables*internal_node_index:self.number_of_variables*(internal_node_index+1)]-0.5, self.squeeze_factor)
@@ -191,7 +230,7 @@ class DHDT(tf.Module):
                 #tf.print('respective_input_value', respective_input_value)
 
                 #split_decision = tf.keras.activations.relu(tf.math.sign(respective_input_value - internal_node_split_value - 0.5))
-                split_decision = tf.sigmoid(100 * (respective_input_value - internal_node_split_value - 0.5))
+                split_decision = tf.sigmoid(self.beta_2 * (respective_input_value - internal_node_split_value - 0.5))
                 #split_decision = tf.round(tf.sigmoid(respective_input_value - internal_node_split_value - 0.5))
                 #tf.print('split_decision', split_decision)
 
