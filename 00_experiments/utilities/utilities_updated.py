@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities import *
-from utilities.DHDT import *
+from utilities.utilities_updated import *
+from utilities.DHDT_updated import *
 
 from joblib import Parallel, delayed
 
@@ -1056,6 +1056,8 @@ def evaluate_dhdt(identifier,
 
                                 learning_rate = config['dhdt']['learning_rate'],
                                 optimizer = config['dhdt']['optimizer'],
+                              
+                                initializer = config['dhdt']['initializer'],
 
                                 beta_1 = config['dhdt']['beta_1'],
                                 beta_2 = config['dhdt']['beta_2'],
