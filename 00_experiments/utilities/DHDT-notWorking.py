@@ -200,21 +200,18 @@ class DHDT(tf.Module):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
-
-        split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
-        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
-        split_values_complete = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
         
+        #self.split_values = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
+        self.split_values = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+        self.split_index_array = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)      
+
         function_values_dhdt = np.zeros(shape=X.shape[0])
         for leaf_index, path in enumerate(paths):
             path_result_left = 1
             path_result_right = 1
-            for internal_node_index in path: 
-                #split_index = tfa.activations.sparsemax(self.beta_1 * self.split_index_array[internal_node_index])
-                #split_values = sigmoid_squeeze(self.split_values[internal_node_index]-0.5, self.squeeze_factor)
-
-                split_index = split_index_array_complete[internal_node_index]
-                split_values = split_values_complete[internal_node_index]
+            for internal_node_index in path:  
+                split_values = self.split_values[internal_node_index]
+                split_index = self.split_index_array[internal_node_index]
                 
                 internal_node_split_value = tf.reduce_sum(split_index*split_values)
                 respective_input_value = tf.reduce_sum(split_index*X, axis=1)
@@ -231,25 +228,22 @@ class DHDT(tf.Module):
     
     @tf.function(jit_compile=True)                    
     def forward_hard(self, X):
-        X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
-        
-        paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
+        X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)       
 
-        split_index_array_complete = tfa.seq2seq.hardmax(self.split_index_array)
-        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
-        split_values_complete = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
+        paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
         
+        #self.split_values = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
+        self.split_values = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+        self.split_index_array = tfa.seq2seq.hardmax(self.split_index_array)             
+
         function_values_dhdt = np.zeros(shape=X.shape[0])
         for leaf_index, path in enumerate(paths):
             path_result_left = 1
             path_result_right = 1
             for internal_node_index in path: 
-                #split_index = tfa.seq2seq.hardmax(self.split_index_array[internal_node_index])
-                #split_values = sigmoid_squeeze(self.split_values[internal_node_index]-0.5, self.squeeze_factor)
-                
-                split_index = split_index_array_complete[internal_node_index]
-                split_values = split_values_complete[internal_node_index]
-                
+                split_values = self.split_values[internal_node_index]
+                split_index = self.split_index_array[internal_node_index]
+
                 internal_node_split_value = tf.reduce_sum(split_index*split_values)
                 respective_input_value = tf.reduce_sum(split_index*X, axis=1)
 
