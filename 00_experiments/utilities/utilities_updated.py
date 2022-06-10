@@ -1,5 +1,5 @@
 import numpy as np
-
+import sklearn
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split, ParameterGrid
 from sklearn.tree import DecisionTreeClassifier, plot_tree
@@ -54,7 +54,7 @@ from collections.abc import Iterable
 
 from copy import deepcopy
 
-from utilities.DHDT import DHDT
+from utilities.DHDT_updated import DHDT
 
 def flatten_list(l):
     
@@ -1026,6 +1026,7 @@ def evaluate_dhdt(identifier,
                   random_seed_data=42, 
                   random_seed_model=42, 
                   config=None,
+                  metrics=['accuracy', 'f1'],
                   verbosity=0):
 
     if verbosity > 0:
@@ -1058,7 +1059,8 @@ def evaluate_dhdt(identifier,
                                 optimizer = config['dhdt']['optimizer'],
                               
                                 initializer = config['dhdt']['initializer'],
-
+                                initializer_index = config['dhdt']['initializer_index'],
+                              
                                 beta_1 = config['dhdt']['beta_1'],
                                 beta_2 = config['dhdt']['beta_2'],
 
@@ -1077,28 +1079,36 @@ def evaluate_dhdt(identifier,
                                                   early_stopping_epochs=config['dhdt']['early_stopping_epochs'], 
                                                   valid_data=(dataset_dict['X_valid'], dataset_dict['y_valid']))
 
-    
-    
-    scores_dict['sklearn']['accuracy_test'] = model_dict['sklearn'].score(dataset_dict['X_test'], 
-                                                                     dataset_dict['y_test'])
-
 
     dataset_dict['y_test_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_test'])
-    scores_dict['DHDT']['accuracy_test'] = accuracy_score(dataset_dict['y_test'], np.round(dataset_dict['y_test_dhdt']))
-
-        
-    
-    scores_dict['sklearn']['accuracy_valid'] = model_dict['sklearn'].score(dataset_dict['X_valid'], 
-                                                                     dataset_dict['y_valid'])
-
-
     dataset_dict['y_valid_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_valid'])
-    scores_dict['DHDT']['accuracy_valid'] = accuracy_score(dataset_dict['y_valid'], np.round(dataset_dict['y_valid_dhdt']))    
+
+    dataset_dict['y_test_sklearn'] = model_dict['sklearn'].predict(dataset_dict['X_test'])
+    dataset_dict['y_valid_sklearn'] = model_dict['sklearn'].predict(dataset_dict['X_valid'])     
     
-    if verbosity > 0:
-        print('Test Accuracy Sklearn (' + identifier + ')', scores_dict['sklearn']['accuracy_test'])
-        print('Test Accuracy DHDT (' + identifier + ')', scores_dict['DHDT']['accuracy_test'])   
-        print('________________________________________________________________________________________________________')   
+    for metric in metrics:
+        
+        if metric in ['accuracy', 'f1']:
+            y_test_dhdt = np.round(dataset_dict['y_test_dhdt'])
+            y_valid_dhdt = np.round(dataset_dict['y_valid_dhdt'])
+            y_test_sklearn = np.round(dataset_dict['y_test_sklearn'])
+            y_valid_sklearn = np.round(dataset_dict['y_valid_sklearn'])         
+        else:
+            y_test_dhdt = dataset_dict['y_test_dhdt']
+            y_valid_dhdt = dataset_dict['y_valid_dhdt']
+            y_test_sklearn = dataset_dict['y_test_sklearn']
+            y_valid_sklearn =    dataset_dict['y_valid_sklearn']                
+        
+        scores_dict['sklearn'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_sklearn)
+        scores_dict['DHDT'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_dhdt)
+
+        scores_dict['sklearn'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_sklearn)   
+        scores_dict['DHDT'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_dhdt)
+
+        if verbosity > 0:
+            print('Test ' + metric + ' Sklearn (' + identifier + ')', scores_dict['sklearn'][metric + '_test'])
+            print('Test ' + metric + ' DHDT (' + identifier + ')', scores_dict['DHDT'][metric + '_test'])   
+            print('________________________________________________________________________________________________________')   
 
     return identifier, dataset_dict, model_dict, scores_dict
     
@@ -1107,6 +1117,7 @@ def evaluate_synthetic_parallel(index,
                                random_seed_data=42, 
                                random_seed_model=42, 
                                config=None,
+                               metrics=['accuracy', 'f1'],
                                verbosity=0):
 
     dataset_dict = {}
@@ -1128,6 +1139,7 @@ def evaluate_synthetic_parallel(index,
                                                   random_seed_data=random_seed_data, 
                                                   random_seed_model=random_seed_model+trial_num, 
                                                   config=config,
+                                                  metrics=metrics,
                                                   verbosity=verbosity)
 
         if dataset_dict == {}:
@@ -1152,6 +1164,7 @@ def evaluate_real_world_parallel(identifier_list,
                                   random_seed_data=42, 
                                   random_seed_model=42, 
                                   config=None,
+                                  metrics=['accuracy', 'f1'],
                                   verbosity=0):
 
     dataset_dict = {}
@@ -1169,12 +1182,15 @@ def evaluate_real_world_parallel(identifier_list,
                                                   random_seed_data=random_seed_data, 
                                                   random_seed_model=random_seed_model, 
                                                   config=config,
+                                                  metrics=metrics,
                                                   verbosity=verbosity)
         
     return model_dict, scores_dict, dataset_dict
 
 
-def evaluate_parameter_setting_synthetic(parameter_setting):
+def evaluate_parameter_setting_synthetic(parameter_setting, 
+                                         config, 
+                                         metrics=['accuracy', 'f1']):
     
     config_parameter_setting = deepcopy(config)
     
@@ -1184,11 +1200,12 @@ def evaluate_parameter_setting_synthetic(parameter_setting):
     
     
     evaluation_results_synthetic = []
-    for index in range(config['computation']['num_eval']):
+    for index in range(config['make_classification']['num_eval']):
         evaluation_result = evaluate_synthetic_parallel(index = index,
                                                         random_seed_data = config['computation']['random_seed']+index,
                                                         random_seed_model = config['computation']['random_seed'],#+random_seed_model,
                                                         config = config_parameter_setting,
+                                                        metrics = metrics,
                                                         verbosity = -1)
         evaluation_results_synthetic.append(evaluation_result)
     
@@ -1197,7 +1214,7 @@ def evaluate_parameter_setting_synthetic(parameter_setting):
     #                                                                                            random_seed_data = config['computation']['random_seed']+index,
     #                                                                                            random_seed_model = config['computation']['random_seed'],#+random_seed_model,
     #                                                                                            config = config_parameter_setting,
-    #                                                                                            verbosity = -1) for index in range(config['computation']['num_eval']))
+    #                                                                                            verbosity = -1) for index in range(config['make_classification']['num_eval']))
 
     
     for i, synthetic_result in enumerate(evaluation_results_synthetic):
@@ -1212,38 +1229,50 @@ def evaluate_parameter_setting_synthetic(parameter_setting):
     
     del synthetic_result, evaluation_results_synthetic
     
-    metrics = ['accuracy_valid']
-    index = [i for i in range(config['computation']['num_eval'])]
+    
+    metric_identifer = '_valid'
+
+    index = [i for i in range(config['make_classification']['num_eval'])]
     columns = flatten_list([[[approach + ' ' + metric + '_mean', approach + ' ' + metric + '_max', approach + ' ' + metric + '_std'] for metric in metrics] for approach in ['DHDT', 'sklearn']])
 
-    scores_DHDT = [scores_dict_synthetic[i]['DHDT'][metrics[0]] for i in range(config['computation']['num_eval'])]
 
-    scores_sklearn = [scores_dict_synthetic[i]['sklearn'][metrics[0]] for i in range(config['computation']['num_eval'])]
+    results_DHDT = None
+    results_sklearn = None
+    for metric in metrics:
+        scores_DHDT = [scores_dict_synthetic[i]['DHDT'][metric + metric_identifer] for i in range(config['make_classification']['num_eval'])]
 
-    scores_DHDT_mean = np.mean(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
-    scores_sklearn_mean = np.mean(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+        scores_sklearn = [scores_dict_synthetic[i]['sklearn'][metric + metric_identifer] for i in range(config['make_classification']['num_eval'])]
 
-    scores_DHDT_max = np.max(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
-    scores_sklearn_max = np.max(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+        scores_DHDT_mean = np.mean(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
+        scores_sklearn_mean = np.mean(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
 
-    scores_DHDT_std = np.std(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['num_eval'])
-    scores_sklearn_std = np.std(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['num_eval'])
+        scores_DHDT_max = np.max(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
+        scores_sklearn_max = np.max(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
 
-    results_DHDT = np.vstack([scores_DHDT_mean, scores_DHDT_max, scores_DHDT_std])
-    results_sklearn = np.vstack([scores_sklearn_mean, scores_sklearn_max, scores_sklearn_std])
+        scores_DHDT_std = np.std(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+        scores_sklearn_std = np.std(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
 
+        results_DHDT_by_metric = np.vstack([scores_DHDT_mean, scores_DHDT_max, scores_DHDT_std])
+        results_sklearn_by_metric = np.vstack([scores_sklearn_mean, scores_sklearn_max, scores_sklearn_std])
 
-    scores_dataframe_synthetic = pd.DataFrame(data=np.vstack([results_DHDT, results_sklearn]).T, index = index, columns = columns)
-    #display(scores_dataframe_synthetic)
-    #display(scores_dataframe_synthetic[scores_dataframe_synthetic.columns[1::3]])
-    #display(scores_dataframe_synthetic.describe())    
+        if results_DHDT is None and results_sklearn is None:
+            results_DHDT = results_DHDT_by_metric
+            results_sklearn = results_sklearn_by_metric
+        else:
+            results_DHDT = np.vstack([results_DHDT, results_DHDT_by_metric])
+            results_sklearn = np.vstack([results_sklearn, results_sklearn_by_metric])
+
+    scores_dataframe_synthetic = pd.DataFrame(data=np.vstack([results_DHDT, results_sklearn]).T, index = index, columns = columns)    
     
     del model_dict_synthetic, scores_dict_synthetic, dataset_dict_synthetic
     
-    return np.mean(scores_DHDT_mean), np.mean(scores_sklearn_mean), parameter_setting
+    return scores_dataframe_synthetic, parameter_setting
     
     
-def evaluate_parameter_setting_real_world(parameter_setting, identifier):
+def evaluate_parameter_setting_real_world(parameter_setting, 
+                                          identifier, 
+                                          config, 
+                                          metrics=['accuracy', 'f1']):
     
     config_parameter_setting = deepcopy(config)
     
@@ -1257,6 +1286,7 @@ def evaluate_parameter_setting_real_world(parameter_setting, identifier):
         evaluation_result = evaluate_real_world_parallel(identifier_list=[identifier], 
                                                            random_seed_model=config['computation']['random_seed']+i,
                                                            config = config_parameter_setting,
+                                                           metrics = metrics,
                                                            verbosity = -1)
         evaluation_results_real_world.append(evaluation_result)
         
@@ -1269,6 +1299,10 @@ def evaluate_parameter_setting_real_world(parameter_setting, identifier):
 
 
     
+
+
+
+
     for i, real_world_result in enumerate(evaluation_results_real_world):
         if i == 0:
             model_dict_real_world = real_world_result[0]
@@ -1278,35 +1312,56 @@ def evaluate_parameter_setting_real_world(parameter_setting, identifier):
             model_dict_real_world = mergeDict(model_dict_real_world, real_world_result[0])
             scores_dict_real_world = mergeDict(scores_dict_real_world, real_world_result[1])
             dataset_dict_real_world = mergeDict(dataset_dict_real_world, real_world_result[2])    
-    
+
     del real_world_result, evaluation_results_real_world
-    
-    metrics = ['accuracy_valid']
+
+    metric_identifer = '_valid'
+
     index = [identifier]
     columns = flatten_list([[[approach + ' ' + metric + '_mean', approach + ' ' + metric + '_max', approach + ' ' + metric + '_std'] for metric in metrics] for approach in ['DHDT', 'sklearn']])
 
-    scores_DHDT = [scores_dict_real_world[identifier]['DHDT'][metrics[0]] for identifier in [identifier]]
 
-    scores_sklearn = [scores_dict_real_world[identifier]['sklearn'][metrics[0]] for identifier in [identifier]]
+    results_DHDT = None
+    results_sklearn = None
+    for metric in metrics:
+        scores_DHDT = [scores_dict_real_world[identifier]['DHDT'][metric + metric_identifer] for identifier in [identifier]]
 
-    scores_DHDT_mean = np.mean(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
-    scores_sklearn_mean = np.mean(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+        scores_sklearn = [scores_dict_real_world[identifier]['sklearn'][metric + metric_identifer] for identifier in [identifier]]    
 
-    scores_DHDT_max = np.max(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
-    scores_sklearn_max = np.max(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+        scores_DHDT_mean = np.mean(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
+        scores_sklearn_mean = np.mean(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
 
-    scores_DHDT_std = np.std(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
-    scores_sklearn_std = np.std(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
-    
-    results_DHDT = np.vstack([scores_DHDT_mean, scores_DHDT_max, scores_DHDT_std])
-    results_sklearn = np.vstack([scores_sklearn_mean, scores_sklearn_max, scores_sklearn_std])
+        scores_DHDT_max = np.max(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
+        scores_sklearn_max = np.max(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+
+        scores_DHDT_std = np.std(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+        scores_sklearn_std = np.std(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+
+        results_DHDT_by_metric = np.vstack([scores_DHDT_mean, scores_DHDT_max, scores_DHDT_std])
+        results_sklearn_by_metric = np.vstack([scores_sklearn_mean, scores_sklearn_max, scores_sklearn_std])
+
+        if results_DHDT is None and results_sklearn is None:
+            results_DHDT = results_DHDT_by_metric
+            results_sklearn = results_sklearn_by_metric
+        else:
+            results_DHDT = np.vstack([results_DHDT, results_DHDT_by_metric])
+            results_sklearn = np.vstack([results_sklearn, results_sklearn_by_metric])
 
     scores_dataframe_real_world = pd.DataFrame(data=np.vstack([results_DHDT, results_sklearn]).T, index = index, columns = columns)
     #display(scores_dataframe_real_world)
     #display(scores_dataframe_real_world[scores_dataframe_real_world.columns[1::3]])    
-    
+
     del model_dict_real_world, scores_dict_real_world, dataset_dict_real_world
+
+    #return_dict = {
+    #                'DHDT score (mean)': np.mean(scores_DHDT_mean), 
+    #                'Sklearn score (mean)': np.mean(scores_sklearn_mean), 
+    #                'DHDT score (mean of max)': np.mean(scores_DHDT_max), 
+    #                'Parameters': parameter_setting
+    #              }
     
-    return np.mean(scores_DHDT_mean), np.mean(scores_sklearn_mean), parameter_setting
+    return scores_dataframe_real_world, parameter_setting
+
+
     
     

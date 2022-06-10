@@ -62,9 +62,13 @@ def make_batch(iterable, n=1):
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx + n, l)]    
         
-def sigmoid_squeeze(x, factor=3):
-    x = 1/(1+K.exp(-factor*x))
+def sigmoid(x, factor=1, shift_horizontal=0.5):
+    x = 1/(1+K.exp(-factor*(x-0.5)))
     return x  
+
+def tanh(x, factor=1, shift_horizontal=0.5, shift_vertical=1):
+    x = (K.exp(factor*(x-0.5))-K.exp(-factor*(x-0.5)))/(K.exp(factor*(x-0.5))+K.exp(-factor*(x-0.5))) + shift_vertical
+    return x 
 
 class DHDT(tf.Module):
     
@@ -80,6 +84,7 @@ class DHDT(tf.Module):
             beta_1 = 100,
             beta_2 = 100,
         
+            activation = 'sigmoid',
             squeeze_factor = 1,
         
             loss = 'binary_crossentropy',#'mae',
@@ -101,6 +106,8 @@ class DHDT(tf.Module):
         self.seed = random_seed
         self.verbosity = verbosity
         self.number_of_variables = number_of_variables
+        
+        self.activation = activation
         self.squeeze_factor = squeeze_factor
         
         self.internal_node_num_ = 2 ** self.depth - 1 
@@ -203,7 +210,10 @@ class DHDT(tf.Module):
 
         split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
-        split_values_complete = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
+        if self.activation == 'sigmoid':
+            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+        elif self.activation == 'tanh':
+            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)
         
         function_values_dhdt = np.zeros(shape=X.shape[0])
         for leaf_index, path in enumerate(paths):
@@ -237,8 +247,11 @@ class DHDT(tf.Module):
 
         split_index_array_complete = tfa.seq2seq.hardmax(self.split_index_array)
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
-        split_values_complete = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
-        
+        if self.activation == 'sigmoid':
+            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+        elif self.activation == 'tanh':
+            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)
+            
         function_values_dhdt = np.zeros(shape=X.shape[0])
         for leaf_index, path in enumerate(paths):
             path_result_left = 1
@@ -279,17 +292,17 @@ class DHDT(tf.Module):
         #tf.print('current_loss', current_loss, summarize=-1)
         grads = tape.gradient(current_loss, self.leaf_classes_array)
         self.optimizer.apply_gradients(zip([grads], [self.leaf_classes_array]))
-        #tf.print('grads', grads, summarize=-1)        
-        
+        if self.verbosity > 3:
+            tf.print('grads leaf_classes_array', np.round(grads, 5), summarize=-1)           
         grads = tape.gradient(current_loss, self.split_values)
         self.optimizer.apply_gradients(zip([grads], [self.split_values]))
-        #tf.print('grads', tf.reshape(grads, (self.internal_node_num_, self.number_of_variables)), summarize=-1)
-        grads = tape.gradient(current_loss, self.split_index_array)
+        if self.verbosity > 3:
+            tf.print('grads split_values', np.round(grads, 5), summarize=-1)   
+            grads = tape.gradient(current_loss, self.split_index_array)
         self.optimizer.apply_gradients(zip([grads], [self.split_index_array]))
-        #tf.print('grads', tf.reshape(grads, (self.internal_node_num_, self.number_of_variables)), summarize=-1)
-
-        #                          global_step=tf.compat.v1.train.get_or_create_global_step())     
-        
+        if self.verbosity > 3:
+            tf.print('grads split_index_array', np.round(grads, 5), summarize=-1) 
+            
         return current_loss
         
     def plot(self, normalizer_list=None, path='./dt_plot.png'):
