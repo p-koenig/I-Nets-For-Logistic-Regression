@@ -54,8 +54,6 @@ from collections.abc import Iterable
 
 from copy import deepcopy
 
-from utilities.DHDT import DHDT
-
 def flatten_list(l):
     
     def flatten(l):
@@ -1106,8 +1104,8 @@ def evaluate_dhdt(identifier,
         scores_dict['DHDT'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_dhdt)
 
         if verbosity > 0:
-            print('Test ' + metric + ' Sklearn (' + identifier + ')', scores_dict['sklearn'][metric + 'test'])
-            print('Test ' + metric + ' DHDT (' + identifier + ')', scores_dict['DHDT'][metric + 'test'])   
+            print('Test ' + metric + ' Sklearn (' + identifier + ')', scores_dict['sklearn'][metric + '_test'])
+            print('Test ' + metric + ' DHDT (' + identifier + ')', scores_dict['DHDT'][metric + '_test'])   
             print('________________________________________________________________________________________________________')   
 
     return identifier, dataset_dict, model_dict, scores_dict
