@@ -54,19 +54,17 @@ from collections.abc import Iterable
 
 from copy import deepcopy
 
+from utilities.utilities import *
+
 
 def make_batch(iterable, n=1):
     l = len(iterable)
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx + n, l)]    
         
-def sigmoid(x, factor=1, shift_horizontal=0.5):
-    x = 1/(1+K.exp(-factor*(x-0.5)))
+def sigmoid_squeeze(x, factor=3):
+    x = 1/(1+K.exp(-factor*x))
     return x  
-
-def tanh(x, factor=1, shift_horizontal=0.5, shift_vertical=1):
-    x = (K.exp(factor*(x-0.5))-K.exp(-factor*(x-0.5)))/(K.exp(factor*(x-0.5))+K.exp(-factor*(x-0.5))) + shift_vertical
-    return x 
 
 class DHDT(tf.Module):
     
@@ -82,7 +80,6 @@ class DHDT(tf.Module):
             beta_1 = 100,
             beta_2 = 100,
         
-            activation = 'sigmoid',
             squeeze_factor = 1,
         
             loss = 'binary_crossentropy',#'mae',
@@ -104,8 +101,6 @@ class DHDT(tf.Module):
         self.seed = random_seed
         self.verbosity = verbosity
         self.number_of_variables = number_of_variables
-        
-        self.activation = activation
         self.squeeze_factor = squeeze_factor
         
         self.internal_node_num_ = 2 ** self.depth - 1 
@@ -113,6 +108,10 @@ class DHDT(tf.Module):
         
         tf.random.set_seed(self.seed)
                         
+        maximum_depth = self.depth
+        leaf_node_num_ = 2 ** maximum_depth
+        internal_node_num_ = 2 ** maximum_depth - 1
+                
         #internal_nodes, leaf_nodes = self.get_shaped_parameters_for_decision_tree(dt_params_activation)   
         
         self.split_values = tf.Variable(tf.keras.initializers.get({'class_name': initializer, 'config': {'seed': self.seed}})(shape=(self.internal_node_num_, self.number_of_variables)),
@@ -200,123 +199,71 @@ class DHDT(tf.Module):
     def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
+        paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
+
         split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
-
-        if self.activation == 'sigmoid':
-            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
-        elif self.activation == 'tanh':
-            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)        
+        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+        split_values_complete = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
         
-        X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
+        function_values_dhdt = np.zeros(shape=X.shape[0])
+        for leaf_index, path in enumerate(paths):
+            path_result_left = 1
+            path_result_right = 1
+            for internal_node_index in path: 
+                #split_index = tfa.activations.sparsemax(self.beta_1 * self.split_index_array[internal_node_index])
+                #split_values = sigmoid_squeeze(self.split_values[internal_node_index]-0.5, self.squeeze_factor)
+
+                split_index = split_index_array_complete[internal_node_index]
+                split_values = split_values_complete[internal_node_index]
+                
+                internal_node_split_value = tf.reduce_sum(split_index*split_values)
+                respective_input_value = tf.reduce_sum(split_index*X, axis=1)
+
+                split_decision = tf.sigmoid(self.beta_2 * (respective_input_value - internal_node_split_value - 0.5))
+
+                path_result_left *= split_decision
+                path_result_right *= (1 - split_decision)
+
+            function_values_dhdt += self.leaf_classes_array[leaf_index*2] * path_result_left + self.leaf_classes_array[leaf_index*2+1] * path_result_right
         
-        split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
-        
-        internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater?
-
-        #tf.print(internal_node_result_complete, summarize=-1)
-        
-        begin_idx = 0
-        end_idx = 1
-
-        layer_result = internal_node_result_complete[begin_idx:end_idx,:]
-
-        layer_result_combined = tf.reshape(tf.stack([layer_result, (1-layer_result)], axis=1), [2**1, X.shape[0]])
-
-        path_results_complete = layer_result_combined
-
-        begin_idx = end_idx
-        end_idx = begin_idx + 2 ** 1
-
-        #print('___________________')
-        #print(path_results_complete)
-        #print('___________________')
-        
-        #print('self.depth', self.depth)
-        for layer_idx in range(1, self.depth):
-            #print('layer_idx', layer_idx)
-            layer_result = internal_node_result_complete[begin_idx:end_idx,:]
-
-            layer_result_combined = tf.stack([layer_result, (1-layer_result)], axis=1)
-            layer_result_combined = tf.reshape(layer_result_combined, [2**(layer_idx+1),X.shape[0]])
-
-            path_results_complete_reshaped = tf.split(path_results_complete, 2**(layer_idx))
-            layer_result_combined_reshaped = tf.split(layer_result_combined, 2**(layer_idx))
-            
-            path_results_complete = tf.reshape(tf.multiply(path_results_complete_reshaped, layer_result_combined_reshaped),  [2**(layer_idx+1), X.shape[0]])
-
-            begin_idx = end_idx
-            end_idx = begin_idx + 2 ** (layer_idx + 1)
-
-            #print('path_results_complete', path_results_complete)
-            #print('___________________')
-
-            
-            #tf.print(path_results_complete, summarize=-1)
-            
-        #function_values_dhdt = tf.reduce_sum(path_results_complete*tf.expand_dims(self.leaf_classes_array, 1), axis=0)
-        function_values_dhdt = tf.reduce_sum(tf.transpose(path_results_complete)*self.leaf_classes_array, axis=1)
-            
         return function_values_dhdt  
            
     
     @tf.function(jit_compile=True)                    
     def forward_hard(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
+        
+        paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
 
         split_index_array_complete = tfa.seq2seq.hardmax(self.split_index_array)
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
-        if self.activation == 'sigmoid':
-            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
-        elif self.activation == 'tanh':
-            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)        
+        split_values_complete = sigmoid_squeeze(self.split_values-0.5, self.squeeze_factor)
         
-        X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
+        function_values_dhdt = np.zeros(shape=X.shape[0])
+        for leaf_index, path in enumerate(paths):
+            path_result_left = 1
+            path_result_right = 1
+            for internal_node_index in path: 
+                #split_index = tfa.seq2seq.hardmax(self.split_index_array[internal_node_index])
+                #split_values = sigmoid_squeeze(self.split_values[internal_node_index]-0.5, self.squeeze_factor)
+                
+                split_index = split_index_array_complete[internal_node_index]
+                split_values = split_values_complete[internal_node_index]
+                
+                internal_node_split_value = tf.reduce_sum(split_index*split_values)
+                respective_input_value = tf.reduce_sum(split_index*X, axis=1)
+
+                split_decision = tf.round(tf.sigmoid(respective_input_value - internal_node_split_value - 0.5))
+
+
+                path_result_left *= split_decision
+                path_result_right *= (1 - split_decision)
+
+            function_values_dhdt += self.leaf_classes_array[leaf_index*2] * path_result_left + self.leaf_classes_array[leaf_index*2+1] * path_result_right
+
         
-        split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
-        
-        internal_node_result_complete = tf.round(tf.sigmoid(X_by_index - split_values_by_index - 0.5)) ##tf.greater?
-
-        #tf.print(internal_node_result_complete, summarize=-1)
-        
-        begin_idx = 0
-        end_idx = 1
-
-        layer_result = internal_node_result_complete[begin_idx:end_idx,:]
-
-        layer_result_combined = tf.reshape(tf.stack([layer_result, (1-layer_result)], axis=1), [2**1, X.shape[0]])
-
-        path_results_complete = layer_result_combined
-
-        begin_idx = end_idx
-        end_idx = begin_idx + 2 ** (0 + 1)
-
-        #print('___________________')
-        #print(path_results_complete)
-        #print('___________________')
-        
-        #print('self.depth', self.depth)
-        for layer_idx in range(1, self.depth):
-            #print('layer_idx', layer_idx)
-            layer_result = internal_node_result_complete[begin_idx:end_idx,:]
-
-            layer_result_combined = tf.stack([layer_result, (1-layer_result)], axis=1)
-            layer_result_combined = tf.reshape(layer_result_combined, [2**(layer_idx+1),X.shape[0]])
-
-            path_results_complete = tf.reshape(tf.multiply(tf.split(path_results_complete, 2**(layer_idx)), tf.split(layer_result_combined, 2**(layer_idx))),  [2**(layer_idx+1),X.shape[0]])
-
-            begin_idx = end_idx
-            end_idx = begin_idx + 2 ** (layer_idx + 1)
-
-            #print('path_results_complete', path_results_complete)
-            #print('___________________')
-
-            
-            #tf.print(path_results_complete, summarize=-1)
-            
-        function_values_dhdt = tf.reduce_sum(path_results_complete*tf.expand_dims(self.leaf_classes_array, 1), axis=0)        
-        
-        return function_values_dhdt
-        
+        return function_values_dhdt  
+               
     def predict(self, X):
         return tf.sigmoid(self.forward_hard(X))
         
@@ -330,23 +277,18 @@ class DHDT(tf.Module):
                 current_loss = self.loss(y, tf.sigmoid(predicted))
         #tf.print('predicted', predicted)
         #tf.print('current_loss', current_loss, summarize=-1)
-        
-
-        
         grads = tape.gradient(current_loss, self.leaf_classes_array)
         self.optimizer.apply_gradients(zip([grads], [self.leaf_classes_array]))
-        if self.verbosity > 3:
-            tf.print('grads leaf_classes_array', np.round(grads, 5), summarize=-1)       
-            
+        #tf.print('grads', grads, summarize=-1)        
+        
         grads = tape.gradient(current_loss, self.split_values)
         self.optimizer.apply_gradients(zip([grads], [self.split_values]))
-        if self.verbosity > 3:
-            tf.print('grads split_values', np.round(grads, 5), summarize=-1)        
-            
+        #tf.print('grads', tf.reshape(grads, (self.internal_node_num_, self.number_of_variables)), summarize=-1)
         grads = tape.gradient(current_loss, self.split_index_array)
         self.optimizer.apply_gradients(zip([grads], [self.split_index_array]))
-        if self.verbosity > 3:
-            tf.print('grads split_index_array', np.round(grads, 5), summarize=-1)
+        #tf.print('grads', tf.reshape(grads, (self.internal_node_num_, self.number_of_variables)), summarize=-1)
+
+        #                          global_step=tf.compat.v1.train.get_or_create_global_step())     
         
         return current_loss
         
@@ -354,16 +296,19 @@ class DHDT(tf.Module):
         from anytree import Node, RenderTree
         from anytree.exporter import DotExporter
 
-        split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(self.split_index_array)
-        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
-        if self.activation == 'sigmoid':
-            split_values_list_by_internal_node = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
-        elif self.activation == 'tanh':
-            split_values_list_by_internal_node = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)                
-        #tf.print('split_index_list_by_internal_node_max', split_index_list_by_internal_node_max)
-        #tf.print('split_values_list_by_internal_node', split_values_list_by_internal_node)
+        internal_node_num_ = 2 ** self.depth - 1 
+        
+        #split_values = self.split_values
+        split_values = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+        split_values_list_by_internal_node = tf.split(split_values, internal_node_num_)
+
+        split_index_array = self.split_index_array 
+        split_index_list_by_internal_node = tf.split(split_index_array, internal_node_num_)         
+
+        split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(split_index_list_by_internal_node)#tfa.activations.sparsemax(split_index_list_by_internal_node)
+
         splits = tf.stack(tf.multiply(split_values_list_by_internal_node, split_index_list_by_internal_node_max))
-        #tf.print('splits', splits)
+
         
         splits = splits.numpy()
         leaf_classes = tf.sigmoid(self.leaf_classes_array).numpy()
