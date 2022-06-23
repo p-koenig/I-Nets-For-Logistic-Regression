@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities import *
-from utilities.DHDT import *
+from utilities.utilities_updated import *
+from utilities.DHDT_updated import *
 
 from joblib import Parallel, delayed
 
@@ -89,17 +89,17 @@ def mergeDict(dict1, dict2):
     return newDict
 
 
-def normalize_data(X_data):
+def normalize_data(X_data, low=-1, high=1):
     normalizer_list = []
     if isinstance(X_data, pd.DataFrame):
         for column_name in X_data:
-            scaler = MinMaxScaler()
+            scaler = MinMaxScaler(feature_range=(low, high))
             scaler.fit(X_data[column_name].values.reshape(-1, 1))
             X_data[column_name] = scaler.transform(X_data[column_name].values.reshape(-1, 1)).ravel()
             normalizer_list.append(scaler)
     else:
         for i, column in enumerate(X_data.T):
-            scaler = MinMaxScaler()
+            scaler = MinMaxScaler(feature_range=(low, high))
             scaler.fit(column.reshape(-1, 1))
             X_data[:,i] = scaler.transform(column.reshape(-1, 1)).ravel()
             normalizer_list.append(scaler)
@@ -1362,7 +1362,6 @@ def evaluate_parameter_setting_real_world(parameter_setting,
     return scores_dataframe_real_world, parameter_setting
 
 
-    
     
     
 def sleep_minutes(minutes):  
