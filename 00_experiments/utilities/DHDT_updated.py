@@ -83,6 +83,9 @@ class DHDT(tf.Module):
             beta_1 = 100,
             beta_2 = 100,
         
+            sparse_activation_1 = 'softmax',
+            sparse_activation_2 = 'sigmoid',
+        
             activation = 'sigmoid',
             squeeze_factor = 1,
         
@@ -101,6 +104,9 @@ class DHDT(tf.Module):
         
         self.beta_1 = beta_1
         self.beta_2 = beta_2
+        
+        self.sparse_activation_1 = sparse_activation_1
+        self.sparse_activation_2 = sparse_activation_2
         
         self.seed = random_seed
         self.verbosity = verbosity
@@ -211,8 +217,14 @@ class DHDT(tf.Module):
     def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
-        split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
-
+        
+        if self.sparse_activation_1 == 'softmax':
+            split_index_array_complete = tf.keras.activations.softmax(self.beta_1 * self.split_index_array)
+        elif self.sparse_activation_1 == 'entmax':
+            split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)           
+        elif self.sparse_activation_1 == 'sparsemax':
+            split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
+            
         if self.activation == 'sigmoid':
             split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
@@ -220,12 +232,14 @@ class DHDT(tf.Module):
         
         X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
         
-        split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
-        
-        #internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index)) ##tf.greater? ##ADJUSTED
-        #internal_node_result_complete = tf.squeeze(tf.squeeze(tfa.activations.sparsemax([self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)]))[:,:,:1])
-        internal_node_result_complete = tf.squeeze(tf.squeeze(entmax15(self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)))[:,:,:1])
-        
+        split_values_by_index = tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
+               
+        if self.sparse_activation_2 == 'sigmoid':
+            internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index)) 
+        elif self.sparse_activation_2 == 'entmax':
+            internal_node_result_complete = tf.squeeze(tf.squeeze(entmax15(self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)))[:,:,:1])
+        elif self.sparse_activation_2 == 'sparsemax':
+            internal_node_result_complete = tf.squeeze(tf.squeeze(tfa.activations.sparsemax([self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)]))[:,:,:1]) 
         
         #internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32)#tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater?
 
@@ -280,7 +294,7 @@ class DHDT(tf.Module):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         split_index_array_complete = tfa.seq2seq.hardmax(self.split_index_array)
-        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+
         if self.activation == 'sigmoid':
             split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
@@ -290,9 +304,7 @@ class DHDT(tf.Module):
         
         split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
         
-        internal_node_result_complete = tf.round(tf.sigmoid(X_by_index - split_values_by_index)) ##tf.greater? ##ADJUSTED
-
-        #tf.print(internal_node_result_complete, summarize=-1)
+        internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32) #tf.round(tf.sigmoid(X_by_index - split_values_by_index)) ##tf.greater? ##ADJUSTED
         
         begin_idx = 0
         end_idx = 1

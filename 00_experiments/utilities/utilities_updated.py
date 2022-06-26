@@ -1061,7 +1061,10 @@ def evaluate_dhdt(identifier,
                               
                                 beta_1 = config['dhdt']['beta_1'],
                                 beta_2 = config['dhdt']['beta_2'],
-
+                              
+                                sparse_activation_1 = config['dhdt']['sparse_activation_1'],
+                                sparse_activation_2 = config['dhdt']['sparse_activation_2'],
+                              
                                 activation = config['dhdt']['activation'],
                                 squeeze_factor = config['dhdt']['squeeze_factor'],
 
