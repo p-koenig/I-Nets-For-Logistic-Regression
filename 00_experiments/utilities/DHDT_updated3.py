@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities import *
-from utilities.DHDT import *
+from utilities.utilities_updated3 import *
+from utilities.DHDT_updated3 import *
 
 from joblib import Parallel, delayed
 
@@ -55,17 +55,18 @@ from collections.abc import Iterable
 from copy import deepcopy
 
 
+
 def make_batch(iterable, n=1):
     l = len(iterable)
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx + n, l)]    
         
-def sigmoid(x, factor=1, shift_horizontal=0.5):
-    x = 1/(1+K.exp(-factor*(x-0.5)))
+def sigmoid(x, factor=1, shift_horizontal=0.0):
+    x = 1/(1+K.exp(-factor*(x-shift_horizontal)))
     return x  
 
-def tanh(x, factor=1, shift_horizontal=0.5, shift_vertical=1):
-    x = (K.exp(factor*(x-0.5))-K.exp(-factor*(x-0.5)))/(K.exp(factor*(x-0.5))+K.exp(-factor*(x-0.5))) + shift_vertical
+def tanh(x, factor=1, shift_horizontal=0, shift_vertical=0):
+    x = (K.exp(factor*(x-shift_horizontal))-K.exp(-factor*(x-shift_horizontal)))/(K.exp(factor*(x-shift_horizontal))+K.exp(-factor*(x-shift_horizontal))) + shift_vertical
     return x 
 
 class DHDT(tf.Module):
@@ -206,26 +207,31 @@ class DHDT(tf.Module):
     
     
     
-    @tf.function(jit_compile=True)                    
+    #@tf.function(jit_compile=True)                    
     def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         #split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
         #split_index_array_complete = tf.keras.activations.softmax(10*self.beta_1 * self.split_index_array)
-        split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)        
+        split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)
+        
 
         if self.activation == 'sigmoid':
-            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
-            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)        
+            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)        
         
         X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
         
         split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
-                
-        #internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater? ##ADJUSTED
-        #internal_node_result_complete = tf.squeeze(tf.squeeze(tfa.activations.sparsemax([self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index - 0.5)), 2)], 2)]))[:,:,:1])
-        internal_node_result_complete = tf.squeeze(tf.squeeze(entmax15(self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index - 0.5)), 2)], 2)))[:,:,:1])        
+        
+        #internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index)) ##tf.greater? ##ADJUSTED
+        #internal_node_result_complete = tf.squeeze(tf.squeeze(tfa.activations.sparsemax([self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)]))[:,:,:1])
+        internal_node_result_complete = tf.squeeze(tf.squeeze(entmax15(self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)))[:,:,:1])
+        
+        
+        #internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32)#tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater?
+
         #tf.print(internal_node_result_complete, summarize=-1)
         
         begin_idx = 0
@@ -279,15 +285,15 @@ class DHDT(tf.Module):
         split_index_array_complete = tfa.seq2seq.hardmax(self.split_index_array)
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
         if self.activation == 'sigmoid':
-            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
-            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)        
+            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)        
         
         X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
         
         split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
         
-        internal_node_result_complete = tf.round(tf.sigmoid(X_by_index - split_values_by_index - 0.5)) ##tf.greater?
+        internal_node_result_complete = tf.round(tf.sigmoid(X_by_index - split_values_by_index)) ##tf.greater? ##ADJUSTED
 
         #tf.print(internal_node_result_complete, summarize=-1)
         
@@ -370,9 +376,9 @@ class DHDT(tf.Module):
         split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(self.split_index_array)
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
         if self.activation == 'sigmoid':
-            split_values_list_by_internal_node = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+            split_values_list_by_internal_node = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
-            split_values_list_by_internal_node = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)                
+            split_values_list_by_internal_node = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)                
         #tf.print('split_index_list_by_internal_node_max', split_index_list_by_internal_node_max)
         #tf.print('split_values_list_by_internal_node', split_values_list_by_internal_node)
         splits = tf.stack(tf.multiply(split_values_list_by_internal_node, split_index_list_by_internal_node_max))
@@ -444,7 +450,6 @@ class DHDT(tf.Module):
 
         return Image(path)#, nodes#nodes#tree        
 
-        
         
 def entmax15(inputs, axis=-1):
     """
