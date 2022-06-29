@@ -161,6 +161,8 @@ class DHDT(tf.Module):
     def fit(self, X_train, y_train, batch_size=256, epochs=100, early_stopping_epochs=5, valid_data=None):
                 
         minimum_loss_epoch = np.inf
+        minimum_loss_epoch_valid = np.inf
+
         epochs_without_improvement = 0    
         
         batch_size = min(batch_size, X_train.shape[0])
@@ -172,7 +174,7 @@ class DHDT(tf.Module):
             tf.random.set_seed(self.seed + current_epoch)
             y_train = tf.random.shuffle(y_train, seed=self.seed + current_epoch)
             
-            loss_list = []
+            loss_list = []            
             for index, (X_batch, y_batch) in enumerate(zip(make_batch(X_train, batch_size), make_batch(y_train, batch_size))):
                 current_loss = self.backward(X_batch, y_batch)
                 loss_list.append(float(current_loss))
@@ -183,11 +185,20 @@ class DHDT(tf.Module):
                     print(msg.format(current_epoch, batch_idx, current_loss))                   
                   
             current_loss_epoch = np.mean(loss_list)
+                
+            if valid_data is not None:
+                if self.loss.__name__  == 'binary_crossentropy':
+                    current_loss_epoch_valid = self.loss(valid_data[1], self.forward(valid_data[0]), from_logits=True)
+                else:
+                    current_loss_epoch_valid = self.loss(valid_data[1], tf.sigmoid(self.forward(valid_data[0])))                  
+                
             if self.verbosity > 1:    
                 msg = "Epoch: {:02d} | Loss: {:.5f} |"
                 print(msg.format(current_epoch, current_loss_epoch))              
-
-            
+                if valid_data is not None:
+                    msg = "Epoch: {:02d} | Valid Loss: {:.5f} |"
+                    print(msg.format(current_epoch, current_loss_epoch_valid))                   
+                    
             if self.verbosity == 1:  
                 loss_dict = {'loss': current_loss_epoch}
 
@@ -195,20 +206,41 @@ class DHDT(tf.Module):
                 
                 if valid_data is not None:
                     if self.loss.__name__  == 'binary_crossentropy':
-                        loss_dict['val_loss'] = self.loss(valid_data[1], self.forward(valid_data[0]), from_logits=True)
+                        loss_dict['val_loss'] = current_loss_epoch_valid
                     else:
-                        loss_dict['val_loss'] = self.loss(valid_data[1], tf.sigmoid(self.forward(valid_data[0])))                   
+                        loss_dict['val_loss'] = current_loss_epoch_valid                   
                     loss_dict['val_acc'] = accuracy_score(valid_data[1], np.round(tf.sigmoid(self.forward_hard(valid_data[0]))))
+                    
                 self.plotlosses.update(loss_dict)#({'acc': 0.0, 'val_acc': 0.0, 'loss': np.mean(loss_list), 'val_loss': 0.0})
                 self.plotlosses.send()            
 
-            if current_loss_epoch < minimum_loss_epoch:
-                minimum_loss_epoch = current_loss_epoch
-                epochs_without_improvement = 0
+            if valid_data is not None:
+                if current_loss_epoch_valid < minimum_loss_epoch_valid:
+                    minimum_loss_epoch_valid = current_loss_epoch_valid
+                    epochs_without_improvement = 0
+
+                    split_values_stored = tf.identity(self.split_values)
+                    split_index_array_stored = tf.identity(self.split_index_array)
+                    leaf_classes_array_stored = tf.identity(self.leaf_classes_array)          
+
+                else:
+                    epochs_without_improvement += 1            
             else:
-                epochs_without_improvement += 1
+                if current_loss_epoch < minimum_loss_epoch:
+                    minimum_loss_epoch = current_loss_epoch
+                    epochs_without_improvement = 0
+
+                    split_values_stored = tf.identity(self.split_values)
+                    split_index_array_stored = tf.identity(self.split_index_array)
+                    leaf_classes_array_stored = tf.identity(self.leaf_classes_array)          
+
+                else:
+                    epochs_without_improvement += 1
                 
-            if epochs_without_improvement >= early_stopping_epochs:
+            if epochs_without_improvement >= early_stopping_epochs:           
+                self.split_values.assign(split_values_stored)
+                self.split_index_array.assign(split_index_array_stored)
+                self.leaf_classes_array.assign(leaf_classes_array_stored)   
                 break
     
     
