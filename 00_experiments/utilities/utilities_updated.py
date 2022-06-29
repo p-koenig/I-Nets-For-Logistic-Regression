@@ -1209,7 +1209,7 @@ def evaluate_dhdt(identifier,
     scores_dict['DHDT']['runtime'] = runtime_dhdt
     scores_dict['sklearn']['runtime'] = runtime_sklearn
     scores_dict['XGB']['runtime'] = runtime_xgb     
-    scores_dict['XGB']['GeneticTree'] = runtime_gentree  
+    scores_dict['GeneticTree']['runtime'] = runtime_gentree  
             
     return identifier, dataset_dict, model_dict, scores_dict
     
@@ -1489,7 +1489,7 @@ def evaluate_parameter_setting_real_world(parameter_setting,
         #display(scores_dataframe_real_world)
         #display(scores_dataframe_real_world[scores_dataframe_real_world.columns[1::3]])    
 
-    del model_dict_real_world, scores_dict_real_world, dataset_dict_real_world
+    del scores_dict_real_world, dataset_dict_real_world
 
     #return_dict = {
     #                'DHDT score (mean)': np.mean(scores_DHDT_mean), 
@@ -1499,7 +1499,7 @@ def evaluate_parameter_setting_real_world(parameter_setting,
     #              }
     
     #return scores_dataframe_real_world, parameter_setting
-    return scores_dataframe_real_world_dict, parameter_setting
+    return scores_dataframe_real_world_dict, parameter_setting, model_dict_real_world
 
     
     
