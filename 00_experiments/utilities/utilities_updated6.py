@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated3 import *
-from utilities.DHDT_updated3 import *
+from utilities.utilities_updated6 import *
+from utilities.DHDT_updated6 import *
 
 from joblib import Parallel, delayed
 

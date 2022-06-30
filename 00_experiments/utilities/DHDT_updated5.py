@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated3 import *
-from utilities.DHDT_updated3 import *
+from utilities.utilities_updated5 import *
+from utilities.DHDT_updated5 import *
 
 from joblib import Parallel, delayed
 
@@ -270,7 +270,7 @@ class DHDT(tf.Module):
         # the other half (zeros) is not affected by multiplication
         differentiable_round = differentiable_round * 10000
         # take the minimum with 1
-        differentiable_round = tf.minimum(differentiable_round, 1)     
+        differentiable_round = tf.minimum(differentiable_round, 1)        
         
         ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####
         
@@ -324,19 +324,19 @@ class DHDT(tf.Module):
         elif self.sparse_activation_1 == 'sparsemax':
             split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
             
-        #split_index_array_complete_rounded_NOT_differentiable = tf.round(split_index_array_complete)
-        #split_index_array_complete = split_index_array_complete - tf.stop_gradient(split_index_array_complete - split_index_array_complete_rounded_NOT_differentiable)#tf.cast(tf.cast(split_index_array_complete, tf.int64), tf.float32)
+        split_index_array_complete_rounded_NOT_differentiable = tf.round(split_index_array_complete)
+        split_index_array_complete = split_index_array_complete - tf.stop_gradient(split_index_array_complete - split_index_array_complete_rounded_NOT_differentiable)#tf.cast(tf.cast(split_index_array_complete, tf.int64), tf.float32)
         
         
         # round numbers less than 0.5 to zero;
         # by making them negative and taking the maximum with 0
-        differentiable_round = tf.maximum(split_index_array_complete-0.499,0)
+        #differentiable_round = tf.maximum(split_index_array_complete-0.499,0)
         # scale the remaining numbers (0 to 0.5) to greater than 1
         # the other half (zeros) is not affected by multiplication
-        differentiable_round = differentiable_round * 10000
+        #differentiable_round = differentiable_round * 10000
         # take the minimum with 1
-        differentiable_round = tf.minimum(differentiable_round, 1)        
-        split_index_array_complete = differentiable_round
+        #differentiable_round = tf.minimum(differentiable_round, 1)        
+        
         ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####            
             
             
@@ -358,17 +358,17 @@ class DHDT(tf.Module):
         
         #internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32)#tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater?
 
-        #internal_node_result_complete_rounded_NOT_differentiable = tf.round(internal_node_result_complete)
-        #internal_node_result_complete = internal_node_result_complete - tf.stop_gradient(internal_node_result_complete - internal_node_result_complete_rounded_NOT_differentiable)
+        internal_node_result_complete_rounded_NOT_differentiable = tf.round(internal_node_result_complete)
+        internal_node_result_complete = internal_node_result_complete - tf.stop_gradient(internal_node_result_complete - internal_node_result_complete_rounded_NOT_differentiable)
         # round numbers less than 0.5 to zero;
         # by making them negative and taking the maximum with 0
-        differentiable_round = tf.maximum(internal_node_result_complete-0.499,0)
+        #differentiable_round = tf.maximum(internal_node_result_complete-0.499,0)
         # scale the remaining numbers (0 to 0.5) to greater than 1
         # the other half (zeros) is not affected by multiplication
-        differentiable_round = differentiable_round * 10#000
+        #differentiable_round = differentiable_round * 10#000
         # take the minimum with 1
-        differentiable_round = tf.minimum(differentiable_round, 1)                  
-        internal_node_result_complete = differentiable_round
+        #differentiable_round = tf.minimum(differentiable_round, 1)                  
+        #internal_node_result_complete = differentiable_round
         #tf.print(internal_node_result_complete, summarize=-1)
         
         begin_idx = 0
