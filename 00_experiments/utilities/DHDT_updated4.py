@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated3 import *
-from utilities.DHDT_updated3 import *
+from utilities.utilities_updated4 import *
+from utilities.DHDT_updated4 import *
 
 from joblib import Parallel, delayed
 
@@ -247,7 +247,7 @@ class DHDT(tf.Module):
     
     
     #@tf.function(jit_compile=True)      
-    def forward_old(self, X):
+    def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
@@ -270,8 +270,8 @@ class DHDT(tf.Module):
         # the other half (zeros) is not affected by multiplication
         differentiable_round = differentiable_round * 10000
         # take the minimum with 1
-        differentiable_round = tf.minimum(differentiable_round, 1)     
-        
+        differentiable_round = tf.minimum(differentiable_round, 1)        
+        split_index_array_complete = differentiable_round
         ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####
         
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
@@ -313,7 +313,7 @@ class DHDT(tf.Module):
         return function_values_dhdt      
     
     
-    def forward(self, X):
+    def forward_new(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         
@@ -336,7 +336,7 @@ class DHDT(tf.Module):
         differentiable_round = differentiable_round * 10000
         # take the minimum with 1
         differentiable_round = tf.minimum(differentiable_round, 1)        
-        split_index_array_complete = differentiable_round
+        
         ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####            
             
             

@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated3 import *
-from utilities.DHDT_updated3 import *
+from utilities.utilities_updated7 import *
+from utilities.DHDT_updated7 import *
 
 from joblib import Parallel, delayed
 
@@ -247,7 +247,7 @@ class DHDT(tf.Module):
     
     
     #@tf.function(jit_compile=True)      
-    def forward_old(self, X):
+    def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
@@ -265,12 +265,12 @@ class DHDT(tf.Module):
         
         # round numbers less than 0.5 to zero;
         # by making them negative and taking the maximum with 0
-        differentiable_round = tf.maximum(split_index_array_complete-0.499,0)
+        #differentiable_round = tf.maximum(split_index_array_complete-0.499,0)
         # scale the remaining numbers (0 to 0.5) to greater than 1
         # the other half (zeros) is not affected by multiplication
-        differentiable_round = differentiable_round * 10000
+        #differentiable_round = differentiable_round * 10000
         # take the minimum with 1
-        differentiable_round = tf.minimum(differentiable_round, 1)     
+        #differentiable_round = tf.minimum(differentiable_round, 1)        
         
         ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####
         
@@ -293,17 +293,17 @@ class DHDT(tf.Module):
 
                 split_decision = sigmoid((respective_input_value - internal_node_split_value))
                 
-                #split_decision_rounded_NOT_differentiable = tf.round(split_decision)
-                #split_decision = split_decision - tf.stop_gradient(split_decision - split_decision_rounded_NOT_differentiable)
+                split_decision_rounded_NOT_differentiable = tf.round(split_decision)
+                split_decision = split_decision - tf.stop_gradient(split_decision - split_decision_rounded_NOT_differentiable)
                 # round numbers less than 0.5 to zero;
                 # by making them negative and taking the maximum with 0
-                differentiable_round = tf.maximum(split_decision-0.499,0)
+                #differentiable_round = tf.maximum(split_decision-0.499,0)
                 # scale the remaining numbers (0 to 0.5) to greater than 1
                 # the other half (zeros) is not affected by multiplication
-                differentiable_round = differentiable_round * 10#000
+                #differentiable_round = differentiable_round * 10#000
                 # take the minimum with 1
-                differentiable_round = tf.minimum(differentiable_round, 1)     
-                split_decision = differentiable_round
+                #differentiable_round = tf.minimum(differentiable_round, 1)     
+                #split_decision = differentiable_round
 
                 path_result_left *= split_decision
                 path_result_right *= (1 - split_decision)
@@ -313,7 +313,7 @@ class DHDT(tf.Module):
         return function_values_dhdt      
     
     
-    def forward(self, X):
+    def forward_new(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         
@@ -336,7 +336,7 @@ class DHDT(tf.Module):
         differentiable_round = differentiable_round * 10000
         # take the minimum with 1
         differentiable_round = tf.minimum(differentiable_round, 1)        
-        split_index_array_complete = differentiable_round
+        
         ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####            
             
             
