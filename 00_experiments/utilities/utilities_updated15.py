@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated import *
-from utilities.DHDT_updated import *
+from utilities.utilities_updated15 import *
+from utilities.DHDT_updated15 import *
 
 from joblib import Parallel, delayed
 
@@ -1031,6 +1031,7 @@ def evaluate_dhdt(identifier,
                   random_seed_model=42, 
                   config=None,
                   sklearn_params=None,
+                  gen_params=None,
                   metrics=['accuracy', 'f1'],
                   verbosity=0):
 
@@ -1057,21 +1058,21 @@ def evaluate_dhdt(identifier,
                           'random_state': random_seed_model}
     
     
-    model_dict['sklearn'] = DecisionTreeClassifier()
-    model_dict['sklearn'].set_params(**sklearn_params)
+    model_dict['sklearn'] = sklearn_params[1]#DecisionTreeClassifier()
+    #model_dict['sklearn'].set_params(**sklearn_params)
 
     
     #model_dict['sklearn'] = DecisionTreeClassifier(max_depth=config['dhdt']['depth'], 
     #                                               random_state=random_seed_model)
 
-    start_sklearn = timeit.default_timer()
+    #start_sklearn = timeit.default_timer()
     
-    model_dict['sklearn'].fit(dataset_dict['X_train'], 
-                              dataset_dict['y_train'])    
+    #model_dict['sklearn'].fit(dataset_dict['X_train'], 
+                              #dataset_dict['y_train'])    
     
     
-    end_sklearn = timeit.default_timer()  
-    runtime_sklearn = end_sklearn - start_sklearn
+    #end_sklearn = timeit.default_timer()  
+    runtime_sklearn = sklearn_params[0]#end_sklearn - start_sklearn
 
     
     ##############################################################
@@ -1089,18 +1090,23 @@ def evaluate_dhdt(identifier,
     runtime_xgb = end_xgb - start_xgb
     
     ##############################################################
-    model_dict['GeneticTree'] = GeneticTree(max_depth=config['dhdt']['depth'],
-                                            random_state = random_seed_model, 
-                                            n_jobs = 1)
+    if sklearn_params is None:
+        gen_params = {'max_depth': 3,
+                      'random_state': random_seed_model,
+                      'n_jobs': 1}
     
     
-    start_gentree = timeit.default_timer()
+    model_dict['GeneticTree'] = gen_params[1]#GeneticTree()
+    #model_dict['GeneticTree'].set_params(**gen_params)    
+        
     
-    model_dict['GeneticTree'] = model_dict['GeneticTree'].fit(dataset_dict['X_train'].values, 
-                                                              dataset_dict['y_train'].values) 
+    #start_gentree = timeit.default_timer()
     
-    end_gentree = timeit.default_timer()  
-    runtime_gentree = end_gentree - start_gentree 
+    #model_dict['GeneticTree'] = model_dict['GeneticTree'].fit(dataset_dict['X_train'].values, 
+    #                                                          dataset_dict['y_train'].values) 
+    
+    #end_gentree = timeit.default_timer()  
+    runtime_gentree = gen_params[0]#end_gentree - start_gentree 
     
     ##############################################################
 
@@ -1266,6 +1272,7 @@ def evaluate_real_world_parallel(identifier_list,
                                   random_seed_model=42, 
                                   config=None,
                                   sklearn_params = None,
+                                  gen_params = None,
                                   metrics=['accuracy', 'f1'],
                                   verbosity=0):
 
@@ -1285,6 +1292,7 @@ def evaluate_real_world_parallel(identifier_list,
                                                   random_seed_model=random_seed_model, 
                                                   config=config,
                                                   sklearn_params = sklearn_params,
+                                                  gen_params = gen_params,
                                                   metrics=metrics,
                                                   verbosity=verbosity)
         
@@ -1376,6 +1384,7 @@ def evaluate_parameter_setting_real_world(parameter_setting,
                                           identifier, 
                                           config, 
                                           sklearn_params = None,
+                                          gen_params = None,
                                           metrics=['accuracy', 'f1']):
     
     config_parameter_setting = deepcopy(config)
@@ -1391,6 +1400,7 @@ def evaluate_parameter_setting_real_world(parameter_setting,
                                                            random_seed_model=config['computation']['random_seed']+i,
                                                            config = config_parameter_setting,
                                                            sklearn_params = sklearn_params,
+                                                           gen_params = gen_params,
                                                            metrics = metrics,
                                                            verbosity = -1)
         evaluation_results_real_world.append(evaluation_result)

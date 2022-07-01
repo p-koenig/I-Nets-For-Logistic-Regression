@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated2 import *
-from utilities.DHDT_updated2 import *
+from utilities.utilities_updated15 import *
+from utilities.DHDT_updated15 import *
 
 from joblib import Parallel, delayed
 
@@ -68,6 +68,13 @@ def sigmoid(x, factor=1, shift_horizontal=0.0):
 def tanh(x, factor=1, shift_horizontal=0, shift_vertical=0):
     x = (K.exp(factor*(x-shift_horizontal))-K.exp(-factor*(x-shift_horizontal)))/(K.exp(factor*(x-shift_horizontal))+K.exp(-factor*(x-shift_horizontal))) + shift_vertical
     return x 
+
+@tf.custom_gradient
+def round_with_gradients(x):
+    def grad(dy):
+        return dy
+    return tf.round(x), grad
+
 
 class DHDT(tf.Module):
     
@@ -243,39 +250,41 @@ class DHDT(tf.Module):
                 self.leaf_classes_array.assign(leaf_classes_array_stored)   
                 break
     
-    
-    
-    #@tf.function(jit_compile=True)                    
     def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
-
-        
-        if self.sparse_activation_1 == 'softmax':
-            split_index_array_complete = tf.keras.activations.softmax(self.beta_1 * self.split_index_array)
-        elif self.sparse_activation_1 == 'entmax':
-            split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)           
-        elif self.sparse_activation_1 == 'sparsemax':
-            split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
+            
+        split_index_array_complete = self.split_index_array - tf.stop_gradient(self.split_index_array -  tfa.seq2seq.hardmax(self.split_index_array))
+              
+        ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####            
+            
             
         if self.activation == 'sigmoid':
             split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
             split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)        
         
-        X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
+        input_split_diff = (X - tf.expand_dims(split_values_complete, 1))
+        #tf.print('input_split_diff', input_split_diff)
+        input_split_diff_selected = input_split_diff * tf.expand_dims(split_index_array_complete, 1)
+        #tf.print('input_split_diff_selected', input_split_diff_selected)
+        input_split_diff_sigmoid = sigmoid(input_split_diff_selected)
+        #tf.print('input_split_diff_sigmoid', input_split_diff_sigmoid)
         
-        split_values_by_index = tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
-               
-        if self.sparse_activation_2 == 'sigmoid':
-            internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index)) 
-        elif self.sparse_activation_2 == 'entmax':
-            internal_node_result_complete = tf.squeeze(tf.squeeze(entmax15(self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)))[:,:,:1])
-        elif self.sparse_activation_2 == 'sparsemax':
-            internal_node_result_complete = tf.squeeze(tf.squeeze(tfa.activations.sparsemax([self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index)), 2)], 2)]))[:,:,:1]) 
+        input_split_diff_sigmoid_corrected = input_split_diff_sigmoid - tf.stop_gradient(input_split_diff_sigmoid - tf.round(input_split_diff_sigmoid))
+        #tf.print('input_split_diff_sigmoid_corrected', input_split_diff_sigmoid_corrected)
         
-        #internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32)#tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater?
-
-        #tf.print(internal_node_result_complete, summarize=-1)
+        internal_node_result_complete = tf.reduce_sum(input_split_diff_sigmoid_corrected, axis=2)
+        #tf.print('internal_node_result_complete', internal_node_result_complete.shape, internal_node_result_complete)
+        
+        
+        
+        #X_by_index_test = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
+        #tf.print('X_by_index_test', X_by_index_test)
+        #split_values_by_index_test = tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
+        #tf.print('split_values_by_index_test', split_values_by_index_test)
+        #internal_node_result_complete_test = sigmoid(X_by_index_test - split_values_by_index_test) - tf.stop_gradient(sigmoid(X_by_index_test - split_values_by_index_test) - tf.cast(tf.greater(X_by_index_test, split_values_by_index_test), tf.float32))
+        #tf.print('internal_node_result_complete_test', internal_node_result_complete_test.shape, internal_node_result_complete_test)
+        
         
         begin_idx = 0
         end_idx = 1

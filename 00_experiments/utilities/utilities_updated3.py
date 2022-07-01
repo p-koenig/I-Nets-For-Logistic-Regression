@@ -53,6 +53,12 @@ from itertools import product
 from collections.abc import Iterable
 
 from copy import deepcopy
+import timeit
+
+from xgboost import XGBClassifier
+from genetic_tree import GeneticTree
+
+
 
 def flatten_list(l):
     
@@ -1024,6 +1030,8 @@ def evaluate_dhdt(identifier,
                   random_seed_data=42, 
                   random_seed_model=42, 
                   config=None,
+                  sklearn_params=None,
+                  gen_params=None,
                   metrics=['accuracy', 'f1'],
                   verbosity=0):
 
@@ -1034,20 +1042,73 @@ def evaluate_dhdt(identifier,
     model_dict = {}
 
     scores_dict = {'sklearn': {},
-                   'DHDT': {}}
+                   'XGB': {},
+                   'DHDT': {},
+                   'GeneticTree': {}}
     
     dataset_dict = get_preprocessed_dataset(identifier,
                                             random_seed=random_seed_data,
                                             config=config['make_classification'],
                                             verbosity=verbosity)
 
-    model_dict['sklearn'] = DecisionTreeClassifier(max_depth=config['dhdt']['depth'], 
-                                                   random_state=random_seed_model)
+    
+    ##############################################################
+    if sklearn_params is None:
+        sklearn_params = {'max_depth': 3,
+                          'random_state': random_seed_model}
+    
+    
+    model_dict['sklearn'] = sklearn_params[1]#DecisionTreeClassifier()
+    #model_dict['sklearn'].set_params(**sklearn_params)
 
-    model_dict['sklearn'].fit(dataset_dict['X_train'], 
-                              dataset_dict['y_train'])
+    
+    #model_dict['sklearn'] = DecisionTreeClassifier(max_depth=config['dhdt']['depth'], 
+    #                                               random_state=random_seed_model)
 
+    #start_sklearn = timeit.default_timer()
+    
+    #model_dict['sklearn'].fit(dataset_dict['X_train'], 
+                              #dataset_dict['y_train'])    
+    
+    
+    #end_sklearn = timeit.default_timer()  
+    runtime_sklearn = sklearn_params[0]#end_sklearn - start_sklearn
 
+    
+    ##############################################################
+    model_dict['XGB'] = XGBClassifier(random_state = random_seed_model, 
+                                      eval_metric = 'logloss',
+                                      n_jobs = 1)
+    
+    
+    start_xgb = timeit.default_timer()
+    
+    model_dict['XGB'] = model_dict['XGB'].fit(dataset_dict['X_train'], 
+                                              dataset_dict['y_train']) 
+    
+    end_xgb = timeit.default_timer()  
+    runtime_xgb = end_xgb - start_xgb
+    
+    ##############################################################
+    if sklearn_params is None:
+        gen_params = {'max_depth': 3,
+                      'random_state': random_seed_model,
+                      'n_jobs': 1}
+    
+    
+    model_dict['GeneticTree'] = gen_params[1]#GeneticTree()
+    #model_dict['GeneticTree'].set_params(**gen_params)    
+        
+    
+    #start_gentree = timeit.default_timer()
+    
+    #model_dict['GeneticTree'] = model_dict['GeneticTree'].fit(dataset_dict['X_train'].values, 
+    #                                                          dataset_dict['y_train'].values) 
+    
+    #end_gentree = timeit.default_timer()  
+    runtime_gentree = gen_params[0]#end_gentree - start_gentree 
+    
+    ##############################################################
 
     model_dict['DHDT'] = DHDT(dataset_dict['X_train'].shape[1],
 
@@ -1061,7 +1122,10 @@ def evaluate_dhdt(identifier,
                               
                                 beta_1 = config['dhdt']['beta_1'],
                                 beta_2 = config['dhdt']['beta_2'],
-
+                              
+                                sparse_activation_1 = config['dhdt']['sparse_activation_1'],
+                                sparse_activation_2 = config['dhdt']['sparse_activation_2'],
+                              
                                 activation = config['dhdt']['activation'],
                                 squeeze_factor = config['dhdt']['squeeze_factor'],
 
@@ -1071,6 +1135,8 @@ def evaluate_dhdt(identifier,
                                 verbosity = verbosity)        
 
 
+    start_dhdt = timeit.default_timer()
+    
     scores_dict['history'] = model_dict['DHDT'].fit(dataset_dict['X_train'], 
                                                   dataset_dict['y_train'], 
                                                   batch_size=config['dhdt']['batch_size'], 
@@ -1078,13 +1144,25 @@ def evaluate_dhdt(identifier,
                                                   early_stopping_epochs=config['dhdt']['early_stopping_epochs'], 
                                                   valid_data=(dataset_dict['X_valid'], dataset_dict['y_valid']))
 
-
+    end_dhdt = timeit.default_timer()
+    runtime_dhdt = end_dhdt - start_dhdt
+    
+    ##############################################################
+    
+    #print(runtime_dhdt, runtime_sklearn, runtime_xgb)
+    
     dataset_dict['y_test_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_test'])
     dataset_dict['y_valid_dhdt'] = model_dict['DHDT'].predict(dataset_dict['X_valid'])
 
     dataset_dict['y_test_sklearn'] = model_dict['sklearn'].predict(dataset_dict['X_test'])
-    dataset_dict['y_valid_sklearn'] = model_dict['sklearn'].predict(dataset_dict['X_valid'])     
+    dataset_dict['y_valid_sklearn'] = model_dict['sklearn'].predict(dataset_dict['X_valid'])   
     
+    dataset_dict['y_test_xgb'] = model_dict['XGB'].predict(dataset_dict['X_test'])
+    dataset_dict['y_valid_xgb'] = model_dict['XGB'].predict(dataset_dict['X_valid'])     
+    
+    dataset_dict['y_test_gentree'] = model_dict['GeneticTree'].predict(dataset_dict['X_test'].values)
+    dataset_dict['y_valid_gentree'] = model_dict['GeneticTree'].predict(dataset_dict['X_valid'].values)     
+        
     for metric in metrics:
         
         if metric in ['accuracy', 'f1']:
@@ -1092,23 +1170,53 @@ def evaluate_dhdt(identifier,
             y_valid_dhdt = np.round(dataset_dict['y_valid_dhdt'])
             y_test_sklearn = np.round(dataset_dict['y_test_sklearn'])
             y_valid_sklearn = np.round(dataset_dict['y_valid_sklearn'])         
+            y_test_xgb = np.round(dataset_dict['y_test_xgb'])
+            y_valid_xgb = np.round(dataset_dict['y_valid_xgb'])       
+            y_test_gentree = np.round(dataset_dict['y_test_gentree'])
+            y_valid_gentree = np.round(dataset_dict['y_valid_gentree'])              
         else:
             y_test_dhdt = dataset_dict['y_test_dhdt']
             y_valid_dhdt = dataset_dict['y_valid_dhdt']
             y_test_sklearn = dataset_dict['y_test_sklearn']
-            y_valid_sklearn =    dataset_dict['y_valid_sklearn']                
-        
-        scores_dict['sklearn'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_sklearn)
-        scores_dict['DHDT'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_dhdt)
+            y_valid_sklearn = dataset_dict['y_valid_sklearn']       
+            y_test_xgb = dataset_dict['y_test_xgb']
+            y_valid_xgb = dataset_dict['y_valid_xgb']    
+            y_test_gentree = dataset_dict['y_test_gentree']
+            y_valid_gentree = dataset_dict['y_valid_gentree']   
+            
+        if metric != 'f1':
+            scores_dict['sklearn'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_sklearn)
+            scores_dict['XGB'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_xgb)
+            scores_dict['DHDT'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_dhdt)
+            scores_dict['GeneticTree'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_gentree)
 
-        scores_dict['sklearn'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_sklearn)   
-        scores_dict['DHDT'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_dhdt)
+            scores_dict['sklearn'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_sklearn)  
+            scores_dict['XGB'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_xgb)   
+            scores_dict['DHDT'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_dhdt)
+            scores_dict['GeneticTree'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_gentree)
+        else:
+            scores_dict['sklearn'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_sklearn, average='weighted')
+            scores_dict['XGB'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_xgb, average='weighted')
+            scores_dict['DHDT'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_dhdt, average='weighted')
+            scores_dict['GeneticTree'][metric + '_test'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_test'], y_test_gentree, average='weighted')
 
+            scores_dict['sklearn'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_sklearn, average='weighted')   
+            scores_dict['XGB'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_xgb, average='weighted')   
+            scores_dict['DHDT'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_dhdt, average='weighted')  
+            scores_dict['GeneticTree'][metric + '_valid'] = sklearn.metrics.get_scorer(metric)._score_func(dataset_dict['y_valid'], y_valid_gentree, average='weighted')  
+            
         if verbosity > 0:
             print('Test ' + metric + ' Sklearn (' + identifier + ')', scores_dict['sklearn'][metric + '_test'])
+            print('Test ' + metric + ' XGB (' + identifier + ')', scores_dict['XGB'][metric + '_test'])
             print('Test ' + metric + ' DHDT (' + identifier + ')', scores_dict['DHDT'][metric + '_test'])   
+            print('Test ' + metric + ' GeneticTree (' + identifier + ')', scores_dict['GeneticTree'][metric + '_test'])   
             print('________________________________________________________________________________________________________')   
 
+    scores_dict['DHDT']['runtime'] = runtime_dhdt
+    scores_dict['sklearn']['runtime'] = runtime_sklearn
+    scores_dict['XGB']['runtime'] = runtime_xgb     
+    scores_dict['GeneticTree']['runtime'] = runtime_gentree  
+            
     return identifier, dataset_dict, model_dict, scores_dict
     
     
@@ -1163,6 +1271,8 @@ def evaluate_real_world_parallel(identifier_list,
                                   random_seed_data=42, 
                                   random_seed_model=42, 
                                   config=None,
+                                  sklearn_params = None,
+                                  gen_params = None,
                                   metrics=['accuracy', 'f1'],
                                   verbosity=0):
 
@@ -1181,6 +1291,8 @@ def evaluate_real_world_parallel(identifier_list,
                                                   random_seed_data=random_seed_data, 
                                                   random_seed_model=random_seed_model, 
                                                   config=config,
+                                                  sklearn_params = sklearn_params,
+                                                  gen_params = gen_params,
                                                   metrics=metrics,
                                                   verbosity=verbosity)
         
@@ -1271,6 +1383,8 @@ def evaluate_parameter_setting_synthetic(parameter_setting,
 def evaluate_parameter_setting_real_world(parameter_setting, 
                                           identifier, 
                                           config, 
+                                          sklearn_params = None,
+                                          gen_params = None,
                                           metrics=['accuracy', 'f1']):
     
     config_parameter_setting = deepcopy(config)
@@ -1285,22 +1399,13 @@ def evaluate_parameter_setting_real_world(parameter_setting,
         evaluation_result = evaluate_real_world_parallel(identifier_list=[identifier], 
                                                            random_seed_model=config['computation']['random_seed']+i,
                                                            config = config_parameter_setting,
+                                                           sklearn_params = sklearn_params,
+                                                           gen_params = gen_params,
                                                            metrics = metrics,
                                                            verbosity = -1)
         evaluation_results_real_world.append(evaluation_result)
         
     del evaluation_result
-    #parallel_eval_real_world = Parallel(n_jobs=1, verbose=0, backend='sequential') #loky #sequential multiprocessing
-    #evaluation_results_real_world = parallel_eval_real_world(delayed(evaluate_real_world_parallel)(identifier_list=[identifier], 
-    #                                                                                               random_seed_model=config['computation']['random_seed']+i,
-    #                                                                                               config = config_parameter_setting,
-    #                                                                                               verbosity = -1) for i in range(config['computation']['trials']))
-
-
-    
-
-
-
 
     for i, real_world_result in enumerate(evaluation_results_real_world):
         if i == 0:
@@ -1314,43 +1419,87 @@ def evaluate_parameter_setting_real_world(parameter_setting,
 
     del real_world_result, evaluation_results_real_world
 
-    metric_identifer = '_valid'
+    metric_identifer_list = ['_valid', '_test']
 
     index = [identifier]
-    columns = flatten_list([[[approach + ' ' + metric + '_mean', approach + ' ' + metric + '_max', approach + ' ' + metric + '_std'] for metric in metrics] for approach in ['DHDT', 'sklearn']])
+    columns = flatten_list([[[approach + ' ' + metric + '_mean', 
+                              approach + ' ' + metric + '_max', 
+                              approach + ' ' + metric + '_std', 
+                              approach + ' mean runtime'] for metric in metrics] for approach in ['DHDT', 
+                                                                                                  'sklearn', 
+                                                                                                  'XGB',
+                                                                                                  'GeneticTree']])
 
 
-    results_DHDT = None
-    results_sklearn = None
-    for metric in metrics:
-        scores_DHDT = [scores_dict_real_world[identifier]['DHDT'][metric + metric_identifer] for identifier in [identifier]]
 
-        scores_sklearn = [scores_dict_real_world[identifier]['sklearn'][metric + metric_identifer] for identifier in [identifier]]    
+    
+    
+    scores_dataframe_real_world_dict = {}
+    
+    for metric_identifer in metric_identifer_list:
+    
+        results_DHDT = None
+        results_sklearn = None
+        results_xgb = None    
+        results_gentree = None    
+        
+        for metric in metrics:
+            scores_DHDT = [scores_dict_real_world[identifier]['DHDT'][metric + metric_identifer] for identifier in [identifier]]
+            scores_sklearn = [scores_dict_real_world[identifier]['sklearn'][metric + metric_identifer] for identifier in [identifier]]    
+            scores_xgb = [scores_dict_real_world[identifier]['XGB'][metric + metric_identifer] for identifier in [identifier]]    
+            scores_gentree = [scores_dict_real_world[identifier]['GeneticTree'][metric + metric_identifer] for identifier in [identifier]]    
 
-        scores_DHDT_mean = np.mean(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
-        scores_sklearn_mean = np.mean(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+            scores_DHDT_mean = np.mean(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
+            scores_sklearn_mean = np.mean(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+            scores_xgb_mean = np.mean(scores_xgb, axis=1) if config['computation']['trials'] > 1 else scores_xgb
+            scores_gentree_mean = np.mean(scores_gentree, axis=1) if config['computation']['trials'] > 1 else scores_gentree
 
-        scores_DHDT_max = np.max(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
-        scores_sklearn_max = np.max(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+            scores_DHDT_max = np.max(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else scores_DHDT
+            scores_sklearn_max = np.max(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else scores_sklearn
+            scores_xgb_max = np.max(scores_xgb, axis=1) if config['computation']['trials'] > 1 else scores_xgb
+            scores_gentree_max = np.max(scores_gentree, axis=1) if config['computation']['trials'] > 1 else scores_gentree
 
-        scores_DHDT_std = np.std(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
-        scores_sklearn_std = np.std(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+            scores_DHDT_std = np.std(scores_DHDT, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+            scores_sklearn_std = np.std(scores_sklearn, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+            scores_xgb_std = np.std(scores_xgb, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
+            scores_gentree_std = np.std(scores_gentree, axis=1) if config['computation']['trials'] > 1 else np.array([0.0] * config['computation']['trials'])
 
-        results_DHDT_by_metric = np.vstack([scores_DHDT_mean, scores_DHDT_max, scores_DHDT_std])
-        results_sklearn_by_metric = np.vstack([scores_sklearn_mean, scores_sklearn_max, scores_sklearn_std])
+            runtime_DHDT = [scores_dict_real_world[identifier]['DHDT']['runtime'] for identifier in [identifier]]
+            runtime_sklearn = [scores_dict_real_world[identifier]['sklearn']['runtime'] for identifier in [identifier]]
+            runtime_xgb = [scores_dict_real_world[identifier]['XGB']['runtime'] for identifier in [identifier]]
+            runtime_gentree = [scores_dict_real_world[identifier]['GeneticTree']['runtime'] for identifier in [identifier]]
 
-        if results_DHDT is None and results_sklearn is None:
-            results_DHDT = results_DHDT_by_metric
-            results_sklearn = results_sklearn_by_metric
-        else:
-            results_DHDT = np.vstack([results_DHDT, results_DHDT_by_metric])
-            results_sklearn = np.vstack([results_sklearn, results_sklearn_by_metric])
+            #print(runtime_DHDT, runtime_sklearn, runtime_xgb)
+            
+            mean_runtime_DHDT = np.mean(runtime_DHDT, axis=1) if config['computation']['trials'] > 1 else runtime_DHDT
+            mean_runtime_sklearn = np.mean(runtime_sklearn, axis=1) if config['computation']['trials'] > 1 else runtime_sklearn
+            mean_runtime_xgb = np.mean(runtime_xgb, axis=1) if config['computation']['trials'] > 1 else runtime_xgb   
+            mean_runtime_gentree = np.mean(runtime_gentree, axis=1) if config['computation']['trials'] > 1 else runtime_gentree 
 
-    scores_dataframe_real_world = pd.DataFrame(data=np.vstack([results_DHDT, results_sklearn]).T, index = index, columns = columns)
-    #display(scores_dataframe_real_world)
-    #display(scores_dataframe_real_world[scores_dataframe_real_world.columns[1::3]])    
+            results_DHDT_by_metric = np.vstack([scores_DHDT_mean, scores_DHDT_max, scores_DHDT_std, mean_runtime_DHDT])
+            results_sklearn_by_metric = np.vstack([scores_sklearn_mean, scores_sklearn_max, scores_sklearn_std, mean_runtime_sklearn])
+            results_xgb_by_metric = np.vstack([scores_xgb_mean, scores_xgb_max, scores_xgb_std, mean_runtime_xgb])
+            results_gentree_by_metric = np.vstack([scores_gentree_mean, scores_gentree_max, scores_gentree_std, mean_runtime_gentree])
 
-    del model_dict_real_world, scores_dict_real_world, dataset_dict_real_world
+            if results_DHDT is None and results_sklearn is None and results_xgb is None and results_gentree is None:
+                results_DHDT = results_DHDT_by_metric
+                results_sklearn = results_sklearn_by_metric
+                results_xgb = results_xgb_by_metric
+                results_gentree = results_gentree_by_metric
+            else:
+                results_DHDT = np.vstack([results_DHDT, results_DHDT_by_metric])
+                results_sklearn = np.vstack([results_sklearn, results_sklearn_by_metric])
+                results_xgb = np.vstack([results_xgb, results_xgb_by_metric])
+                results_gentree = np.vstack([results_gentree, results_gentree_by_metric])
+        #print(np.vstack([results_DHDT, results_sklearn, results_xgb]).T.shape)
+        #print(index)
+        #print(columns)
+        scores_dataframe_real_world = pd.DataFrame(data=np.vstack([results_DHDT, results_sklearn, results_xgb, results_gentree]).T, index = index, columns = columns)
+        scores_dataframe_real_world_dict[metric_identifer[1:]] = scores_dataframe_real_world
+        #display(scores_dataframe_real_world)
+        #display(scores_dataframe_real_world[scores_dataframe_real_world.columns[1::3]])    
+
+    del scores_dict_real_world, dataset_dict_real_world
 
     #return_dict = {
     #                'DHDT score (mean)': np.mean(scores_DHDT_mean), 
@@ -1359,9 +1508,10 @@ def evaluate_parameter_setting_real_world(parameter_setting,
     #                'Parameters': parameter_setting
     #              }
     
-    return scores_dataframe_real_world, parameter_setting
+    #return scores_dataframe_real_world, parameter_setting
+    return scores_dataframe_real_world_dict, parameter_setting, model_dict_real_world
 
-
+    
     
 def sleep_minutes(minutes):  
     if minutes > 0:

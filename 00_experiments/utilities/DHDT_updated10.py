@@ -44,8 +44,8 @@ sns.set_style("darkgrid")
 import time
 import random
 
-from utilities.utilities_updated2 import *
-from utilities.DHDT_updated2 import *
+from utilities.utilities_updated10 import *
+from utilities.DHDT_updated10 import *
 
 from joblib import Parallel, delayed
 
@@ -68,6 +68,13 @@ def sigmoid(x, factor=1, shift_horizontal=0.0):
 def tanh(x, factor=1, shift_horizontal=0, shift_vertical=0):
     x = (K.exp(factor*(x-shift_horizontal))-K.exp(-factor*(x-shift_horizontal)))/(K.exp(factor*(x-shift_horizontal))+K.exp(-factor*(x-shift_horizontal))) + shift_vertical
     return x 
+
+@tf.custom_gradient
+def round_with_gradients(x):
+    def grad(dy):
+        return dy
+    return tf.round(x), grad
+
 
 class DHDT(tf.Module):
     
@@ -245,7 +252,73 @@ class DHDT(tf.Module):
     
     
     
-    #@tf.function(jit_compile=True)                    
+    #@tf.function(jit_compile=True)      
+    def forward_old(self, X):
+        X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
+
+        paths = [[0,1,3], [0,1,4], [0,2,5], [0,2,6]]
+
+        if self.sparse_activation_1 == 'softmax':
+            split_index_array_complete = tf.keras.activations.softmax(self.beta_1 * self.split_index_array)
+        elif self.sparse_activation_1 == 'entmax':
+            split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)           
+        elif self.sparse_activation_1 == 'sparsemax':
+            split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)        
+            
+        #split_index_array_complete_rounded_NOT_differentiable = tf.round(split_index_array_complete)
+        #split_index_array_complete = split_index_array_complete - tf.stop_gradient(split_index_array_complete - split_index_array_complete_rounded_NOT_differentiable)#tf.cast(tf.cast(split_index_array_complete, tf.int64), tf.float32)
+        
+        
+        # round numbers less than 0.5 to zero;
+        # by making them negative and taking the maximum with 0
+        differentiable_round = tf.maximum(split_index_array_complete-0.499,0)
+        # scale the remaining numbers (0 to 0.5) to greater than 1
+        # the other half (zeros) is not affected by multiplication
+        differentiable_round = differentiable_round * 10000
+        # take the minimum with 1
+        differentiable_round = tf.minimum(differentiable_round, 1)        
+        
+        ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####
+        
+        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+        split_values_complete = tanh(self.split_values, self.squeeze_factor, shift_horizontal=0, shift_vertical=0)
+        
+        function_values_dhdt = np.zeros(shape=X.shape[0])
+        for leaf_index, path in enumerate(paths):
+            path_result_left = 1
+            path_result_right = 1
+            for internal_node_index in path: 
+                #split_index = tfa.activations.sparsemax(self.beta_1 * self.split_index_array[internal_node_index])
+                #split_values = sigmoid_squeeze(self.split_values[internal_node_index]-0.5, self.squeeze_factor)
+
+                split_index = split_index_array_complete[internal_node_index]
+                split_values = split_values_complete[internal_node_index]
+                
+                internal_node_split_value = tf.reduce_sum(split_index*split_values)
+                respective_input_value = tf.reduce_sum(split_index*X, axis=1)
+
+                split_decision = sigmoid((respective_input_value - internal_node_split_value))
+                
+                #split_decision_rounded_NOT_differentiable = tf.round(split_decision)
+                #split_decision = split_decision - tf.stop_gradient(split_decision - split_decision_rounded_NOT_differentiable)
+                # round numbers less than 0.5 to zero;
+                # by making them negative and taking the maximum with 0
+                differentiable_round = tf.maximum(split_decision-0.499,0)
+                # scale the remaining numbers (0 to 0.5) to greater than 1
+                # the other half (zeros) is not affected by multiplication
+                differentiable_round = differentiable_round * 10#000
+                # take the minimum with 1
+                differentiable_round = tf.minimum(differentiable_round, 1)     
+                split_decision = differentiable_round
+
+                path_result_left *= split_decision
+                path_result_right *= (1 - split_decision)
+
+            function_values_dhdt += self.leaf_classes_array[leaf_index*2] * path_result_left + self.leaf_classes_array[leaf_index*2+1] * path_result_right
+        
+        return function_values_dhdt      
+    
+    
     def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
@@ -256,6 +329,22 @@ class DHDT(tf.Module):
             split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)           
         elif self.sparse_activation_1 == 'sparsemax':
             split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
+            
+        #split_index_array_complete_rounded_NOT_differentiable = tf.round(split_index_array_complete)
+        #split_index_array_complete = split_index_array_complete - tf.stop_gradient(split_index_array_complete - split_index_array_complete_rounded_NOT_differentiable)#tf.cast(tf.cast(split_index_array_complete, tf.int64), tf.float32)
+        
+        
+        # round numbers less than 0.5 to zero;
+        # by making them negative and taking the maximum with 0
+        #differentiable_round = tf.maximum(split_index_array_complete-0.499,0)
+        # scale the remaining numbers (0 to 0.5) to greater than 1
+        # the other half (zeros) is not affected by multiplication
+        #differentiable_round = differentiable_round * 10000
+        # take the minimum with 1
+        #differentiable_round = tf.minimum(differentiable_round, 1)        
+        
+        ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####            
+            
             
         if self.activation == 'sigmoid':
             split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
@@ -275,6 +364,28 @@ class DHDT(tf.Module):
         
         #internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32)#tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater?
 
+        #internal_node_result_complete_rounded_NOT_differentiable = tf.round(internal_node_result_complete)
+        #internal_node_result_complete = internal_node_result_complete - tf.stop_gradient(internal_node_result_complete - internal_node_result_complete_rounded_NOT_differentiable)
+        
+        #internal_node_result_complete = round_with_gradients(internal_node_result_complete)
+        
+        slope = 150
+        center = 0.5
+        e = tf.exp(slope*(internal_node_result_complete-center))
+        internal_node_result_complete = e/(e+1)
+        
+        
+        
+        
+        # round numbers less than 0.5 to zero;
+        # by making them negative and taking the maximum with 0
+        #differentiable_round = tf.maximum(internal_node_result_complete-0.499,0)
+        # scale the remaining numbers (0 to 0.5) to greater than 1
+        # the other half (zeros) is not affected by multiplication
+        #differentiable_round = differentiable_round * 10#000
+        # take the minimum with 1
+        #differentiable_round = tf.minimum(differentiable_round, 1)                  
+        #internal_node_result_complete = differentiable_round
         #tf.print(internal_node_result_complete, summarize=-1)
         
         begin_idx = 0
