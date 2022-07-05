@@ -1054,9 +1054,23 @@ def evaluate_dhdt(identifier,
     
     ##############################################################
     if sklearn_params is None:
-        sklearn_params = {'max_depth': 3,
+        sklearn_params_help = {'max_depth': 3,
                           'random_state': random_seed_model}
     
+        sklearn_params = [None, None]
+        
+        start_sklearn = timeit.default_timer()
+        
+
+        
+        sklearn_params[1] = DecisionTreeClassifier()
+        sklearn_params[1].set_params(**sklearn_params_help)
+        
+        sklearn_params[1].fit(dataset_dict['X_train'], 
+                                dataset_dict['y_train'])        
+        
+        end_sklearn = timeit.default_timer()  
+        sklearn_params[0] = end_sklearn - start_sklearn        
     
     model_dict['sklearn'] = sklearn_params[1]#DecisionTreeClassifier()
     #model_dict['sklearn'].set_params(**sklearn_params)
@@ -1090,10 +1104,29 @@ def evaluate_dhdt(identifier,
     runtime_xgb = end_xgb - start_xgb
     
     ##############################################################
-    if sklearn_params is None:
-        gen_params = {'max_depth': 3,
+    
+    if gen_params is None:
+        gen_params_help = {'max_depth': 3,
                       'random_state': random_seed_model,
                       'n_jobs': 1}
+    
+        gen_params = [None, None]
+        
+        start_gentree = timeit.default_timer()
+        
+
+        
+        gen_params[1] = GeneticTree()
+        gen_params[1].set_params(**gen_params_help)
+        
+        #print(dataset_dict['X_train'])
+        #print(dataset_dict['y_train'])
+        
+        gen_params[1].fit(dataset_dict['X_train'].values, 
+                         dataset_dict['y_train'])        
+        
+        end_gentree = timeit.default_timer()  
+        gen_params[0] = end_gentree - start_gentree   
     
     
     model_dict['GeneticTree'] = gen_params[1]#GeneticTree()

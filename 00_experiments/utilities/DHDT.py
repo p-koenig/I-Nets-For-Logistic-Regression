@@ -55,18 +55,26 @@ from collections.abc import Iterable
 from copy import deepcopy
 
 
+
 def make_batch(iterable, n=1):
     l = len(iterable)
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx + n, l)]    
         
-def sigmoid(x, factor=1, shift_horizontal=0.5):
-    x = 1/(1+K.exp(-factor*(x-0.5)))
+def sigmoid(x, factor=1, shift_horizontal=0.0):
+    x = 1/(1+K.exp(-factor*(x-shift_horizontal)))
     return x  
 
-def tanh(x, factor=1, shift_horizontal=0.5, shift_vertical=1):
-    x = (K.exp(factor*(x-0.5))-K.exp(-factor*(x-0.5)))/(K.exp(factor*(x-0.5))+K.exp(-factor*(x-0.5))) + shift_vertical
+def tanh(x, factor=1, shift_horizontal=0, shift_vertical=0):
+    x = (K.exp(factor*(x-shift_horizontal))-K.exp(-factor*(x-shift_horizontal)))/(K.exp(factor*(x-shift_horizontal))+K.exp(-factor*(x-shift_horizontal))) + shift_vertical
     return x 
+
+@tf.custom_gradient
+def round_with_gradients(x):
+    def grad(dy):
+        return dy
+    return tf.round(x), grad
+
 
 class DHDT(tf.Module):
     
@@ -81,6 +89,9 @@ class DHDT(tf.Module):
         
             beta_1 = 100,
             beta_2 = 100,
+        
+            sparse_activation_1 = 'softmax',
+            sparse_activation_2 = 'sigmoid',
         
             activation = 'sigmoid',
             squeeze_factor = 1,
@@ -100,6 +111,9 @@ class DHDT(tf.Module):
         
         self.beta_1 = beta_1
         self.beta_2 = beta_2
+        
+        self.sparse_activation_1 = sparse_activation_1
+        self.sparse_activation_2 = sparse_activation_2
         
         self.seed = random_seed
         self.verbosity = verbosity
@@ -154,6 +168,8 @@ class DHDT(tf.Module):
     def fit(self, X_train, y_train, batch_size=256, epochs=100, early_stopping_epochs=5, valid_data=None):
                 
         minimum_loss_epoch = np.inf
+        minimum_loss_epoch_valid = np.inf
+
         epochs_without_improvement = 0    
         
         batch_size = min(batch_size, X_train.shape[0])
@@ -165,7 +181,7 @@ class DHDT(tf.Module):
             tf.random.set_seed(self.seed + current_epoch)
             y_train = tf.random.shuffle(y_train, seed=self.seed + current_epoch)
             
-            loss_list = []
+            loss_list = []            
             for index, (X_batch, y_batch) in enumerate(zip(make_batch(X_train, batch_size), make_batch(y_train, batch_size))):
                 current_loss = self.backward(X_batch, y_batch)
                 loss_list.append(float(current_loss))
@@ -176,11 +192,20 @@ class DHDT(tf.Module):
                     print(msg.format(current_epoch, batch_idx, current_loss))                   
                   
             current_loss_epoch = np.mean(loss_list)
+                
+            if valid_data is not None:
+                if self.loss.__name__  == 'binary_crossentropy':
+                    current_loss_epoch_valid = self.loss(valid_data[1], self.forward(valid_data[0]), from_logits=True)
+                else:
+                    current_loss_epoch_valid = self.loss(valid_data[1], tf.sigmoid(self.forward(valid_data[0])))                  
+                
             if self.verbosity > 1:    
                 msg = "Epoch: {:02d} | Loss: {:.5f} |"
                 print(msg.format(current_epoch, current_loss_epoch))              
-
-            
+                if valid_data is not None:
+                    msg = "Epoch: {:02d} | Valid Loss: {:.5f} |"
+                    print(msg.format(current_epoch, current_loss_epoch_valid))                   
+                    
             if self.verbosity == 1:  
                 loss_dict = {'loss': current_loss_epoch}
 
@@ -188,45 +213,62 @@ class DHDT(tf.Module):
                 
                 if valid_data is not None:
                     if self.loss.__name__  == 'binary_crossentropy':
-                        loss_dict['val_loss'] = self.loss(valid_data[1], self.forward(valid_data[0]), from_logits=True)
+                        loss_dict['val_loss'] = current_loss_epoch_valid
                     else:
-                        loss_dict['val_loss'] = self.loss(valid_data[1], tf.sigmoid(self.forward(valid_data[0])))                   
+                        loss_dict['val_loss'] = current_loss_epoch_valid                   
                     loss_dict['val_acc'] = accuracy_score(valid_data[1], np.round(tf.sigmoid(self.forward_hard(valid_data[0]))))
+                    
                 self.plotlosses.update(loss_dict)#({'acc': 0.0, 'val_acc': 0.0, 'loss': np.mean(loss_list), 'val_loss': 0.0})
                 self.plotlosses.send()            
 
-            if current_loss_epoch < minimum_loss_epoch:
-                minimum_loss_epoch = current_loss_epoch
-                epochs_without_improvement = 0
+            if valid_data is not None:
+                if current_loss_epoch_valid < minimum_loss_epoch_valid:
+                    minimum_loss_epoch_valid = current_loss_epoch_valid
+                    epochs_without_improvement = 0
+
+                    split_values_stored = tf.identity(self.split_values)
+                    split_index_array_stored = tf.identity(self.split_index_array)
+                    leaf_classes_array_stored = tf.identity(self.leaf_classes_array)          
+
+                else:
+                    epochs_without_improvement += 1            
             else:
-                epochs_without_improvement += 1
+                if current_loss_epoch < minimum_loss_epoch:
+                    minimum_loss_epoch = current_loss_epoch
+                    epochs_without_improvement = 0
+
+                    split_values_stored = tf.identity(self.split_values)
+                    split_index_array_stored = tf.identity(self.split_index_array)
+                    leaf_classes_array_stored = tf.identity(self.leaf_classes_array)          
+
+                else:
+                    epochs_without_improvement += 1
                 
-            if epochs_without_improvement >= early_stopping_epochs:
+            if epochs_without_improvement >= early_stopping_epochs:           
+                self.split_values.assign(split_values_stored)
+                self.split_index_array.assign(split_index_array_stored)
+                self.leaf_classes_array.assign(leaf_classes_array_stored)   
                 break
     
-    
-    
-    @tf.function(jit_compile=True)                    
     def forward(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
-
-        #split_index_array_complete = tfa.activations.sparsemax(self.beta_1 * self.split_index_array)
-        #split_index_array_complete = tf.keras.activations.softmax(10*self.beta_1 * self.split_index_array)
-        split_index_array_complete = entmax15(self.beta_1 * self.split_index_array)        
-
+            
+        split_index_array_complete = self.split_index_array - tf.stop_gradient(self.split_index_array -  tfa.seq2seq.hardmax(self.split_index_array))
+              
+        ####https://stackoverflow.com/questions/46596636/differentiable-round-function-in-tensorflow####            
+            
         if self.activation == 'sigmoid':
-            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
-            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)        
+            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)        
         
-        X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
+        input_split_diff = (X - tf.expand_dims(split_values_complete, 1))
+        input_split_diff_selected = input_split_diff * tf.expand_dims(split_index_array_complete, 1)
+        input_split_diff_sigmoid = sigmoid(input_split_diff_selected)
         
-        split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
-                
-        #internal_node_result_complete = tf.sigmoid(self.beta_2 * (X_by_index - split_values_by_index - 0.5)) ##tf.greater? ##ADJUSTED
-        #internal_node_result_complete = tf.squeeze(tf.squeeze(tfa.activations.sparsemax([self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index - 0.5)), 2)], 2)]))[:,:,:1])
-        internal_node_result_complete = tf.squeeze(tf.squeeze(entmax15(self.beta_2 * tf.concat([tf.expand_dims((X_by_index-split_values_by_index), 2), tf.expand_dims((-(X_by_index-split_values_by_index - 0.5)), 2)], 2)))[:,:,:1])        
-        #tf.print(internal_node_result_complete, summarize=-1)
+        input_split_diff_sigmoid_corrected = input_split_diff_sigmoid - tf.stop_gradient(input_split_diff_sigmoid - tf.round(input_split_diff_sigmoid))
+        
+        internal_node_result_complete = tf.reduce_sum(input_split_diff_sigmoid_corrected, axis=2)
         
         begin_idx = 0
         end_idx = 1
@@ -240,13 +282,7 @@ class DHDT(tf.Module):
         begin_idx = end_idx
         end_idx = begin_idx + 2 ** 1
 
-        #print('___________________')
-        #print(path_results_complete)
-        #print('___________________')
-        
-        #print('self.depth', self.depth)
         for layer_idx in range(1, self.depth):
-            #print('layer_idx', layer_idx)
             layer_result = internal_node_result_complete[begin_idx:end_idx,:]
 
             layer_result_combined = tf.stack([layer_result, (1-layer_result)], axis=1)
@@ -260,36 +296,27 @@ class DHDT(tf.Module):
             begin_idx = end_idx
             end_idx = begin_idx + 2 ** (layer_idx + 1)
 
-            #print('path_results_complete', path_results_complete)
-            #print('___________________')
-
-            
-            #tf.print(path_results_complete, summarize=-1)
-            
-        #function_values_dhdt = tf.reduce_sum(path_results_complete*tf.expand_dims(self.leaf_classes_array, 1), axis=0)
         function_values_dhdt = tf.reduce_sum(tf.transpose(path_results_complete)*self.leaf_classes_array, axis=1)
             
         return function_values_dhdt  
            
     
-    @tf.function(jit_compile=True)                    
+    #@tf.function(jit_compile=True)                    
     def forward_hard(self, X):
         X = tf.dtypes.cast(tf.convert_to_tensor(X), tf.float32)               
 
         split_index_array_complete = tfa.seq2seq.hardmax(self.split_index_array)
-        #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
+
         if self.activation == 'sigmoid':
-            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+            split_values_complete = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
-            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)        
+            split_values_complete = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)        
         
         X_by_index = tf.reduce_sum(tf.expand_dims(split_index_array_complete, 1)*X, axis=2)
         
         split_values_by_index =tf.expand_dims(tf.reduce_sum(split_values_complete*split_index_array_complete, axis=1), 1)
         
-        internal_node_result_complete = tf.round(tf.sigmoid(X_by_index - split_values_by_index - 0.5)) ##tf.greater?
-
-        #tf.print(internal_node_result_complete, summarize=-1)
+        internal_node_result_complete = tf.cast(tf.greater(X_by_index, split_values_by_index), tf.float32) #tf.round(tf.sigmoid(X_by_index - split_values_by_index)) ##tf.greater? ##ADJUSTED
         
         begin_idx = 0
         end_idx = 1
@@ -329,10 +356,12 @@ class DHDT(tf.Module):
         function_values_dhdt = tf.reduce_sum(path_results_complete*tf.expand_dims(self.leaf_classes_array, 1), axis=0)        
         
         return function_values_dhdt
-        
+      
+    @tf.function(jit_compile=True)      
     def predict(self, X):
         return tf.sigmoid(self.forward_hard(X))
         
+    @tf.function(jit_compile=True)      
     def backward(self, x,y):
         #optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)#tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.01)
         with tf.GradientTape(persistent=True) as tape:
@@ -370,9 +399,9 @@ class DHDT(tf.Module):
         split_index_list_by_internal_node_max = tfa.seq2seq.hardmax(self.split_index_array)
         #split_values_complete = sigmoid_squeeze(self.split_values, self.squeeze_factor)
         if self.activation == 'sigmoid':
-            split_values_list_by_internal_node = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5)
+            split_values_list_by_internal_node = sigmoid(self.split_values, factor=self.squeeze_factor, shift_horizontal=0)
         elif self.activation == 'tanh':
-            split_values_list_by_internal_node = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0.5, shift_vertical=1)                
+            split_values_list_by_internal_node = tanh(self.split_values, factor=self.squeeze_factor, shift_horizontal=0, shift_vertical=0)                
         #tf.print('split_index_list_by_internal_node_max', split_index_list_by_internal_node_max)
         #tf.print('split_values_list_by_internal_node', split_values_list_by_internal_node)
         splits = tf.stack(tf.multiply(split_values_list_by_internal_node, split_index_list_by_internal_node_max))
