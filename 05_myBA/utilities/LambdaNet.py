@@ -806,9 +806,9 @@ def train_lambda_net(config,
 
     history = model_history.history
 
-    y_train_pred = model.predict(X_train) 
-    y_valid_pred = model.predict(X_valid)                
-    y_test_pred = model.predict(X_test)
+    y_train_pred = model.predict(X_train, verbose=0) 
+    y_valid_pred = model.predict(X_valid, verbose=0)                
+    y_test_pred = model.predict(X_test, verbose=0)
 
 
     pred_list = {

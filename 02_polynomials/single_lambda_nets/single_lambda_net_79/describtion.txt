@@ -1,4 +1,0 @@
-target_polynomial: -0.764948714192725*a*b**2 + 0.865122407714681*a
-number_of_variables: 2
-degree: 3
-lambda_net_hidden_layers: [10]
