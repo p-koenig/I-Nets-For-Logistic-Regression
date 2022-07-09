@@ -458,6 +458,10 @@ def calculate_function_value_from_lambda_net_parameters_wrapper(random_evaluatio
         lambda_fv = tf.keras.backend.flatten(model_lambda_placeholder(random_evaluation_dataset))
         #tf.print('lambda_fv ones', tf.math.count_nonzero(tf.math.round(lambda_fv)), 'lambda_fv zeros', len(lambda_fv)-tf.math.count_nonzero(tf.math.round(lambda_fv)))
         
+        noise = tf.cast(config['i_net']['train_noise'], tf.float32)
+        noise_flip = tf.cast(tf.random.categorical(tf.math.log([[1-noise, noise]]), lambda_fv.shape[0]), tf.float32)
+        lambda_fv = lambda_fv*(1-noise_flip) + (1-lambda_fv)*noise_flip   
+        
         return lambda_fv
     return calculate_function_value_from_lambda_net_parameters
 
